@@ -1,0 +1,144 @@
+namespace Editor {
+  # The point (x, y) is the position of the marker in infinite, unwrapped
+  # document space, where (0, 0) is the first character in the document.
+  class Marker {
+    const x int
+    const y int
+
+    def toString string {
+      return "Marker(\(x), \(y))"
+    }
+
+    def equals(other Marker) bool {
+      return x == other.x && y == other.y
+    }
+
+    def <=>(other Marker) int {
+      var delta = y <=> other.y
+      return delta != 0 ? delta : x <=> other.x
+    }
+  }
+
+  namespace Marker {
+    const ZERO = Marker.new(0, 0)
+
+    def min(a Marker, b Marker) Marker {
+      return a < b ? a : b
+    }
+
+    def max(a Marker, b Marker) Marker {
+      return a > b ? a : b
+    }
+  }
+
+  # A region stretches from min(start, end) inclusive to max(start, end) exclusive.
+  # When selecting, a user will define start first as the anchor of the selection,
+  # and then define end as the extent of the selection. It will be the case that
+  # start is greater than end if the user is selecting backwards.
+  class Region {
+    const start Marker
+    const end Marker
+
+    def new(start Marker, end Marker) {
+      self.start = start
+      self.end = end
+    }
+
+    def toString string {
+      return "Region(\(start), \(end))"
+    }
+
+    def min Marker {
+      return Marker.min(start, end)
+    }
+
+    def max Marker {
+      return Marker.max(start, end)
+    }
+
+    def isMultiline bool {
+      return start.y != end.y
+    }
+
+    def isEmpty bool {
+      return start.equals(end)
+    }
+
+    def in(marker Marker) bool {
+      return min <= marker && marker < max
+    }
+  }
+
+  namespace Region {
+    const EMPTY = new(Marker.new(0, 0))
+
+    # Regions are sorted by their starting marker. The case where regions overlap
+    # doesn't matter since selections will merge these regions immediately.
+    const COMPARE = (first Region, second Region) => first.min <=> second.min
+
+    def new(marker Marker) Region {
+      return new(marker, marker)
+    }
+
+    def span(first Region, second Region) Region {
+      var start = Marker.min(first.min, second.min)
+      var end = Marker.max(first.max, second.max)
+      return start.equals(first.start) || start.equals(second.start) ? new(start, end) : new(end, start)
+    }
+  }
+
+  # An ordered collection of regions. This editor uses the multiple selection
+  # model which lets users type in multiple locations at once. For example,
+  # instead of having to use a find/replace dialog for simple string
+  # substitutions, users can just select all occurrences simultaneously and
+  # type the replacement in real time.
+  class Selection {
+    const regions List<Region>
+
+    def new(regions List<Region>) {
+      self.regions = regions
+      regions.sort(Region.COMPARE)
+
+      # Merge overlapping regions in place using an O(n) algorithm
+      var i = 0
+      var target = 0
+      while i < regions.count {
+        var previous = regions[i]
+        while i + 1 < regions.count {
+          var next = regions[i + 1]
+          var comparison = previous.max <=> next.min
+          if comparison <= 0 && (comparison != 0 || !previous.isEmpty && !next.isEmpty) {
+            break
+          }
+          previous = Region.span(previous, next)
+          i++
+        }
+        regions[target] = previous
+        target++
+        i++
+      }
+
+      # Make sure the regions list is the right length
+      while regions.count > target {
+        regions.removeLast
+      }
+    }
+
+    def min Marker {
+      return regions.first.min
+    }
+
+    def max Marker {
+      return regions.last.max
+    }
+
+    def isEmpty bool {
+      for region in regions {
+        if !region.isEmpty {
+          return false
+        }
+      }
+      return true
+    }
+  }
+}

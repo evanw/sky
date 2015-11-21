@@ -1,0 +1,39 @@
+namespace Browser {
+  class App :: Editor.DiagnosticObserver {
+    const _keyboardInput = KeyboardInput.new
+    const _model = Editor.Model.new("<demo>", BrowserTime.new)
+    const _canvas CanvasRenderer
+    const _view Editor.View
+
+    def new {
+      _canvas = CanvasRenderer.new(_keyboardInput)
+      _view = Editor.View.new(_canvas)
+      _view.setModel(_model)
+      _view.changePadding(PADDING, PADDING, PADDING, PADDING)
+      _view.changeMarginPadding(PADDING * 3, PADDING)
+      _view.setScrollbarThickness(11)
+      _canvas.changeFont(FONT_SIZE, MARGIN_FONT_SIZE, LINE_HEIGHT, ["Menlo", "Monaco", "Consolas"])
+      _canvas.stretchToFitBody
+      _canvas.setView(_view)
+      _keyboardInput.focus(_view)
+      on(window, "focus", e => _keyboardInput.focus(_view))
+      AnimationLoop.start
+    }
+
+    def handleDiagnosticsChange(task Editor.DiagnosticTask, diagnostics List<Editor.Diagnostic>) {
+      _model.replaceDiagnostics(diagnostics)
+    }
+  }
+
+  namespace App {
+    const PADDING = 5.0
+    const FONT_SIZE = 12.0
+    const MARGIN_FONT_SIZE = 10.0
+    const LINE_HEIGHT = FONT_SIZE * 4 / 3
+
+    @entry
+    def main {
+      App.new
+    }
+  }
+}

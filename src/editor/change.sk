@@ -1,0 +1,134 @@
+namespace Editor {
+  enum ChangeEffect {
+    NONE
+    INSERT
+    DELETE
+    REPLACE
+  }
+
+  namespace ChangeEffect {
+    def fromDeleteAndInsert(isDelete bool, isInsert bool) ChangeEffect {
+      return ((isDelete ? DELETE : NONE) | (isInsert ? INSERT : NONE)) as ChangeEffect
+    }
+  }
+
+  # Holds a single, continuous edit operation. A pure deletion is a change with
+  # a non-empty region and empty text, while a pure insertion operation is a
+  # change with an empty region and non-empty text. Changes are mutated during
+  # undoing and redoing to hold the inverse of the operation performed.
+  class Change {
+    var region Region
+    var text string
+
+    def toString string {
+      return "Change(\(region), '\(text)')"
+    }
+
+    def effect ChangeEffect {
+      return ChangeEffect.fromDeleteAndInsert(!region.isEmpty, text != "")
+    }
+  }
+
+  namespace Change {
+    def joinInserts(first List<Change>, second List<Change>) List<Change> {
+      if first.count != second.count {
+        return null
+      }
+
+      var changes List<Change> = []
+      var deltaX = 0
+      var deltaY = 0
+      var oldY = 0
+
+      for i in 0..first.count {
+        var a = first[i]
+        var b = second[i]
+        var maxA = a.region.max
+        var minB = b.region.min
+        var lines = a.text.split("\n")
+        var count = lines.count
+        var maxAX = (count == 1 ? maxA.x : 0) + lines[count - 1].count + (maxA.y == oldY ? deltaX : 0)
+        var maxAY = maxA.y + count - 1 + deltaY
+
+        # Two inserts
+        if a.effect != .INSERT || b.effect != .INSERT || maxAX != minB.x || maxAY != minB.y {
+          return null
+        }
+
+        # Join the changes
+        changes.append(Change.new(a.region, a.text + b.text))
+
+        # Store the delta for the next iteration
+        deltaX = maxAX - maxA.x
+        deltaY = maxAY - maxA.y
+        oldY = maxA.y
+      }
+
+      return changes
+    }
+
+    def joinDeletes(first List<Change>, second List<Change>) List<Change> {
+      var changes List<Change> = []
+      var deltaX = 0
+      var deltaY = 0
+      var oldY = 0
+
+      for i in 0..first.count {
+        var a = first[i]
+        var b = second[i]
+        var minA = a.region.min
+        var maxA = a.region.max
+        var minB = b.region.min
+        var maxB = b.region.max
+        var minAX = minA.x + (minA.y == oldY ? deltaX : 0)
+        var minAY = minA.y + deltaY
+        var maxAX = maxA.x + (maxA.y == oldY ? deltaX : 0)
+        var maxAY = maxA.y + deltaY
+        var effectA = a.effect
+
+        # Two deletes
+        if effectA != .DELETE && effectA != .REPLACE || b.effect != .DELETE || maxAX != minB.x || maxAY != minB.y {
+          return null
+        }
+
+        # Join the changes
+        changes.append(Change.new(Region.new(Marker.new(minAX, minAY), maxB), a.text))
+
+        # Store the delta for the next iteration
+        deltaX = minB.y == maxB.y ? deltaX + maxB.x - minB.x : maxB.x
+        deltaY += maxB.y - minB.y
+        oldY = maxA.y
+      }
+
+      return changes
+    }
+
+    def isSpace(changes List<Change>) bool {
+      var result = false
+      for change in changes {
+        for i in 0..change.text.count {
+          var c = change.text[i]
+          if c != ' ' && c != '\t' && c != '\n' {
+            return false
+          }
+          result = true
+        }
+      }
+      return result
+    }
+  }
+
+  # Holds a set of changes and the original timestamp from when those changes
+  # were first applied. Changes are applied in sets instead of individually
+  # for performance.
+  class Commit {
+    var changes List<Change>
+    var timestampInSeconds double
+    var isSpace bool
+
+    def toString string {
+      var joined = ", ".join(changes.map<string>(c => c.toString))
+      return "Commit([\(joined)], \(timestampInSeconds))"
+    }
+  }
+}

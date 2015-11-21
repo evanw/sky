@@ -1,0 +1,250 @@
+namespace Editor {
+  enum CommitDirection {
+    UNDO
+    REDO
+  }
+
+  interface Time {
+    def nowInSeconds double
+  }
+
+  interface ModelObserver {
+    def handleLexerChange(model Model)
+    def handleToggleCommit(model Model, commit Commit, direction CommitDirection)
+    def handleDiagnosticChange(model Model)
+  }
+
+  # Wraps a LineBuffer and manages undo/redo and update events. Also keeps the
+  # syntax highlighting information up to date by running a lexer as needed.
+  # The model is separate from the view so one model can have multiple views.
+  class Model {
+    def toString string {
+      return _lines.toString
+    }
+
+    def count int {
+      return _lines.count
+    }
+
+    def maxLineSize int {
+      return _lines.maxLineSize
+    }
+
+    def [](index int) Line {
+      return _lines[index]
+    }
+
+    def addObserver(observer ModelObserver) {
+      _observers.appendOne(observer)
+    }
+
+    def removeObserver(observer ModelObserver) {
+      _observers.removeOne(observer)
+    }
+
+    def canUndo bool {
+      return _commitIndex > 0
+    }
+
+    def canRedo bool {
+      return _commitIndex < _commits.count
+    }
+
+    def undo {
+      if canUndo {
+        _commitIndex--
+        _toggleCommit(_commits[_commitIndex], .UNDO)
+      }
+    }
+
+    def redo {
+      if canRedo {
+        _toggleCommit(_commits[_commitIndex], .REDO)
+        _commitIndex++
+      }
+    }
+
+    def setLexer(lexer Lexer) {
+      if _lexer != lexer {
+        _lexer = lexer
+        _dirtyIndex = 0
+        _lines.clearStyleState
+        for observer in _observers {
+          observer.handleLexerChange(self)
+        }
+      }
+    }
+
+    def setDiagnosticTask(task DiagnosticTask) {
+      if _task != task {
+        _task = task
+        if task != null {
+          task.changeFileContents(_name, toString)
+        }
+        replaceDiagnostics([])
+      }
+    }
+
+    def replaceDiagnostics(diagnostics List<Diagnostic>) {
+      _lines.replaceDiagnostics(Diagnostic.extractDiagnosticsWithSource(diagnostics, _name))
+      for observer in _observers {
+        observer.handleDiagnosticChange(self)
+      }
+    }
+
+    def styleLinesIfNeeded(start int, end int) {
+      assert(0 <= start && start <= end && end <= count)
+
+      if _lexer != null {
+        var previousState = _dirtyIndex != 0 ? _lines[_dirtyIndex - 1].nextState : null
+        var i = _dirtyIndex
+
+        # Style all unstyled lines up to the end of the requested region
+        while i < end {
+          var line = _lines[i]
+          if previousState == null || line.previousState == null || !previousState.equals(line.previousState) {
+            _lexer.styleLine(line, previousState)
+          }
+          previousState = line.nextState
+          i++
+        }
+
+        # Lines are now only unstyled after this point
+        _dirtyIndex = i
+      }
+    }
+
+    def applyChanges(changes List<Change>) {
+      if !changes.isEmpty {
+        while _commits.count > _commitIndex {
+          _commits.removeLast
+        }
+        _commits.append(Commit.new(changes, _time.nowInSeconds, Change.isSpace(changes)))
+        redo
+
+        # Attempt to merge this commit onto the previous one after it's applied
+        var count = _commits.count
+        if count >= 2 {
+          var merged = _mergeCommits(_commits[count - 2], _commits[count - 1])
+          if merged != null {
+            _commits.removeRange(count - 2, count)
+            _commits.append(merged)
+            _commitIndex--
+          }
+        }
+      }
+    }
+
+    def slice(region Region) string {
+      var min = region.min
+      var max = region.max
+      assert(0 <= min.y && max.y < _lines.count)
+      assert(0 <= min.x && min.x <= _lines[min.y].text.count)
+      assert(0 <= max.x && max.x <= _lines[max.y].text.count)
+      var first = _lines[min.y]
+      var last = _lines[max.y]
+      if first == last {
+        return first.text.slice(min.x, max.x)
+      }
+      var text = first.text.slice(min.x, first.text.count)
+      for y = min.y + 1; y < max.y; y++ {
+        text += "\n" + _lines[y].text
+      }
+      text += "\n" + last.text.slice(0, max.x)
+      return text
+    }
+
+    def _toggleCommit(commit Commit, direction CommitDirection) {
+      var deltaX = 0
+      var deltaY = 0
+      var oldX = 0
+      var oldY = 0
+
+      for change in commit.changes {
+        # Get the region bounds, shifted due to previous changes
+        var min = change.region.min
+        var max = change.region.max
+        var minX = min.x + (min.y == oldY ? deltaX : 0)
+        var maxX = max.x + (max.y == oldY ? deltaX : 0)
+        var minY = min.y + deltaY
+        var maxY = max.y + deltaY
+        oldX = max.x
+        oldY = max.y
+
+        # Extract the text in the region and generate the replacement text
+        var oldLines = _lines.slice(minY, maxY + 1)
+        var newLines = Line.split(change.text)
+        var oldLinesSize = oldLines.count
+        var newLinesSize = newLines.count
+        var oldLast = oldLines[oldLinesSize - 1]
+        var newLast = newLines[newLinesSize - 1]
+        newLines[newLinesSize - 1] = Line.new(newLast.text + oldLast.text.slice(maxX, oldLast.text.count))
+        newLines[0] = Line.new(oldLines[0].text.slice(0, minX) + newLines[0].text)
+        oldLines[oldLinesSize - 1] = Line.new(oldLast.text.slice(0, maxX))
+        oldLines[0] = Line.new(oldLines[0].text.slice(minX, oldLines[0].text.count))
+
+        # Update the document
+        _lines.changeLines(minY, maxY + 1, newLines)
+
+        # Mutate the change to represent the inverse operation
+        maxX += newLines[newLinesSize - 1].text.count - oldLast.text.count
+        maxY = minY + newLines.count - 1
+        change.region = Region.new(Marker.new(minX, minY), Marker.new(maxX, maxY))
+        change.text = Line.join(oldLines)
+
+        # Update the deltas for future changes
+        deltaX = maxX - oldX
+        deltaY = maxY - oldY
+
+        # Track the dirty area for style updates
+        _dirtyIndex = Math.min(_dirtyIndex, minY)
+      }
+
+      # Notify all observers
+      for observer in _observers {
+        observer.handleToggleCommit(self, commit, direction)
+      }
+
+      if _task != null {
+        _task.changeFileContents(_name, toString)
+      }
+    }
+
+    var _name string
+    var _time Time
+    var _lexer Lexer = null
+    var _observers List<ModelObserver> = []
+    var _commits List<Commit> = []
+    var _task DiagnosticTask = null
+    var _lines = LineBuffer.new
+    var _commitIndex = 0
+    var _dirtyIndex = 0
+  }
+
+  namespace Model {
+    const MAX_MERGE_DELTA = 0.5
+
+    def _mergeCommits(first Commit, second Commit) Commit {
+      if !first.isSpace && second.isSpace || # Break after each word
+          first.changes.count != second.changes.count || # Must have similar selections
+          second.timestampInSeconds - first.timestampInSeconds > MAX_MERGE_DELTA {
+        return null
+      }
+
+      var timestampInSeconds = Math.max(first.timestampInSeconds, second.timestampInSeconds)
+      var isSpace = first.isSpace && second.isSpace
+
+      var inserts = Change.joinInserts(second.changes, first.changes)
+      if inserts != null {
+        return Commit.new(inserts, timestampInSeconds, isSpace)
+      }
+
+      var deletes = Change.joinDeletes(first.changes, second.changes)
+      if deletes != null {
+        return Commit.new(deletes, timestampInSeconds, isSpace)
+      }
+
+      return null
+    }
+  }
+}

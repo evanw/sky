@@ -1,0 +1,119 @@
+namespace Editor {
+  enum Action {
+    NONE
+
+    CUT
+    COPY
+    PASTE
+    UNDO
+    REDO
+
+    SELECT_ALL
+    SELECT_FIRST_REGION
+    SELECT_LINE
+    SELECT_NEXT_DIAGNOSTIC
+    SELECT_PREVIOUS_DIAGNOSTIC
+
+    INSERT_CURSOR_ABOVE
+    INSERT_CURSOR_BELOW
+    INSERT_LINE_ABOVE
+    INSERT_LINE_BELOW
+
+    SCROLL_DOWN_DOCUMENT
+    SCROLL_DOWN_LINE
+    SCROLL_UP_DOCUMENT
+    SCROLL_UP_LINE
+
+    MOVE_DOWN_DOCUMENT
+    MOVE_DOWN_LINE
+    MOVE_DOWN_PAGE
+    MOVE_LEFT_CHARACTER
+    MOVE_LEFT_LINE
+    MOVE_LEFT_WORD
+    MOVE_RIGHT_CHARACTER
+    MOVE_RIGHT_LINE
+    MOVE_RIGHT_WORD
+    MOVE_UP_DOCUMENT
+    MOVE_UP_LINE
+    MOVE_UP_PAGE
+
+    SELECT_DOWN_DOCUMENT
+    SELECT_DOWN_LINE
+    SELECT_DOWN_PAGE
+    SELECT_LEFT_CHARACTER
+    SELECT_LEFT_LINE
+    SELECT_LEFT_WORD
+    SELECT_RIGHT_CHARACTER
+    SELECT_RIGHT_LINE
+    SELECT_RIGHT_WORD
+    SELECT_UP_DOCUMENT
+    SELECT_UP_LINE
+    SELECT_UP_PAGE
+
+    DELETE_DOWN_DOCUMENT
+    DELETE_DOWN_LINE
+    DELETE_DOWN_PAGE
+    DELETE_LEFT_CHARACTER
+    DELETE_LEFT_LINE
+    DELETE_LEFT_WORD
+    DELETE_RIGHT_CHARACTER
+    DELETE_RIGHT_LINE
+    DELETE_RIGHT_WORD
+    DELETE_UP_DOCUMENT
+    DELETE_UP_LINE
+    DELETE_UP_PAGE
+
+    def isMoveMotion bool {
+      return self >= MOVE_DOWN_DOCUMENT && self <= MOVE_UP_PAGE
+    }
+
+    def isSelectMotion bool {
+      return self >= SELECT_DOWN_DOCUMENT && self <= SELECT_UP_PAGE
+    }
+
+    def isDeleteMotion bool {
+      return self >= DELETE_DOWN_DOCUMENT && self <= DELETE_UP_PAGE
+    }
+  }
+
+  flags Modifiers {
+    ALT
+    META
+    SHIFT
+    CONTROL
+  }
+
+  namespace Modifiers {
+    const BASE = Platform.currentOS == .OSX ? META : CONTROL
+  }
+
+  class Shortcut {
+    const action Action
+    const modifiers Modifiers
+  }
+
+  class ShortcutMap {
+    def set(keyCode int, modifiers Modifiers, action Action) {
+      var shortcuts = _map.get(keyCode, null)
+      if shortcuts == null {
+        shortcuts = []
+        _map[keyCode] = shortcuts
+      }
+      shortcuts.append(Shortcut.new(action, modifiers))
+    }
+
+    def get(keyCode int, modifiers Modifiers) Action {
+      var shortcuts = _map.get(keyCode, null)
+      if shortcuts != null {
+        for shortcut in shortcuts {
+          if shortcut.modifiers == modifiers {
+            return shortcut.action
+          }
+        }
+      }
+      return .NONE
+    }
+
+    const _map IntMap<List<Shortcut>> = {}
+  }
+}

@@ -1,0 +1,154 @@
+namespace Editor {
+  enum CharacterClass {
+    WORD
+    OTHER
+    SPACE
+  }
+
+  # For syntax highlighting, each line stores a sorted list of styled spans
+  # produced by the lexer. The lexer state is also stored with the line so the
+  # lexer can easily be resumed when the line changes without scanning down the
+  # whole document. Lexing can also stop without scanning down the entire file
+  # if the lexer state becomes the same again.
+  class Line {
+    const text string
+    var previousState LexerState = null
+    var nextState LexerState = null
+    var spans List<Span> = null
+    var diagnostics List<Diagnostic> = null
+    var hasErrors = false
+
+    def seekToBoundary(index int, direction Direction, step StepX) int {
+      var count = text.count
+      var delta = direction.delta
+      var increment = step == .LINE ? delta * count : delta
+      if step == .WORD {
+        for i = index + delta; i > 0 && i < count; i += delta {
+          var left = classify(text[i - 1])
+          var right = classify(text[i])
+          if direction == .PREVIOUS ? left > right : left < right {
+            return i
+          }
+        }
+        increment *= count
+      }
+      return Math.clamp(index + increment, 0, count)
+    }
+  }
+
+  namespace Line {
+    def classify(c int) CharacterClass {
+      if Lexer.isSpace(c) { return .SPACE }
+      if Lexer.isAlphaOrDigit(c) { return .WORD }
+      return .OTHER
+    }
+
+    def split(text string) List<Line> {
+      var lines List<Line> = []
+      for part in text.split("\n") {
+        lines.append(Line.new(part))
+      }
+      return lines
+    }
+
+    def join(lines List<Line>) string {
+      var text = ""
+      for i in 0..lines.count {
+        if i != 0 {
+          text += "\n"
+        }
+        text += lines[i].text
+      }
+      return text
+    }
+
+    def maxSize(lines List<Line>) int {
+      var count = 0
+      for line in lines {
+        count = Math.max(count, line.text.count)
+      }
+      return count
+    }
+  }
+
+  # This is the storage object for a document. It provides access to an ordered
+  # collection of lines and tracks the maximum line size, which is useful for
+  # scroll bounds. Each model object contains one line buffer. This should
+  # probably be implemented using a gap buffer at some point for performance.
+  class LineBuffer {
+    def toString string {
+      return Line.join(_lines)
+    }
+
+    def count int {
+      return _lines.count
+    }
+
+    def [](index int) Line {
+      assert(0 <= index && index < count)
+      return _lines[index]
+    }
+
+    def slice(start int, end int) List<Line> {
+      assert(0 <= start && start <= end && end <= count)
+      return _lines.slice(start, end)
+    }
+
+    # TODO: This is O(n^2)
+    def changeLines(start int, end int, lines List<Line>) {
+      # Invalidate the maximum line size
+      if _hasMaxLineSize {
+        var size = Line.maxSize(lines)
+        if size > _maxLineSize {
+          _maxLineSize = size
+        } else if Line.maxSize(_lines.slice(start, end)) == _maxLineSize {
+          _hasMaxLineSize = false
+        }
+      }
+
+      # Replace all lines in the range [start, end)
+      _lines.removeRange(start, end)
+      for line in lines {
+        _lines.insert(start, line)
+        start++
+      }
+    }
+
+    def maxLineSize int {
+      if !_hasMaxLineSize {
+        _maxLineSize = Line.maxSize(_lines)
+        _hasMaxLineSize = true
+      }
+      return _maxLineSize
+    }
+
+    def clearStyleState {
+      for line in _lines {
+        line.previousState = null
+        line.nextState = null
+        line.spans = null
+      }
+    }
+
+    def replaceDiagnostics(diagnostics IntMap<List<Diagnostic>>) {
+      for i in 0.._lines.count {
+        var line = _lines[i]
+        var values = diagnostics.get(i, null)
+        line.diagnostics = values
+        line.hasErrors = false
+        if values != null {
+          for value in values {
+            if value.kind == .ERROR {
+              line.hasErrors = true
+              break
+            }
+          }
+        }
+      }
+    }
+
+    var _lines = [Line.new("")]
+    var _hasMaxLineSize = false
+    var _maxLineSize = 0
+  }
+}

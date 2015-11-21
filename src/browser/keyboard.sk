@@ -1,0 +1,183 @@
+namespace Browser {
+  class KeyboardInput {
+    var _textarea = document.createElement("textarea")
+    var _shortcuts = Editor.ShortcutMap.new
+    var _previousValue = ""
+    var _currentView Editor.View = null
+
+    def new {
+      _applyStyle
+      _populateShortcuts
+      _installEventListeners
+      document.body.appendChild(_textarea)
+    }
+
+    def focus(view Editor.View) {
+      if _currentView == view {
+        return
+      }
+      _currentView = view
+      if _currentView != null {
+        _textarea.enabled = true
+        _textarea.focus()
+      } else {
+        _textarea.blur()
+        _textarea.enabled = false
+      }
+    }
+
+    def _applyStyle {
+      var style = _textarea.style
+      style.position = "absolute"
+      style.right = "200%"
+      style.bottom = "200%"
+    }
+
+    def _installEventListeners {
+      on(_textarea, "blur", e => focus(null))
+      on(_textarea, "input", e => _handleInput)
+      on(_textarea, "keydown", e => _handleKeyDown(e))
+    }
+
+    def _populateShortcuts {
+      var isMeta = Editor.Modifiers.BASE == .META
+
+      _shortcuts.set('A', .BASE, .SELECT_ALL)
+      _shortcuts.set('C', .BASE, .COPY)
+      _shortcuts.set('L', .ALT, .SELECT_LINE)
+      _shortcuts.set('V', .BASE, .PASTE)
+      _shortcuts.set('X', .BASE, .CUT)
+      _shortcuts.set('Y', .BASE, .REDO)
+      _shortcuts.set('Z', .BASE | .SHIFT, .REDO)
+      _shortcuts.set('Z', .BASE, .UNDO)
+      _shortcuts.set(KEY_ENTER, .BASE | .SHIFT, .INSERT_LINE_ABOVE)
+      _shortcuts.set(KEY_ENTER, .BASE, .INSERT_LINE_BELOW)
+      _shortcuts.set(KEY_ESCAPE, 0, .SELECT_FIRST_REGION)
+
+      # Firefox uses ';' while Chrome uses KEY_SEMICOLON
+      _setDoubleShortcuts(';', KEY_SEMICOLON, .BASE, .SELECT_NEXT_DIAGNOSTIC, .SELECT_NEXT_DIAGNOSTIC)
+      _setDoubleShortcuts(';', KEY_SEMICOLON, .BASE | .SHIFT, .SELECT_PREVIOUS_DIAGNOSTIC, .SELECT_PREVIOUS_DIAGNOSTIC)
+
+      # These shortcuts are from Eclipse
+      _setDoubleShortcuts(',', KEY_COMMA, .ALT, .SELECT_PREVIOUS_DIAGNOSTIC, .SELECT_PREVIOUS_DIAGNOSTIC)
+      _setDoubleShortcuts('.', KEY_PERIOD, .ALT, .SELECT_NEXT_DIAGNOSTIC, .SELECT_NEXT_DIAGNOSTIC)
+
+      _setMoveAndSelectShortcuts(KEY_LEFT, KEY_RIGHT, 0, .MOVE_LEFT_CHARACTER, .MOVE_RIGHT_CHARACTER, .SELECT_LEFT_CHARACTER, .SELECT_RIGHT_CHARACTER)
+      _setMoveAndSelectShortcuts(KEY_LEFT, KEY_RIGHT, isMeta ? .ALT : .CONTROL, .MOVE_LEFT_WORD, .MOVE_RIGHT_WORD, .SELECT_LEFT_WORD, .SELECT_RIGHT_WORD)
+      _setMoveAndSelectShortcuts(KEY_PAGE_UP, KEY_PAGE_DOWN, 0, .MOVE_UP_PAGE, .MOVE_DOWN_PAGE, .SELECT_UP_PAGE, .SELECT_DOWN_PAGE)
+      _setMoveAndSelectShortcuts(KEY_UP, KEY_DOWN, 0, .MOVE_UP_LINE, .MOVE_DOWN_LINE, .SELECT_UP_LINE, .SELECT_DOWN_LINE)
+      _setDoubleShortcuts(KEY_BACKSPACE, KEY_DELETE, 0, .DELETE_LEFT_CHARACTER, .DELETE_RIGHT_CHARACTER)
+      _setDoubleShortcuts(KEY_BACKSPACE, KEY_DELETE, isMeta ? .ALT : .CONTROL, .DELETE_LEFT_WORD, .DELETE_RIGHT_WORD)
+      _setDoubleShortcuts(KEY_UP, KEY_DOWN, .BASE | .ALT, .INSERT_CURSOR_ABOVE, .INSERT_CURSOR_BELOW)
+
+      if isMeta {
+        _setDoubleShortcuts(KEY_HOME, KEY_END, 0, .SCROLL_UP_DOCUMENT, .SCROLL_DOWN_DOCUMENT)
+        _setMoveAndSelectShortcuts(KEY_LEFT, KEY_RIGHT, .META, .MOVE_LEFT_LINE, .MOVE_RIGHT_LINE, .SELECT_LEFT_LINE, .SELECT_RIGHT_LINE)
+        _setMoveAndSelectShortcuts(KEY_UP, KEY_DOWN, .ALT, .MOVE_LEFT_LINE, .MOVE_RIGHT_LINE, .SELECT_LEFT_LINE, .SELECT_RIGHT_LINE)
+        _setMoveAndSelectShortcuts(KEY_UP, KEY_DOWN, .META, .MOVE_UP_DOCUMENT, .MOVE_DOWN_DOCUMENT, .SELECT_UP_DOCUMENT, .SELECT_DOWN_DOCUMENT)
+        _setDoubleShortcuts(KEY_BACKSPACE, KEY_DELETE, .META, .DELETE_LEFT_LINE, .DELETE_RIGHT_LINE)
+      } else {
+        _setMoveAndSelectShortcuts(KEY_HOME, KEY_END, 0, .MOVE_LEFT_LINE, .MOVE_RIGHT_LINE, .SELECT_LEFT_LINE, .SELECT_RIGHT_LINE)
+        _setMoveAndSelectShortcuts(KEY_HOME, KEY_END, .CONTROL, .MOVE_UP_DOCUMENT, .MOVE_DOWN_DOCUMENT, .SELECT_UP_DOCUMENT, .SELECT_DOWN_DOCUMENT)
+        _setDoubleShortcuts(KEY_UP, KEY_DOWN, .CONTROL, .SCROLL_UP_LINE, .SCROLL_DOWN_LINE)
+      }
+    }
+
+    def _setDoubleShortcuts(a int, b int, modifiers Editor.Modifiers, actionA Editor.Action, actionB Editor.Action) {
+      _shortcuts.set(a, modifiers, actionA)
+      _shortcuts.set(b, modifiers, actionB)
+    }
+
+    def _setMoveAndSelectShortcuts(a int, b int, modifiers Editor.Modifiers, moveA Editor.Action, moveB Editor.Action, selectA Editor.Action, selectB Editor.Action) {
+      _setDoubleShortcuts(a, b, modifiers, moveA, moveB)
+      _setDoubleShortcuts(a, b, modifiers | .SHIFT, selectA, selectB)
+    }
+
+    def _changeValue(value string) {
+      _textarea.value = value
+      _previousValue = value
+    }
+
+    def _handleInput {
+      # Text input in browsers really sucks. There's no API for text insertion
+      # events so the only way to do it is to shove an input field off screen
+      # somewhere, give it focus, and keep checking for inserted text. We keep
+      # clearing the input field so that adjacent inputs don't interfere with
+      # each other. Listening for key presses and decoding key codes is not a
+      # good way to do things because that doesn't account for international
+      # keyboard layouts and IMEs. This method still doesn't get dead characters
+      # but at least it's close. A textarea is used instead of an input field
+      # because we need newlines too.
+      if _textarea.value != _previousValue {
+        if _currentView != null {
+          _currentView.insertText(_textarea.value)
+        }
+        _changeValue("")
+      }
+    }
+
+    def _handleKeyDown(event dynamic) {
+      if _currentView == null {
+        return
+      }
+
+      var modifiers = modifiersFromEvent(event)
+      var action = _shortcuts.get(event.which, modifiers)
+      var view = _currentView
+
+      # Clipboard handling in the browser really, really sucks. The standard is
+      # horrible and browsers do different things. We can't use the cut, copy,
+      # and paste events because Firefox doesn't even fire cut/copy if the
+      # element with focus has no selected text. Instead, try to guess when a
+      # cut or copy event is about to happen and quickly set the selected text.
+      # Clear the selected text immediately afterwards so that it doesn't
+      # interfere with our text input detection. This hack won't work with the
+      # browser's cut/copy/paste commands triggered through the menu or through
+      # other assistive devices.
+      if action == .CUT || action == .COPY {
+        var selection = view.selection.isEmpty ? view.selectionExpandedToLines : view.selection
+        _changeValue(view.textInSelection(selection))
+        _textarea.select()
+        if action == .CUT {
+          view.changeSelection(selection, .DO_NOT_SCROLL)
+          view.insertText("")
+        }
+        dynamic.setTimeout(=> _changeValue(""), 50)
+      }
+
+      # Don't call preventDefault() for paste events since we want the paste to
+      # happen. That way the change will go through our regular text insertion
+      # detection.
+      else if action != .NONE && action != .PASTE {
+        event.preventDefault()
+        view.triggerAction(action)
+      }
+    }
+  }
+
+  namespace KeyboardInput {
+    const KEY_BACKSPACE = 8
+    const KEY_ENTER = 13
+    const KEY_ESCAPE = 27
+    const KEY_PAGE_UP = 33
+    const KEY_PAGE_DOWN = 34
+    const KEY_END = 35
+    const KEY_HOME = 36
+    const KEY_LEFT = 37
+    const KEY_UP = 38
+    const KEY_RIGHT = 39
+    const KEY_DOWN = 40
+    const KEY_DELETE = 46
+    const KEY_SEMICOLON = 186
+    const KEY_COMMA = 188
+    const KEY_PERIOD = 190
+
+    def modifiersFromEvent(event dynamic) Editor.Modifiers {
+      return
+        (event.altKey ? .ALT : 0) |
+        (event.metaKey ? .META : 0) |
+        (event.shiftKey ? .SHIFT : 0) |
+        (event.ctrlKey ? .CONTROL : 0)
+    }
+  }
+}

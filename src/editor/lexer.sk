@@ -1,0 +1,151 @@
+namespace Editor {
+  class Span {
+    const start int
+    const end int
+    const color Color
+  }
+
+  class LexerState {
+    def equals(other LexerState) bool {
+      return other == self
+    }
+  }
+
+  # A resumable lexer that styles lines of text. Custom lexers can easily be
+  # created by creating a new CustomLexer. There is an optional state system
+  # if you need to track information across lines. For example, a multi-line
+  # comment would use a different lexer state for the next line than a single-
+  # line comment. For simple enum-style state, just creating a fixed number of
+  # LexerState objects and check for equality. More advanced usage can be done
+  # by subclassing LexerState, adding extra fields, and overriding equals().
+  interface Lexer {
+    def styleLine(line Line, previousState LexerState)
+  }
+
+  namespace Lexer {
+    def isSpace(c int) bool {
+      return c == ' ' || c == '\t'
+    }
+
+    def isDigit(c int) bool {
+      return c >= '0' && c <= '9'
+    }
+
+    def isUpperCase(c int) bool {
+      return c >= 'A' && c <= 'Z'
+    }
+
+    def isLowerCase(c int) bool {
+      return c >= 'a' && c <= 'z'
+    }
+
+    def isAlpha(c int) bool {
+      return isUpperCase(c) || isLowerCase(c) || c == '_'
+    }
+
+    def isAlphaOrDigit(c int) bool {
+      return isAlpha(c) || isDigit(c)
+    }
+
+    def hasLowerCase(text string) bool {
+      for i in 0..text.count {
+        if isLowerCase(text[i]) {
+          return true
+        }
+      }
+      return false
+    }
+  }
+
+  class CustomLexer :: Lexer {
+    def styleLine(line Line, previousState LexerState) {
+      _state = previousState
+      _current = line
+      _index = 0
+      _startOfState = 0
+      _limit = line.text.count
+      _spans = []
+      _tokenizeLine(self)
+      line.previousState = previousState
+      line.nextState = _state
+      line.spans = _spans
+      assert(_state != null)
+    }
+
+    def currentText string {
+      return _current.text
+    }
+
+    def currentIndex int {
+      return _index
+    }
+
+    def currentState LexerState {
+      return _state
+    }
+
+    def endOfLine int {
+      return _limit
+    }
+
+    def hasNext bool {
+      return _index < _limit
+    }
+
+    def next {
+      _index++
+    }
+
+    def startOfState int {
+      return _startOfState
+    }
+
+    def peekNext int {
+      return _current.text[_index]
+    }
+
+    def takeNext int {
+      var c = _current.text[_index]
+      next
+      return c
+    }
+
+    def matchNext(c int) bool {
+      if peekNext == c {
+        next
+        return true
+      }
+      return false
+    }
+
+    def scanAlphaNumericString string {
+      var text = ""
+      while hasNext {
+        var c = peekNext
+        if !Lexer.isAlphaOrDigit(c) {
+          break
+        }
+        next
+        text += string.fromCodeUnit(c)
+      }
+      return text
+    }
+
+    def transitionToState(state LexerState, startingIndex int) {
+      _state = state
+      _startOfState = startingIndex
+    }
+
+    def addSpan(start int, end int, color Color) {
+      _spans.append(Span.new(start, end, color))
+    }
+
+    const _tokenizeLine fn(CustomLexer)
+    var _spans List<Span> = null
+    var _state LexerState = null
+    var _current Line = null
+    var _index = 0
+    var _limit = 0
+    var _startOfState = 0
+  }
+}

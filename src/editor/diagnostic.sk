@@ -1,0 +1,94 @@
+namespace Editor {
+  enum DiagnosticKind {
+    ERROR
+    WARNING
+  }
+
+  enum RequestStatus {
+    READY
+    BUSY
+    OUTDATED
+  }
+
+  # A warning or error on a single line. Multi-line diagnostics just show up
+  # in the editor as a single diagnostic on the first line.
+  class Diagnostic {
+    const kind DiagnosticKind
+    const source string
+    const line int # 0-based line
+    const start int # 0-based column
+    const end int # 0-based column
+    const text string
+  }
+
+  namespace Diagnostic {
+    def extractDiagnosticsWithSource(diagnostics List<Diagnostic>, name string) IntMap<List<Diagnostic>> {
+      var map = IntMap<List<Diagnostic>>.new
+      for diagnostic in diagnostics {
+        if diagnostic.source == name {
+          var lines = map.get(diagnostic.line, null)
+          if lines == null {
+            lines = []
+            map[diagnostic.line] = lines
+          }
+          lines.append(diagnostic)
+        }
+      }
+      return map
+    }
+  }
+
+  interface DiagnosticObserver {
+    def handleDiagnosticsChange(task DiagnosticTask, diagnostics List<Diagnostic>)
+  }
+
+  # This is the base class for an asynchronous task that produces diagnostics
+  # in response to code changes. It includes support for ignoring outdated
+  # diagnostics due to code changes since an asynchronous request was started.
+  class DiagnosticTask {
+    def changeFileContents(name string, contents string)
+    def removeFile(name string)
+
+    def addObserver(observer DiagnosticObserver) {
+      _observers.appendOne(observer)
+    }
+
+    def removeObserver(observer DiagnosticObserver) {
+      _observers.removeOne(observer)
+    }
+
+    def _handleDiagnosticsChange(diagnostics List<Diagnostic>) {
+      for observer in _observers {
+        observer.handleDiagnosticsChange(self, diagnostics)
+      }
+    }
+
+    def _tryToStartRequest bool {
+      if _requestStatus == .READY {
+        _requestStatus = .BUSY
+        return true
+      }
+
+      return false
+    }
+
+    def _tryToFinishRequest bool {
+      if _requestStatus != .OUTDATED {
+        _requestStatus = .READY
+        return true
+      }
+
+      _requestStatus = .READY
+      return false
+    }
+
+    def _invalidatePendingRequest {
+      if _requestStatus == .BUSY {
+        _requestStatus = .OUTDATED
+      }
+    }
+
+    var _observers List<DiagnosticObserver> = []
+    var _requestStatus RequestStatus = .READY
+  }
+}

@@ -1,0 +1,48 @@
+namespace Browser {
+  class BrowserTime :: Editor.Time {
+    def nowInSeconds double {
+      return dynamic.performance.now() / 1000
+    }
+  }
+
+  interface AnimationLoopObserver {
+    def tick
+  }
+
+  namespace AnimationLoop {
+    var _observers List<AnimationLoopObserver> = []
+    var _animationFrame = 0
+
+    var _tick fn() = => {
+      for observer in _observers {
+        observer.tick
+      }
+      _animationFrame = dynamic.requestAnimationFrame(_tick)
+    }
+
+    def isRunning bool {
+      return _animationFrame != 0
+    }
+
+    def start {
+      if !isRunning {
+        _tick()
+      }
+    }
+
+    def stop {
+      if isRunning {
+        dynamic.cancelAnimationFrame(_animationFrame)
+        _animationFrame = 0
+      }
+    }
+
+    def addObserver(observer AnimationLoopObserver) {
+      _observers.appendOne(observer)
+    }
+
+    def removeObserver(observer AnimationLoopObserver) {
+      _observers.removeOne(observer)
+    }
+  }
+}
