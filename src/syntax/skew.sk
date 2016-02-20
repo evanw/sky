@@ -26,6 +26,13 @@ namespace Syntax.Skew {
     "while": 0,
   }
 
+  const _definitionKeywords = {
+    "catch": 0,
+    "const": 0,
+    "for": 0,
+    "var": 0,
+  }
+
   const _constants = {
     "false": 0,
     "null": 0,
@@ -52,7 +59,7 @@ namespace Syntax.Skew {
   }
 
   def tokenize(lexer Editor.CustomLexer) {
-    var previousContextualKeyword string = null
+    var previousIdentifier string = null
 
     # The first line will have no previous state
     if lexer.currentState == null {
@@ -94,19 +101,26 @@ namespace Syntax.Skew {
             text.count > 1 && !Editor.Lexer.hasLowerCase(text) ? .FOREGROUND_CONSTANT :
             text in _types || Editor.Lexer.isUpperCase(c) || text == "fn" && (!lexer.hasNext || lexer.peekNext == '(') ? .FOREGROUND_TYPE :
             .FOREGROUND_DEFAULT
+          var isAfterContextualKeyword = (color == .FOREGROUND_DEFAULT || color == .FOREGROUND_TYPE) && previousIdentifier != null && previousIdentifier in _contextualKeywords
 
           # This may be after a contextual keyword
-          if previousContextualKeyword != null && (color == .FOREGROUND_DEFAULT || color == .FOREGROUND_TYPE) {
-            lexer.changePreviousSpan(.FOREGROUND_KEYWORD)
+          if isAfterContextualKeyword {
+            lexer.changePreviousSpanColor(.FOREGROUND_KEYWORD)
+          }
+
+          # Make definitions stand out
+          if color == .FOREGROUND_DEFAULT && (isAfterContextualKeyword || previousIdentifier != null && previousIdentifier in _definitionKeywords) {
+            color = .FOREGROUND_DEFINITION
           }
 
           lexer.addSpan(startOfToken, lexer.currentIndex, color)
 
           # This may be a contextual keyword
           if color == .FOREGROUND_DEFAULT && text in _contextualKeywords {
-            previousContextualKeyword = text
-            continue
           }
+
+          previousIdentifier = text
+          continue
         }
 
         # Comment
@@ -132,7 +146,7 @@ namespace Syntax.Skew {
         }
       }
 
-      previousContextualKeyword = null
+      previousIdentifier = null
     }
 
     var endState = lexer.currentState
@@ -147,8 +161,8 @@ namespace Syntax.Skew {
     }
 
     # This may be after a contextual keyword
-    else if previousContextualKeyword != null {
-      lexer.changePreviousSpan(.FOREGROUND_KEYWORD)
+    else if previousIdentifier != null && previousIdentifier in _contextualKeywords {
+      lexer.changePreviousSpanColor(.FOREGROUND_KEYWORD)
     }
   }
 }

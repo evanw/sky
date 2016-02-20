@@ -140,7 +140,7 @@ namespace Editor {
       _spans.append(Span.new(start, end, color))
     }
 
-    def changePreviousSpan(color Color) {
+    def changePreviousSpanColor(color Color) {
       var previous = _spans.last
       _spans.last = Span.new(previous.start, previous.end, color)
     }

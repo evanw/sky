@@ -43,7 +43,7 @@ namespace Browser {
 
     def _populateShortcuts {
       var base = _platform.baseModifier
-      var isMeta = base == .META
+      var isOSX = _platform.operatingSystem == .OSX
 
       _shortcuts.set('A', base, .SELECT_ALL)
       _shortcuts.set('C', base, .COPY)
@@ -66,21 +66,30 @@ namespace Browser {
       _setDoubleShortcuts('.', KEY_PERIOD, .ALT, .SELECT_NEXT_DIAGNOSTIC, .SELECT_NEXT_DIAGNOSTIC)
 
       _setMoveAndSelectShortcuts(KEY_LEFT, KEY_RIGHT, 0, .MOVE_LEFT_CHARACTER, .MOVE_RIGHT_CHARACTER, .SELECT_LEFT_CHARACTER, .SELECT_RIGHT_CHARACTER)
-      _setMoveAndSelectShortcuts(KEY_LEFT, KEY_RIGHT, isMeta ? .ALT : .CONTROL, .MOVE_LEFT_WORD, .MOVE_RIGHT_WORD, .SELECT_LEFT_WORD, .SELECT_RIGHT_WORD)
+      _setMoveAndSelectShortcuts(KEY_LEFT, KEY_RIGHT, isOSX ? .ALT : .CONTROL, .MOVE_LEFT_WORD, .MOVE_RIGHT_WORD, .SELECT_LEFT_WORD, .SELECT_RIGHT_WORD)
       _setMoveAndSelectShortcuts(KEY_PAGE_UP, KEY_PAGE_DOWN, 0, .MOVE_UP_PAGE, .MOVE_DOWN_PAGE, .SELECT_UP_PAGE, .SELECT_DOWN_PAGE)
       _setMoveAndSelectShortcuts(KEY_UP, KEY_DOWN, 0, .MOVE_UP_LINE, .MOVE_DOWN_LINE, .SELECT_UP_LINE, .SELECT_DOWN_LINE)
       _setDoubleShortcuts(KEY_BACKSPACE, KEY_DELETE, 0, .DELETE_LEFT_CHARACTER, .DELETE_RIGHT_CHARACTER)
       _setDoubleShortcuts(KEY_BACKSPACE, KEY_DELETE, .SHIFT, .DELETE_LEFT_CHARACTER, .DELETE_RIGHT_CHARACTER)
-      _setDoubleShortcuts(KEY_BACKSPACE, KEY_DELETE, isMeta ? .ALT : .CONTROL, .DELETE_LEFT_WORD, .DELETE_RIGHT_WORD)
+      _setDoubleShortcuts(KEY_BACKSPACE, KEY_DELETE, isOSX ? .ALT : .CONTROL, .DELETE_LEFT_WORD, .DELETE_RIGHT_WORD)
       _setDoubleShortcuts(KEY_UP, KEY_DOWN, base | .ALT, .INSERT_CURSOR_ABOVE, .INSERT_CURSOR_BELOW)
 
-      if isMeta {
+      if isOSX {
         _setDoubleShortcuts(KEY_HOME, KEY_END, 0, .SCROLL_UP_DOCUMENT, .SCROLL_DOWN_DOCUMENT)
         _setMoveAndSelectShortcuts(KEY_LEFT, KEY_RIGHT, .META, .MOVE_LEFT_LINE, .MOVE_RIGHT_LINE, .SELECT_LEFT_LINE, .SELECT_RIGHT_LINE)
         _setMoveAndSelectShortcuts(KEY_UP, KEY_DOWN, .ALT, .MOVE_LEFT_LINE, .MOVE_RIGHT_LINE, .SELECT_LEFT_LINE, .SELECT_RIGHT_LINE)
         _setMoveAndSelectShortcuts(KEY_UP, KEY_DOWN, .META, .MOVE_UP_DOCUMENT, .MOVE_DOWN_DOCUMENT, .SELECT_UP_DOCUMENT, .SELECT_DOWN_DOCUMENT)
         _setDoubleShortcuts(KEY_BACKSPACE, KEY_DELETE, .META, .DELETE_LEFT_LINE, .DELETE_RIGHT_LINE)
-      } else {
+
+        # Emacs shortcuts (these also work in all OS X text fields)
+        _shortcuts.set('K', .CONTROL, .DELETE_RIGHT_LINE)
+        _shortcuts.set('H', .CONTROL, .DELETE_LEFT_CHARACTER)
+        _shortcuts.set('D', .CONTROL, .DELETE_RIGHT_CHARACTER)
+        _setMoveAndSelectShortcuts('A', 'E', .CONTROL, .MOVE_LEFT_LINE, .MOVE_RIGHT_LINE, .SELECT_LEFT_LINE, .SELECT_RIGHT_LINE)
+        _setMoveAndSelectShortcuts('P', 'N', .CONTROL, .MOVE_UP_LINE, .MOVE_DOWN_LINE, .SELECT_UP_LINE, .SELECT_DOWN_LINE)
+      }
+
+      else {
         _setMoveAndSelectShortcuts(KEY_HOME, KEY_END, 0, .MOVE_LEFT_LINE, .MOVE_RIGHT_LINE, .SELECT_LEFT_LINE, .SELECT_RIGHT_LINE)
         _setMoveAndSelectShortcuts(KEY_HOME, KEY_END, .CONTROL, .MOVE_UP_DOCUMENT, .MOVE_DOWN_DOCUMENT, .SELECT_UP_DOCUMENT, .SELECT_DOWN_DOCUMENT)
         _setDoubleShortcuts(KEY_UP, KEY_DOWN, .CONTROL, .SCROLL_UP_LINE, .SCROLL_DOWN_LINE)
