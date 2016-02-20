@@ -1,0 +1,158 @@
+namespace Syntax.Skew {
+  const _characterState = Editor.LexerState.new
+  const _defaultState = Editor.LexerState.new
+  const _stringState = Editor.LexerState.new
+
+  const _keywords = {
+    "as": 0,
+    "break": 0,
+    "case": 0,
+    "catch": 0,
+    "const": 0,
+    "continue": 0,
+    "default": 0,
+    "else": 0,
+    "finally": 0,
+    "for": 0,
+    "if": 0,
+    "in": 0,
+    "is": 0,
+    "return": 0,
+    "super": 0,
+    "switch": 0,
+    "throw": 0,
+    "try": 0,
+    "var": 0,
+    "while": 0,
+  }
+
+  const _constants = {
+    "false": 0,
+    "null": 0,
+    "true": 0,
+  }
+
+  const _contextualKeywords = {
+    "class": 0,
+    "def": 0,
+    "enum": 0,
+    "flags": 0,
+    "interface": 0,
+    "namespace": 0,
+    "over": 0,
+    "type": 0,
+  }
+
+  const _types = {
+    "bool": 0,
+    "double": 0,
+    "dynamic": 0,
+    "int": 0,
+    "string": 0,
+  }
+
+  def tokenize(lexer Editor.CustomLexer) {
+    var previousContextualKeyword string = null
+
+    # The first line will have no previous state
+    if lexer.currentState == null {
+      assert(lexer.currentIndex == 0)
+      lexer.transitionToState(_defaultState, 0)
+    }
+
+    # Scan over the string once
+    while lexer.hasNext {
+      var startOfToken = lexer.currentIndex
+      var state = lexer.currentState
+      var c = lexer.takeNext
+
+      # Whitespace
+      if Editor.Lexer.isSpace(c) {
+        continue
+      }
+
+      # String and character literal states
+      else if state == _stringState || state == _characterState {
+        if c == '\\' && lexer.hasNext {
+          lexer.next
+        } else if c == (state == _stringState ? '"' : '\'') {
+          lexer.addSpan(lexer.startOfState, lexer.currentIndex, state == _stringState ? .FOREGROUND_STRING : .FOREGROUND_NUMBER)
+          lexer.transitionToState(_defaultState, lexer.currentIndex)
+        }
+      }
+
+      # Most of the language is parsed in the default state
+      else {
+        assert(state == _defaultState)
+
+        # Identifier or keyword
+        if Editor.Lexer.isAlpha(c) {
+          var text = string.fromCodeUnit(c) + lexer.scanAlphaNumericString
+          var color Editor.Color =
+            text in _keywords ? .FOREGROUND_KEYWORD :
+            text in _constants ? .FOREGROUND_KEYWORD_CONSTANT :
+            text.count > 1 && !Editor.Lexer.hasLowerCase(text) ? .FOREGROUND_CONSTANT :
+            text in _types || Editor.Lexer.isUpperCase(c) || text == "fn" && (!lexer.hasNext || lexer.peekNext == '(') ? .FOREGROUND_TYPE :
+            .FOREGROUND_DEFAULT
+
+          # This may be after a contextual keyword
+          if previousContextualKeyword != null && (color == .FOREGROUND_DEFAULT || color == .FOREGROUND_TYPE) {
+            lexer.changePreviousSpan(.FOREGROUND_KEYWORD)
+          }
+
+          lexer.addSpan(startOfToken, lexer.currentIndex, color)
+
+          # This may be a contextual keyword
+          if color == .FOREGROUND_DEFAULT && text in _contextualKeywords {
+            previousContextualKeyword = text
+            continue
+          }
+        }
+
+        # Comment
+        else if c == '#' {
+          lexer.addSpan(startOfToken, lexer.endOfLine, .FOREGROUND_COMMENT)
+          return
+        }
+
+        # Number literal
+        else if Editor.Lexer.isDigit(c) {
+          lexer.scanAlphaNumericString
+          lexer.addSpan(startOfToken, lexer.currentIndex, .FOREGROUND_NUMBER)
+        }
+
+        # String literal
+        else if c == '"' {
+          lexer.transitionToState(_stringState, startOfToken)
+        }
+
+        # Character literal
+        else if c == '\'' {
+          lexer.transitionToState(_characterState, startOfToken)
+        }
+      }
+
+      previousContextualKeyword = null
+    }
+
+    var endState = lexer.currentState
+    var color Editor.Color =
+      endState == _stringState ? .FOREGROUND_STRING :
+      endState == _characterState ? .FOREGROUND_NUMBER :
+      .FOREGROUND_DEFAULT
+
+    # Add a trailing span if a non-default state continues off the end of the line
+    if color != .FOREGROUND_DEFAULT {
+      lexer.addSpan(lexer.startOfState, lexer.endOfLine, color)
+    }
+
+    # This may be after a contextual keyword
+    else if previousContextualKeyword != null {
+      lexer.changePreviousSpan(.FOREGROUND_KEYWORD)
+    }
+  }
+}
+
+namespace Editor.Lexer {
+  const SKEW = CustomLexer.new(lexer => Syntax.Skew.tokenize(lexer))
+}

@@ -3,7 +3,7 @@ BUILD = node_modules/.bin/skewc src/*/*.sk --target=js --output-file=www/compile
 default: debug
 
 debug: | node_modules
-	$(BUILD)
+	$(BUILD) --js-source-map
 
 release: | node_modules
 	$(BUILD) --release

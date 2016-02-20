@@ -7,6 +7,7 @@ namespace Browser {
 
     def new {
       _canvas = CanvasRenderer.new(_keyboardInput)
+      _model.setLexer(.SKEW)
       _view = Editor.View.new(_canvas)
       _view.setModel(_model)
       _view.changePadding(PADDING, PADDING, PADDING, PADDING)

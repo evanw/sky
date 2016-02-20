@@ -140,6 +140,11 @@ namespace Editor {
       _spans.append(Span.new(start, end, color))
     }
 
+    def changePreviousSpan(color Color) {
+      var previous = _spans.last
+      _spans.last = Span.new(previous.start, previous.end, color)
+    }
+
     const _tokenizeLine fn(CustomLexer)
     var _spans List<Span> = null
     var _state LexerState = null

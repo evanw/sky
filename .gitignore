@@ -1,0 +1,4 @@
+.DS_Store
+/node_modules/
+/www/compiled.js
+/www/compiled.js.map

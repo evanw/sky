@@ -33,7 +33,7 @@ namespace Browser {
       _element = document.createElement("canvas")
       _context = _element.getContext("2d")
       setCursor(.TEXT)
-      setTheme(.XCODE)
+      setTheme(.MONOKAI)
       AnimationLoop.addObserver(self)
       _addEventHandlers
     }

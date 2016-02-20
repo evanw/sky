@@ -423,7 +423,7 @@ namespace Editor {
             for x = startX; x <= endX; x++ {
               var isSpace = x < limit ? line.text[x] == ' ' : false
               if isSpace {
-                spaceText += "\xB7"
+                spaceText += SPACE_CHARACTER
               } else {
                 if spaceText != "" {
                   _renderer.renderText(translateX + _advanceWidth * spaceStart, lineY, spaceText, .DEFAULT, .FOREGROUND_DEFAULT, 63)
@@ -897,5 +897,9 @@ namespace Editor {
       ViewSetting.SCROLL_PAST_END: true,
       ViewSetting.SHOW_MARGIN: true,
     }
+  }
+
+  namespace View {
+    const SPACE_CHARACTER = string.fromCodePoint(0xB7)
   }
 }
