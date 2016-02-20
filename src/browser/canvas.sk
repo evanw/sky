@@ -6,6 +6,8 @@ namespace Browser {
   }
 
   class CanvasRenderer :: Editor.Renderer, AnimationLoopObserver {
+    var _platform Platform = null
+    var _keyboardInput KeyboardInput = null
     var _element dynamic = null
     var _context dynamic = null
     var _mousemove fn(dynamic) = null
@@ -26,15 +28,15 @@ namespace Browser {
     var _theme Editor.Theme = null
     var _previousFont Editor.Font = .DEFAULT
     var _cachedColors IntMap<string> = null
-    var _keyboardInput KeyboardInput = null
 
-    def new(keyboardInput KeyboardInput) {
+    def new(platform Platform, keyboardInput KeyboardInput, animationLoop AnimationLoop) {
+      _platform = platform
       _keyboardInput = keyboardInput
       _element = document.createElement("canvas")
       _context = _element.getContext("2d")
       setCursor(.TEXT)
       setTheme(.MONOKAI)
-      AnimationLoop.addObserver(self)
+      animationLoop.addObserver(self)
       _addEventHandlers
     }
 
@@ -57,7 +59,7 @@ namespace Browser {
       }
     }
 
-    def updateSize {
+    def _updateSize {
       var width int = _element.clientWidth
       var height int = _element.clientHeight
       var ratio double = dynamic.devicePixelRatio
@@ -99,12 +101,24 @@ namespace Browser {
       style.width = "100%"
       style.height = "100%"
       on(window, "resize", e => {
-        updateSize
+        _updateSize
         _render
       })
       document.body.style.overflow = "hidden"
       document.body.appendChild(_element)
-      updateSize
+      _updateSize
+    }
+
+    # https://bugs.chromium.org/p/chromium/issues/detail?id=588434
+    def avoidChromeBugOnWindowFocus {
+      if _platform.userAgent == .CHROME {
+        _width = 1
+        _height = 1
+        _element.width = 1
+        _element.height = 1
+        _updateSize
+        _render
+      }
     }
 
     def invalidate {

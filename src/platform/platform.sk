@@ -1,0 +1,81 @@
+enum Platform.OperatingSystem {
+  ANDROID
+  IOS
+  LINUX
+  OSX
+  UNKNOWN
+  WINDOWS
+}
+
+enum Platform.UserAgent {
+  CHROME
+  FIREFOX
+  IE
+  SAFARI
+  UNKNOWN
+}
+
+class Platform {
+  const operatingSystem OperatingSystem = .UNKNOWN
+  const userAgent UserAgent = .UNKNOWN
+  var _animationFrame = 0
+
+  if TARGET == .JAVASCRIPT {
+    def new {
+      var browserPlatform string = dynamic.navigator.platform
+      var browserUserAgent string = dynamic.navigator.userAgent
+      var browserVendor string = dynamic.navigator.vendor
+
+      operatingSystem =
+        # OS X encodes the architecture into the platform
+        browserPlatform == "MacIntel" || browserPlatform == "MacPPC" ? .OSX :
+
+        # MSDN sources say Win64 is used
+        browserPlatform == "Win32" || browserPlatform == "Win64" ? .WINDOWS :
+
+        # Assume the user is using Mobile Safari or Chrome and not some random
+        # browser with a strange platform (Opera apparently messes with this)
+        browserPlatform == "iPhone" || browserPlatform == "iPad" ? .IOS :
+
+        # Apparently most Android devices have a platform of "Linux" instead
+        # of "Android", so check the user agent instead. Also make sure to test
+        # for Android before Linux for this reason.
+        "Android" in browserUserAgent ? .ANDROID :
+        "Linux" in browserPlatform ? .LINUX :
+
+        # The platform string has no specification and can be literally anything.
+        # Other examples: "BlackBerry", "Nintendo 3DS", "PlayStation 4", etc.
+        .UNKNOWN
+
+      userAgent =
+        "Trident" in browserUserAgent ? .IE :
+        "Chrome" in browserUserAgent ? .CHROME :
+        "Firefox" in browserUserAgent ? .FIREFOX :
+        "Apple" in browserVendor ? .SAFARI :
+        .UNKNOWN
+    }
+  }
+
+  else {
+    def new {
+    }
+  }
+
+  def baseModifier Editor.Modifiers {
+    return operatingSystem == .OSX ? .META : .CONTROL
+  }
+
+  def setAnimationFrameCallback(callback fn()) {
+    if _animationFrame != 0 {
+      dynamic.cancelAnimationFrame(_animationFrame)
+    }
+
+    if callback != null {
+      var tick fn() = => {
+        callback()
+        _animationFrame = dynamic.requestAnimationFrame(tick)
+      }
+      tick()
+    }
+  }
+}

@@ -4,8 +4,10 @@ namespace Browser {
     var _shortcuts = Editor.ShortcutMap.new
     var _previousValue = ""
     var _currentView Editor.View = null
+    var _platform Platform
 
-    def new {
+    def new(platform Platform) {
+      _platform = platform
       _applyStyle
       _populateShortcuts
       _installEventListeners
@@ -40,23 +42,24 @@ namespace Browser {
     }
 
     def _populateShortcuts {
-      var isMeta = Editor.Modifiers.BASE == .META
+      var base = _platform.baseModifier
+      var isMeta = base == .META
 
-      _shortcuts.set('A', .BASE, .SELECT_ALL)
-      _shortcuts.set('C', .BASE, .COPY)
+      _shortcuts.set('A', base, .SELECT_ALL)
+      _shortcuts.set('C', base, .COPY)
       _shortcuts.set('L', .ALT, .SELECT_LINE)
-      _shortcuts.set('V', .BASE, .PASTE)
-      _shortcuts.set('X', .BASE, .CUT)
-      _shortcuts.set('Y', .BASE, .REDO)
-      _shortcuts.set('Z', .BASE | .SHIFT, .REDO)
-      _shortcuts.set('Z', .BASE, .UNDO)
-      _shortcuts.set(KEY_ENTER, .BASE | .SHIFT, .INSERT_LINE_ABOVE)
-      _shortcuts.set(KEY_ENTER, .BASE, .INSERT_LINE_BELOW)
+      _shortcuts.set('V', base, .PASTE)
+      _shortcuts.set('X', base, .CUT)
+      _shortcuts.set('Y', base, .REDO)
+      _shortcuts.set('Z', base | .SHIFT, .REDO)
+      _shortcuts.set('Z', base, .UNDO)
+      _shortcuts.set(KEY_ENTER, base | .SHIFT, .INSERT_LINE_ABOVE)
+      _shortcuts.set(KEY_ENTER, base, .INSERT_LINE_BELOW)
       _shortcuts.set(KEY_ESCAPE, 0, .SELECT_FIRST_REGION)
 
       # Firefox uses ';' while Chrome uses KEY_SEMICOLON
-      _setDoubleShortcuts(';', KEY_SEMICOLON, .BASE, .SELECT_NEXT_DIAGNOSTIC, .SELECT_NEXT_DIAGNOSTIC)
-      _setDoubleShortcuts(';', KEY_SEMICOLON, .BASE | .SHIFT, .SELECT_PREVIOUS_DIAGNOSTIC, .SELECT_PREVIOUS_DIAGNOSTIC)
+      _setDoubleShortcuts(';', KEY_SEMICOLON, base, .SELECT_NEXT_DIAGNOSTIC, .SELECT_NEXT_DIAGNOSTIC)
+      _setDoubleShortcuts(';', KEY_SEMICOLON, base | .SHIFT, .SELECT_PREVIOUS_DIAGNOSTIC, .SELECT_PREVIOUS_DIAGNOSTIC)
 
       # These shortcuts are from Eclipse
       _setDoubleShortcuts(',', KEY_COMMA, .ALT, .SELECT_PREVIOUS_DIAGNOSTIC, .SELECT_PREVIOUS_DIAGNOSTIC)
@@ -69,7 +72,7 @@ namespace Browser {
       _setDoubleShortcuts(KEY_BACKSPACE, KEY_DELETE, 0, .DELETE_LEFT_CHARACTER, .DELETE_RIGHT_CHARACTER)
       _setDoubleShortcuts(KEY_BACKSPACE, KEY_DELETE, .SHIFT, .DELETE_LEFT_CHARACTER, .DELETE_RIGHT_CHARACTER)
       _setDoubleShortcuts(KEY_BACKSPACE, KEY_DELETE, isMeta ? .ALT : .CONTROL, .DELETE_LEFT_WORD, .DELETE_RIGHT_WORD)
-      _setDoubleShortcuts(KEY_UP, KEY_DOWN, .BASE | .ALT, .INSERT_CURSOR_ABOVE, .INSERT_CURSOR_BELOW)
+      _setDoubleShortcuts(KEY_UP, KEY_DOWN, base | .ALT, .INSERT_CURSOR_ABOVE, .INSERT_CURSOR_BELOW)
 
       if isMeta {
         _setDoubleShortcuts(KEY_HOME, KEY_END, 0, .SCROLL_UP_DOCUMENT, .SCROLL_DOWN_DOCUMENT)

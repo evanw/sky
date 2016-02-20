@@ -187,6 +187,41 @@ namespace Editor {
   # is given fractional inputs. Terminal-based editors can just use integers
   # and everything will still work.
   class View :: ModelObserver {
+    const _platform Platform
+    const _renderer Renderer
+    var _model Model = null
+    var _selection = Selection.new([.EMPTY])
+
+    # Mouse handling
+    var _previousSelection Selection = null
+    var _previousMouseEvent MouseEvent = null
+    var _mergeBehavior SelectionMerge = .NONE
+    var _draggingScrollbar Scrollbar = null
+    var _mouseMode MouseMode = .NONE
+    var _draggingAnchor Marker = null
+    var _scrollbarX = Scrollbar.new(.X)
+    var _scrollbarY = Scrollbar.new(.Y)
+
+    # Measurements
+    var _viewWidth = 0.0
+    var _viewHeight = 0.0
+    var _paddingLeft = 0.0
+    var _paddingTop = 0.0
+    var _paddingRight = 0.0
+    var _paddingBottom = 0.0
+    var _lineHeight = 1.0
+    var _advanceWidth = 1.0
+    var _marginAdvanceWidth = 0.0
+    var _marginWidth = 0.0
+    var _marginPaddingLeft = 0.0
+    var _marginPaddingRight = 0.0
+    var _scrollbarThickness = 0.0
+
+    var _settings IntMap<bool> = {
+      ViewSetting.SCROLL_PAST_END: true,
+      ViewSetting.SHOW_MARGIN: true,
+    }
+
     def setting(setting ViewSetting) bool {
       assert(setting in _settings)
       return _settings[setting]
@@ -251,7 +286,7 @@ namespace Editor {
         _draggingScrollbar = _scrollbarY
       } else {
         _draggingScrollbar = null
-        _mergeBehavior = .BASE in event.modifiers ? .UNION : .SHIFT in event.modifiers ? .EXTEND : .NONE
+        _mergeBehavior = _platform.baseModifier in event.modifiers ? .UNION : .SHIFT in event.modifiers ? .EXTEND : .NONE
         _previousSelection = _selection
         _mouseMode = event.x < _marginWidth ? .SELECTING_LINES : .ALT in event.modifiers ? .SELECTING_BOX : .SELECTING_CHARACTERS
         _draggingAnchor = _markerFromEvent(event, _mouseMode)
@@ -862,40 +897,6 @@ namespace Editor {
       if _scrollbarY.setScrollOffset(offsetY) {
         _renderer.invalidate
       }
-    }
-
-    const _renderer Renderer
-    var _model Model = null
-    var _selection = Selection.new([.EMPTY])
-
-    # Mouse handling
-    var _previousSelection Selection = null
-    var _previousMouseEvent MouseEvent = null
-    var _mergeBehavior SelectionMerge = .NONE
-    var _draggingScrollbar Scrollbar = null
-    var _mouseMode MouseMode = .NONE
-    var _draggingAnchor Marker = null
-    var _scrollbarX = Scrollbar.new(.X)
-    var _scrollbarY = Scrollbar.new(.Y)
-
-    # Measurements
-    var _viewWidth = 0.0
-    var _viewHeight = 0.0
-    var _paddingLeft = 0.0
-    var _paddingTop = 0.0
-    var _paddingRight = 0.0
-    var _paddingBottom = 0.0
-    var _lineHeight = 1.0
-    var _advanceWidth = 1.0
-    var _marginAdvanceWidth = 0.0
-    var _marginWidth = 0.0
-    var _marginPaddingLeft = 0.0
-    var _marginPaddingRight = 0.0
-    var _scrollbarThickness = 0.0
-
-    var _settings IntMap<bool> = {
-      ViewSetting.SCROLL_PAST_END: true,
-      ViewSetting.SHOW_MARGIN: true,
     }
   }
 

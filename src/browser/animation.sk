@@ -9,31 +9,30 @@ namespace Browser {
     def tick
   }
 
-  namespace AnimationLoop {
+  class AnimationLoop {
+    var _platform Platform
     var _observers List<AnimationLoopObserver> = []
-    var _animationFrame = 0
-
-    var _tick fn() = => {
-      for observer in _observers {
-        observer.tick
-      }
-      _animationFrame = dynamic.requestAnimationFrame(_tick)
-    }
+    var _isRunning = false
 
     def isRunning bool {
-      return _animationFrame != 0
+      return _isRunning
     }
 
     def start {
       if !isRunning {
-        _tick()
+        _platform.setAnimationFrameCallback(=> {
+          for observer in _observers {
+            observer.tick
+          }
+        })
+        _isRunning = true
       }
     }
 
     def stop {
       if isRunning {
-        dynamic.cancelAnimationFrame(_animationFrame)
-        _animationFrame = 0
+        _platform.setAnimationFrameCallback(null)
+        _isRunning = false
       }
     }
 

@@ -83,10 +83,6 @@ namespace Editor {
     CONTROL
   }
 
-  namespace Modifiers {
-    const BASE = Platform.currentOS == .OSX ? META : CONTROL
-  }
-
   class Shortcut {
     const action Action
     const modifiers Modifiers
