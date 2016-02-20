@@ -9,10 +9,10 @@ release: | node_modules
 	$(BUILD) --release
 
 watch-debug:
-	node_modules/.bin/watch src 'clear && make debug && echo done'
+	node_modules/.bin/watch src 'clear && make debug'
 
 watch-release:
-	node_modules/.bin/watch src 'clear && make release && echo done'
+	node_modules/.bin/watch src 'clear && make release'
 
 node_modules:
 	npm install

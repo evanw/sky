@@ -1,6 +1,6 @@
 {
   "dependencies": {
     "fast-watch": "1.0.0",
-    "skew": "0.5.73"
+    "skew": "0.7.25"
   }
 }
