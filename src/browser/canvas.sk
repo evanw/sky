@@ -158,7 +158,7 @@ namespace Browser {
     def _updateSize {
       var width int = _element.clientWidth
       var height int = _element.clientHeight
-      var pixelScale double = dynamic.devicePixelRatio
+      var pixelScale double = window.devicePixelRatio ? window.devicePixelRatio : 1
 
       # Safari broke devicePixelRatio
       if _platform.userAgent == .SAFARI {

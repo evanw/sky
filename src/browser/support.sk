@@ -1,12 +1,12 @@
 namespace Browser {
   @neverinline
   def on(element dynamic, event string, function fn(dynamic)) {
-    element.addEventListener(event, function)
+    element.addEventListener(event, function, false)
   }
 
   @neverinline
   def off(element dynamic, event string, function fn(dynamic)) {
-    element.removeEventListener(event, function)
+    element.removeEventListener(event, function, false)
   }
 
   var document = dynamic.document
