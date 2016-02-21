@@ -194,7 +194,7 @@ namespace Browser {
       return VertexBuffer.new(self, byteCount)
     }
 
-    def createTexture(format Graphics.TextureFormat, width int, height int, pixels Graphics.FixedArray) Graphics.Texture {
+    def createTexture(format Graphics.TextureFormat, width int, height int, pixels FixedArray) Graphics.Texture {
       return Texture.new(self, format, width, height, pixels?.bytesForJavaScript)
     }
 
@@ -707,7 +707,7 @@ namespace Browser {
       }
     }
 
-    def upload(array Graphics.FixedArray, byteOffset int) {
+    def upload(array FixedArray, byteOffset int) {
       assert(byteOffset >= 0 && byteOffset + array.byteCount <= _byteCount)
       _bytes.set(array.bytesForJavaScript, byteOffset)
       _growDirtyRegion(byteOffset, byteOffset + array.byteCount)
@@ -783,7 +783,7 @@ namespace Browser {
       return _height
     }
 
-    def resize(width int, height int, pixels Graphics.FixedArray) {
+    def resize(width int, height int, pixels FixedArray) {
       assert(width >= 0)
       assert(height >= 0)
       assert(pixels == null || pixels.byteCount == width * height * 4)
@@ -801,7 +801,7 @@ namespace Browser {
       }
     }
 
-    def upload(sourcePixels Graphics.FixedArray, targetX int, targetY int, sourceWidth int, sourceHeight int) {
+    def upload(sourcePixels FixedArray, targetX int, targetY int, sourceWidth int, sourceHeight int) {
       assert(sourceWidth >= 0)
       assert(sourceHeight >= 0)
       assert(sourcePixels.byteCount == sourceWidth * sourceHeight * 4)

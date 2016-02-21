@@ -7,7 +7,7 @@ namespace Browser {
     var _font Graphics.Font = null
     var _marginFont Graphics.Font = null
     var _dropShadowMaterial Graphics.Material = null
-    var _dropShadowVertices = Graphics.FixedArray.new(4 * 2 * 4)
+    var _dropShadowVertices = FixedArray.new(4 * 2 * 4)
 
     def new(platform Editor.Platform, shortcuts Editor.ShortcutMap) {
       super(platform, shortcuts)
@@ -34,6 +34,8 @@ namespace Browser {
       _solidBatch = Graphics.SolidBatch.new(_context, _pool)
       _glyphBatch = Graphics.GlyphBatch.new(platform, _context, _pool)
       _dropShadowMaterial = _context.createMaterial(.POSITION_F2, GLSLX_SOURCE_DROP_SHADOW_VERTEX, GLSLX_SOURCE_DROP_SHADOW_FRAGMENT)
+
+      Log.info("initialized WebGL canvas")
     }
 
     over setDefaultBackgroundColor(color Graphics.RGBA) {
@@ -111,6 +113,9 @@ namespace Browser {
       if clipX >= _width || clipY >= _height || clipX + clipWidth <= 0 || clipY + clipHeight <= 0 {
         return
       }
+
+      _solidBatch.flush
+      _glyphBatch.flush
 
       _dropShadowVertices.setFloat(0, clipX)
       _dropShadowVertices.setFloat(4, clipY)

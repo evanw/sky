@@ -1,0 +1,70 @@
+class FixedArray {
+  def new(byteCount int)
+
+  def byteCount int
+
+  def getByte(byteIndex int) int
+  def setByte(byteIndex int, value int)
+
+  def getFloat(byteIndex int) double
+  def setFloat(byteIndex int, value double)
+
+  def getRange(byteIndex int, byteCount int) FixedArray
+  def setRange(byteIndex int, values FixedArray)
+}
+
+if TARGET == .JAVASCRIPT {
+  class FixedArray {
+    var _bytes Uint8Array = null
+    var _floats Float32Array = null
+
+    def new(byteCount int) {
+      _bytes = Uint8Array.new(byteCount)
+      _floats = Float32Array.new(_bytes.buffer, 0, byteCount >> 2)
+    }
+
+    def new(array FixedArray, byteIndex int, byteCount int) {
+      assert(byteIndex >= 0 && byteCount >= 0 && byteIndex + byteCount <= array.byteCount)
+      assert(byteCount % 4 == 0) # This is an alignment requirement for Float32Array
+      _bytes = array._bytes.subarray(byteIndex, byteIndex + byteCount)
+      _floats = Float32Array.new(array._bytes.buffer, array._bytes.byteOffset + byteIndex, byteCount >> 2)
+    }
+
+    def byteCount int {
+      return _bytes.length
+    }
+
+    def getByte(byteIndex int) int {
+      assert(byteIndex >= 0 && byteIndex + 1 <= byteCount)
+      return _bytes[byteIndex]
+    }
+
+    def setByte(byteIndex int, value int) {
+      assert(byteIndex >= 0 && byteIndex + 1 <= byteCount)
+      _bytes[byteIndex] = value
+    }
+
+    def getFloat(byteIndex int) double {
+      assert(byteIndex >= 0 && byteIndex + 4 <= byteCount && byteIndex % 4 == 0)
+      return _floats[byteIndex >> 2]
+    }
+
+    def setFloat(byteIndex int, value double) {
+      assert(byteIndex >= 0 && byteIndex + 4 <= byteCount && byteIndex % 4 == 0)
+      _floats[byteIndex >> 2] = value
+    }
+
+    def getRange(byteIndex int, byteCount int) FixedArray {
+      return FixedArray.new(self, byteIndex, byteCount)
+    }
+
+    def setRange(byteIndex int, array FixedArray) {
+      assert(byteIndex >= 0 && byteIndex + array.byteCount <= byteCount)
+      _bytes.set(array._bytes, byteIndex)
+    }
+
+    def bytesForJavaScript Uint8Array {
+      return _bytes
+    }
+  }
+}

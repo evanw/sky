@@ -6,6 +6,8 @@ namespace Browser {
     def new(platform Editor.Platform, shortcuts Editor.ShortcutMap) {
       super(platform, shortcuts)
       _context = _element.getContext("2d")
+
+      Log.info("initialized 2D canvas")
     }
 
     over setDefaultBackgroundColor(color Graphics.RGBA) {
@@ -47,14 +49,10 @@ namespace Browser {
       # Render an approximate rounded rectangle
       context.fillStyle = _colorToStyle(color)
       context.beginPath()
-      context.lineTo(x, y + radius)
-      context.bezierCurveTo(x, y + r, x + r, y, x + radius, y)
-      context.lineTo(xw - radius, y)
-      context.bezierCurveTo(xw - r, y, xw, y + r, xw, y + radius)
-      context.lineTo(xw, yh - radius)
-      context.bezierCurveTo(xw, yh - r, xw - r, yh, xw - radius, yh)
-      context.lineTo(x + radius, yh)
-      context.bezierCurveTo(x + r, yh, x, yh - r, x, yh - radius)
+      _lineAndCurveTo(context, x, y + radius, x, y + r, x + r, y, x + radius, y)
+      _lineAndCurveTo(context, xw - radius, y, xw - r, y, xw, y + r, xw, y + radius)
+      _lineAndCurveTo(context, xw, yh - radius, xw, yh - r, xw - r, yh, xw - radius, yh)
+      _lineAndCurveTo(context, x + radius, yh, x + r, yh, x, yh - r, x, yh - radius)
       context.fill()
     }
 
@@ -91,6 +89,7 @@ namespace Browser {
       context.shadowOffsetX = offset
       context.shadowOffsetY = offset
       context.shadowBlur = blurSigma * 3
+      context.fillStyle = "#000"
       context.fillRect(boxX - offset, boxY - offset, boxWidth, boxHeight)
       context.restore()
     }
@@ -118,6 +117,13 @@ namespace Browser {
         _cachedStyles[color as int] = style
       }
       return style
+    }
+  }
+
+  namespace CanvasElement2D {
+    def _lineAndCurveTo(context dynamic, ax double, ay double, bx double, by double, cx double, cy double, dx double, dy double) {
+      context.lineTo(ax, ay)
+      context.bezierCurveTo(bx, by, cx, cy, dx, dy)
     }
   }
 }

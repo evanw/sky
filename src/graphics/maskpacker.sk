@@ -105,6 +105,7 @@ namespace Graphics {
 
       # Wrap to the next line when this mask would extend past the right side
       if overflow {
+        Log.info("line overflow when packing glyph masks, height is now \(_height)")
         _x = 0
         _y += _height
       }

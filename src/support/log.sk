@@ -1,0 +1,34 @@
+namespace Log {
+  const USE_LOG = !RELEASE
+
+  @skip if !USE_LOG {
+    def info(text string)
+    def warning(text string)
+    def error(text string)
+  }
+}
+
+if TARGET == .JAVASCRIPT {
+  namespace Log {
+    def info(text string) {
+      var console = Browser.window.console
+      if console {
+        console.log(text)
+      }
+    }
+
+    def warning(text string) {
+      var console = Browser.window.console
+      if console {
+        console.warn(text)
+      }
+    }
+
+    def error(text string) {
+      var console = Browser.window.console
+      if console {
+        console.error(text)
+      }
+    }
+  }
+}

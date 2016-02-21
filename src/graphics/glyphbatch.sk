@@ -157,6 +157,8 @@ namespace Graphics {
           var slice = Mask.new(bounds.width, bounds.height)
           slice.copyFrom(0, 0, _packer.mask, bounds.minX, bounds.minY, bounds.maxX, bounds.maxY)
           _texture.upload(slice.pixels, bounds.minX, bounds.minY, bounds.width, bounds.height)
+          Log.info("upload glyph mask region with offset (\(bounds.minX), \(bounds.minY)) and " +
+            "size \(bounds.width)x\(bounds.height) to texture with size \(_packerWidth)x\(_packerHeight)")
         }
 
         var area = _pool.allocate(.POSITION_F4_COLOR_U4_COORD_U4, _buffer.fixedArray)
@@ -172,16 +174,22 @@ namespace Graphics {
       var metadataValues = _metadata.values
       var failed = true
 
+      Log.warning("ran out of glyph mask space at \(_packerWidth)x\(_packerHeight)")
+
       # Sort glyphs by height to pack them tighter
       metadataValues.sort(SORT_BY_HEIGHT)
 
       while failed {
+        failed = false
+
         # Try to maintain a square-ish texture for good spatial cache locality
         if _packerWidth > _packerHeight {
           _packerHeight *= 2
         } else {
           _packerWidth *= 2
         }
+
+        Log.info("expanding glyph mask space to \(_packerWidth)x\(_packerHeight)")
         _packer = MaskPacker.new(_packerWidth, _packerHeight, 1)
 
         # Re-append each glyph mask, stopping when one doesn't fit. It is

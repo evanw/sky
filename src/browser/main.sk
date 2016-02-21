@@ -6,7 +6,7 @@ namespace Browser {
     model.setLexer(.SKEW)
 
     var canvas = _createCanvas(platform)
-    canvas.changeFont(12, 10, 16, ["Menlo", "Monaco", "Consolas"])
+    canvas.changeFont(12, 10, 16, ["Menlo", "Monaco", "Consolas", "monospace"])
 
     var translator = Editor.SemanticToPixelTranslator.new(canvas)
     translator.setTheme(.XCODE)
