@@ -21,5 +21,6 @@ namespace Editor {
     def userAgent UserAgent
     def baseModifier Editor.Modifiers
     def nowInSeconds double
+    def createGlyphProvider Graphics.GlyphProvider
   }
 }

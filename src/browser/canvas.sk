@@ -160,6 +160,11 @@ namespace Browser {
       var height int = _element.clientHeight
       var pixelScale double = dynamic.devicePixelRatio
 
+      # Safari broke devicePixelRatio
+      if _platform.userAgent == .SAFARI {
+        pixelScale *= Math.sqrt(document.width * document.height / (window.innerWidth * window.innerHeight))
+      }
+
       if _width != width || _height != height || _pixelScale != pixelScale {
         _element.width = Math.round(width * pixelScale)
         _element.height = Math.round(height * pixelScale)

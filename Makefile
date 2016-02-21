@@ -7,10 +7,10 @@ shaders:
 	$(GLSLX)
 
 debug: | node_modules
-	$(SKEW) --js-source-map
+	$(SKEW)
 
 release: | node_modules
-	$(SKEW) --release && rm -f www/compiled.js.map
+	$(SKEW) --release
 
 watch-shaders:
 	node_modules/.bin/watch glslx 'clear && make shaders && echo done'

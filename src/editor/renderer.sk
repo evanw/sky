@@ -70,7 +70,7 @@ namespace Editor {
     }
 
     def renderCaret(x double, y double, color Color) {
-      _renderer.fillBox(Math.round(x), Math.round(y), 1, _renderer.lineHeight, _theme.findColor(color))
+      _renderer.fillBox(x, y, 1, _renderer.lineHeight, _theme.findColor(color))
     }
 
     def renderSquiggle(x double, y double, width double, height double, color Color) {
@@ -106,12 +106,12 @@ namespace Editor {
 
     def renderHorizontalLine(x1 double, x2 double, y double, color Color) {
       assert(x1 <= x2)
-      _renderer.fillBox(x1, Math.floor(y), x2 - x1, 1, _theme.findColor(color))
+      _renderer.fillBox(x1, y - 0.5, x2 - x1, 1, _theme.findColor(color))
     }
 
     def renderVerticalLine(x double, y1 double, y2 double, color Color) {
       assert(y1 <= y2)
-      _renderer.fillBox(Math.floor(x), y1, 1, y2 - y1, _theme.findColor(color))
+      _renderer.fillBox(x - 0.5, y1, 1, y2 - y1, _theme.findColor(color))
     }
 
     def renderScrollbarThumb(x double, y double, width double, height double, color Color) {

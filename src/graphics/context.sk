@@ -98,6 +98,12 @@ namespace Graphics {
     }
   }
 
+  namespace VertexFormat {
+    const POSITION4_COLOR4 = VertexFormat.new
+      .add(GLSLX_NAME_POSITION4, .FLOAT, 4)
+      .add(GLSLX_NAME_COLOR4, .BYTE, 4)
+  }
+
   interface VertexBuffer {
     def byteCount int
     def context Context
@@ -132,8 +138,10 @@ namespace Graphics {
     def context Context
     def format TextureFormat
     def height int
+    def resize(width int, height int) { resize(width, height, null) }
     def resize(width int, height int, pixels FixedArray)
     def setFormat(format TextureFormat)
+    def upload(sourcePixels FixedArray, targetX int, targetY int, sourceWidth int, sourceHeight int)
     def width int
   }
 

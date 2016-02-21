@@ -50,6 +50,11 @@ namespace Graphics {
       return self
     }
 
+    def appendVertex(x double, y double, u double, v double, color RGBA) {
+      appendFloat(x).appendFloat(y).appendFloat(u).appendFloat(v)
+      appendByte(color.red).appendByte(color.green).appendByte(color.blue).appendByte(color.alpha)
+    }
+
     def _ensureSpace(space int) {
       if _byteCount + space > _byteCapacity {
         _byteCapacity *= 2

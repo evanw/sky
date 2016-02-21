@@ -52,5 +52,9 @@ namespace Browser {
     def nowInSeconds double {
       return dynamic.performance.now() / 1000
     }
+
+    def createGlyphProvider Graphics.GlyphProvider {
+      return GlyphProvider.new
+    }
   }
 }

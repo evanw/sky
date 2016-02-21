@@ -2,7 +2,10 @@ namespace Browser {
   class CanvasElementWebGL : CanvasElement {
     var _context Context = null
     var _pool Graphics.BufferPool = null
-    var _smooth Graphics.Smooth = null
+    var _solidBatch Graphics.SolidBatch = null
+    var _glyphBatch Graphics.GlyphBatch = null
+    var _font Graphics.Font = null
+    var _marginFont Graphics.Font = null
 
     def new(platform Editor.Platform, shortcuts Editor.ShortcutMap) {
       super(platform, shortcuts)
@@ -26,22 +29,32 @@ namespace Browser {
 
       _context = Context.new(gl)
       _pool = Graphics.BufferPool.new(_context)
-      _smooth = Graphics.Smooth.new(_context, _pool)
+      _solidBatch = Graphics.SolidBatch.new(_context, _pool)
+      _glyphBatch = Graphics.GlyphBatch.new(platform, _context, _pool)
     }
 
     over _renderNothing {
-      _smooth.fillRect(0, 0, 1, 1, .TRANSPARENT, .WITHOUT_AA)
+      _glyphBatch.flush
+      _solidBatch.fillRect(0, 0, 1, 1, .TRANSPARENT)
     }
 
     over _updateSize {
       super
       _context.resize(_element.width, _element.height)
-      _smooth.resize(_width, _height, 1 / _pixelScale)
+      _solidBatch.resize(_width, _height, _pixelScale)
+      _glyphBatch.resize(_width, _height, _pixelScale)
+    }
+
+    over changeFont(fontSize double, marginFontSize double, lineHeight double, fontNames List<string>) {
+      super(fontSize, marginFontSize, lineHeight, fontNames)
+      _font = _glyphBatch.createFont(fontNames, fontSize)
+      _marginFont = _glyphBatch.createFont(fontNames, marginFontSize)
     }
 
     over _render {
       super
-      _smooth.flush
+      _solidBatch.flush
+      _glyphBatch.flush
     }
 
     over fillBox(x double, y double, width double, height double, color Graphics.RGBA) {
@@ -49,12 +62,8 @@ namespace Browser {
         return
       }
 
-      _smooth.fillRect(x, y, width, height, color,
-        x == x as int &&
-        y == y as int &&
-        width == width as int &&
-        height == height as int
-        ? .WITHOUT_AA : .NORMAL)
+      _glyphBatch.flush
+      _solidBatch.fillRect(x, y, width, height, color)
     }
 
     over fillRoundedBox(x double, y double, width double, height double, color Graphics.RGBA, radius double) {
@@ -76,12 +85,14 @@ namespace Browser {
       _appendQuarterTurn(coordinates, maxX, minY, radius, -Math.PI / 2, 0, isClampedX)
       _appendQuarterTurn(coordinates, maxX, maxY, radius, 0, Math.PI / 2, isClampedY)
       _appendQuarterTurn(coordinates, minX, maxY, radius, Math.PI / 2, Math.PI, isClampedX)
-      _smooth.fillConvexPolygon(coordinates, color, .NORMAL)
+      _glyphBatch.flush
+      _solidBatch.fillConvexPolygon(coordinates, color)
     }
 
     over strokePolyline(coordinates List<double>, color Graphics.RGBA, thickness double) {
       assert(coordinates.count % 2 == 0)
-      _smooth.strokeNonOverlappingPolyline(coordinates, color, thickness, .OPEN)
+      _glyphBatch.flush
+      _solidBatch.strokeNonOverlappingPolyline(coordinates, color, thickness, .OPEN)
     }
 
     over renderBoxShadow(boxX double, boxY double, boxWidth double, boxHeight double, clipX double, clipY double, clipWidth double, clipHeight double, blurRadius double) {
@@ -97,7 +108,15 @@ namespace Browser {
         return
       }
 
-      # TODO
+      var iterator = Unicode.StringIterator.INSTANCE.reset(text, 0)
+      var graphicsFont = font == .MARGIN ? _marginFont : _font
+
+      _solidBatch.flush
+      y += _fontSize - graphicsFont.size
+
+      for codePoint = iterator.nextCodePoint; codePoint != -1; codePoint = iterator.nextCodePoint {
+        x += _glyphBatch.appendGlyph(graphicsFont, codePoint, x, y, color)
+      }
     }
 
     def _appendQuarterTurn(coordinates List<double>, centerX double, centerY double, radius double, fromAngle double, toAngle double, skipStartPoint bool) {

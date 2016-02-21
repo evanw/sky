@@ -1,0 +1,205 @@
+namespace Graphics {
+  class Glyph {
+    const codePoint int
+    const mask Mask
+    const originX int
+    const originY int
+    const advanceWidth double
+  }
+
+  interface GlyphProvider {
+    def setFont(fontNames List<string>, fontSize double)
+    def advanceWidth(codePoint int) double
+    def render(codePoint int, advanceWidth double) Graphics.Glyph
+  }
+
+  class GlyphMetadata {
+    const glyph Glyph
+    var coords TextureCoords
+  }
+
+  class Font {
+    const id int
+    const names List<string>
+    const size double
+    const glyphProvider GlyphProvider
+    var currentScale = 0.0
+  }
+
+  # A high-level wrapper for appending glyphs into a single texture. Owns
+  # and manages the texture, including growing it as needed. Can pack glyphs
+  # from multiple fonts into the same texture.
+  class GlyphBatch {
+    const _platform Editor.Platform
+    const _context Context
+    const _pool BufferPool
+    const _material Material
+    var _texture Texture = null
+    var _packer MaskPacker = null
+    var _buffer = GrowableArray.new
+    var _metadata IntMap<GlyphMetadata> = null
+    var _packerWidth = 512
+    var _packerHeight = 512
+    var _width = 0.0
+    var _height = 0.0
+    var _inversePixelScale = 0.0
+
+    def new(platform Editor.Platform, context Context, pool BufferPool) {
+      _platform = platform
+      _context = context
+      _pool = pool
+      _material = context.createMaterial(.POSITION4_COLOR4, GLSLX_SOURCE_GLYPH_BATCH_VERTEX, GLSLX_SOURCE_GLYPH_BATCH_FRAGMENT)
+    }
+
+    def resize(width double, height double, pixelScale double) {
+      _width = width
+      _height = height
+      _material.setUniformVec2(GLSLX_NAME_SCALE2, 2 / width, -2 / height)
+
+      # Clear the cache on a DPI change
+      if _inversePixelScale != 1 / pixelScale {
+        _inversePixelScale = 1 / pixelScale
+        _metadata = {}
+        _packer = MaskPacker.new(_packerWidth, _packerHeight, 1)
+      }
+    }
+
+    def createFont(fontNames List<string>, fontSize double) Font {
+      return Font.new(++_nextFontID, fontNames, fontSize, _platform.createGlyphProvider)
+    }
+
+    def appendGlyph(font Font, codePoint int, x double, y double, color RGBA) double {
+      var key = codePoint | font.id << 21 # All unicode code points are < 0x110000
+      var metadata = _metadata.get(key, null)
+      var inversePixelScale = _inversePixelScale
+
+      if metadata == null {
+        # Make sure to use a font size appropriate for the current DPI
+        if font.currentScale != inversePixelScale {
+          font.glyphProvider.setFont(font.names, font.size / inversePixelScale)
+          font.currentScale = inversePixelScale
+        }
+
+        # Culling before rendering
+        var advanceWidth = font.glyphProvider.advanceWidth(codePoint)
+        if x >= _width || y >= _height || x + advanceWidth <= 0 || y + font.size <= 0 {
+          return advanceWidth * inversePixelScale
+        }
+
+        # Render uncached glyphs once and pack them together
+        var glyph = font.glyphProvider.render(codePoint, advanceWidth)
+        var coords = _packer.append(glyph.mask)
+        metadata = GlyphMetadata.new(glyph, coords)
+        _metadata[key] = metadata
+
+        # Repack using a larger size if we ran out of space
+        if coords == null {
+          flush
+          _repackAllGlyphs
+          coords = metadata.coords
+        }
+      }
+
+      # Culling
+      else if x >= _width || y >= _height || x + metadata.glyph.advanceWidth <= 0 || y + font.size <= 0 {
+        return metadata.glyph.advanceWidth * inversePixelScale
+      }
+
+      # Append a single textured quad
+      var glyph = metadata.glyph
+      var coords = metadata.coords
+      var buffer = _buffer
+      var mask = glyph.mask
+      var minX = x - glyph.originX * inversePixelScale
+      var minY = y - glyph.originY * inversePixelScale
+      var maxX = minX + mask.width * inversePixelScale
+      var maxY = minY + mask.height * inversePixelScale
+      var minU = coords.minU
+      var minV = coords.minV
+      var maxU = coords.maxU
+      var maxV = coords.maxV
+
+      # Triangle 1
+      buffer.appendVertex(minX, minY, minU, minV, color)
+      buffer.appendVertex(maxX, minY, maxU, minV, color)
+      buffer.appendVertex(maxX, maxY, maxU, maxV, color)
+
+      # Triangle 2
+      buffer.appendVertex(minX, minY, minU, minV, color)
+      buffer.appendVertex(maxX, maxY, maxU, maxV, color)
+      buffer.appendVertex(minX, maxY, minU, maxV, color)
+
+      return glyph.advanceWidth * inversePixelScale
+    }
+
+    def flush {
+      if !_buffer.isEmpty {
+        assert(_packerWidth > 0 && _packerHeight > 0)
+
+        # Create or resize the texture if needed
+        if _texture == null {
+          _texture = _context.createTexture(.NEAREST_CLAMP, _packerWidth, _packerHeight)
+        } else if _texture.width != _packerWidth || _texture.height != _packerHeight {
+          _texture.resize(_packerWidth, _packerHeight)
+        }
+
+        # Only upload the texture data in the dirty rectangle if any
+        var bounds = _packer.stealDirtyBounds
+        if bounds != null {
+          var slice = Mask.new(bounds.width, bounds.height)
+          slice.copyFrom(0, 0, _packer.mask, bounds.minX, bounds.minY, bounds.maxX, bounds.maxY)
+
+          # TODO: Pack this better
+          var rgba = FixedArray.new(bounds.width * bounds.height * 4)
+          for i in 0..slice.pixels.byteCount {
+            rgba.setByte(i * 4, slice.pixels.getByte(i))
+          }
+
+          _texture.upload(rgba, bounds.minX, bounds.minY, bounds.width, bounds.height)
+        }
+
+        var area = _pool.allocate(.POSITION4_COLOR4, _buffer.fixedArray)
+        if area != null {
+          _context.draw(.TRIANGLES, _material, area)
+          _buffer.clear
+          area.free
+        }
+      }
+    }
+
+    def _repackAllGlyphs {
+      var metadataValues = _metadata.values
+      var failed = true
+
+      # Sort glyphs by height to pack them tighter
+      metadataValues.sort(SORT_BY_HEIGHT)
+
+      while failed {
+        # Try to maintain a square-ish texture for good spatial cache locality
+        if _packerWidth > _packerHeight {
+          _packerHeight *= 2
+        } else {
+          _packerWidth *= 2
+        }
+        _packer = MaskPacker.new(_packerWidth, _packerHeight, 1)
+
+        # Re-append each glyph mask, stopping when one doesn't fit. It is
+        # likely impossible that a glyph wouldn't fit in a glyph cache twice
+        # as big as the previous one but the iteration loop is here for
+        # completeness. Don't worry about making a texture that's too big
+        # since most cards support at least 4k by 4k and that is a LOT of
+        # glyphs, especially for a text editor that only uses a few fonts.
+        for i = 0; !failed && i < metadataValues.count; i++ {
+          var metadata = metadataValues[i]
+          metadata.coords = _packer.append(metadata.glyph.mask)
+          failed = metadata.coords == null
+        }
+      }
+    }
+  }
+
+  namespace GlyphBatch {
+    const SORT_BY_HEIGHT = (a GlyphMetadata, b GlyphMetadata) => a.glyph.mask.height <=> b.glyph.mask.height
+    var _nextFontID = 0
+  }
+}

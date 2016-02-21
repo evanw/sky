@@ -1,0 +1,151 @@
+namespace Graphics {
+  class Mask {
+    const width = 0
+    const height = 0
+    const pixels FixedArray = null
+
+    def new(width int, height int) {
+      self.width = width
+      self.height = height
+      pixels = FixedArray.new(width * height)
+    }
+
+    def copyFrom(targetX int, targetY int, source Mask, sourceMinX int, sourceMinY int, sourceMaxX int, sourceMaxY int) {
+      var sourceData = source.pixels
+      var targetData = pixels
+      var sourceStride = source.width
+      var targetStride = width
+      var runCount = sourceMaxX - sourceMinX
+
+      assert(0 <= sourceMinX && sourceMinX <= sourceMaxX && sourceMaxX <= source.width)
+      assert(0 <= sourceMinY && sourceMinY <= sourceMaxY && sourceMaxY <= source.height)
+      assert(0 <= targetX && targetX + sourceMaxX - sourceMinX <= width)
+      assert(0 <= targetY && targetY + sourceMaxY - sourceMinY <= height)
+
+      for y in sourceMinY..sourceMaxY {
+        targetData.setRange(targetX + (targetY - sourceMinY + y) * targetStride,
+          sourceData.getRange(sourceMinX + y * sourceStride, runCount))
+      }
+    }
+  }
+
+  class TextureCoords {
+    const minU double
+    const minV double
+    const maxU double
+    const maxV double
+  }
+
+  class DirtyBounds {
+    var minX int
+    var minY int
+    var maxX int
+    var maxY int
+
+    def width int {
+      return maxX - minX
+    }
+
+    def height int {
+      return maxY - minY
+    }
+
+    def extend(newMinX int, newMinY int, newMaxX int, newMaxY int) {
+      minX = Math.min(minX, newMinX)
+      minY = Math.min(minY, newMinY)
+      maxX = Math.max(maxX, newMaxX)
+      maxY = Math.max(maxY, newMaxY)
+    }
+  }
+
+  class MaskPacker {
+    var _x = 0
+    var _y = 0
+    var _height = 0
+    var _dirtyBounds DirtyBounds = null
+    const _padding = 0
+    const _mask Mask = null
+
+    def new(width int, height int, padding int) {
+      _padding = padding
+      _mask = Mask.new(width, height)
+    }
+
+    def mask Mask {
+      return _mask
+    }
+
+    def stealDirtyBounds DirtyBounds {
+      var dirtyBounds = _dirtyBounds
+      _dirtyBounds = null
+      return dirtyBounds
+    }
+
+    # Attempt to pack this mask in with all of the others. Masks are packed in
+    # rows from left to right. More advanced packing algorithms are avoided
+    # for speed and simplicity. Plus, the gains of complicated algorithms are
+    # apparently very small (~5%) when the masks are around the same size,
+    # which is the case for font glyphs.
+    def append(mask Mask) TextureCoords {
+      var padding = _padding
+      var maskWidth = mask.width
+      var maskHeight = mask.height
+      var width = maskWidth + padding * 2
+      var height = maskHeight + padding * 2
+      var totalWidth = _mask.width
+      var totalHeight = _mask.height
+      var overflow = _x + width > totalWidth
+
+      # Return null to indicate that there's no more room. It's up to the
+      # caller to handle this case. One way to handle this is to make a new,
+      # larger packer and re-append all previous masks.
+      if _y + height > totalHeight || overflow && _y + _height + height > totalHeight {
+        return null
+      }
+
+      # Wrap to the next line when this mask would extend past the right side
+      if overflow {
+        _x = 0
+        _y += _height
+      }
+
+      # Copy the mask data
+      var paddedMinX = _x
+      var paddedMinY = _y
+      var paddedMaxX = paddedMinX + width
+      var paddedMaxY = paddedMinY + height
+      var unpaddedMinX = _x + padding
+      var unpaddedMinY = _y + padding
+      var unpaddedMaxX = unpaddedMinX + maskWidth
+      var unpaddedMaxY = unpaddedMinY + maskHeight
+      var scaleX = 1.0 / totalWidth
+      var scaleY = 1.0 / totalHeight
+      _mask.copyFrom(unpaddedMinX, unpaddedMinY, mask, 0, 0, maskWidth, maskHeight)
+      _x += width
+      _height = Math.max(_height, height)
+
+      # Extend the upload rectangle with the uploaded region. Use the padded
+      # bounds so old texture contents will be cleared around the new mask.
+      if _dirtyBounds == null {
+        _dirtyBounds = DirtyBounds.new(
+          paddedMinX,
+          paddedMinY,
+          paddedMaxX,
+          paddedMaxY)
+      } else {
+        _dirtyBounds.extend(
+          paddedMinX,
+          paddedMinY,
+          paddedMaxX,
+          paddedMaxY)
+      }
+
+      # Compute the corresponding texture coordinates
+      return TextureCoords.new(
+        unpaddedMinX * scaleX,
+        unpaddedMinY * scaleY,
+        unpaddedMaxX * scaleX,
+        unpaddedMaxY * scaleY)
+    }
+  }
+}

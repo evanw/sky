@@ -36,8 +36,7 @@ namespace Browser {
 
     # Attempt to use WebGL first because it's a lot faster
     try {
-      # TODO: This isn't fully working yet
-      # return CanvasElementWebGL.new(platform, shortcuts)
+      return CanvasElementWebGL.new(platform, shortcuts)
     }
 
     # Fall back to the 2D canvas API

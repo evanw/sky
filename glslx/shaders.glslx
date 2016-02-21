@@ -1,21 +1,34 @@
 precision highp float;
 
 uniform vec2 scale2;
+uniform sampler2D texture;
 
 attribute vec4 position4;
-attribute vec4 coord4;
+attribute vec4 color4;
 
 varying vec2 _coord2;
-varying vec4 _coord4;
+varying vec4 _color4;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-export void smoothVertex() {
+export void solidBatchVertex() {
   _coord2 = position4.zw;
-  _coord4 = coord4;
+  _color4 = color4;
   gl_Position = vec4(position4.xy * scale2 - sign(scale2), 0, 1);
 }
 
-export void smoothFragment() {
-  gl_FragColor = _coord4 * min(1.0, min(_coord2.x, _coord2.y));
+export void solidBatchFragment() {
+  gl_FragColor = _color4 * min(1.0, min(_coord2.x, _coord2.y));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+export void glyphBatchVertex() {
+  _coord2 = position4.zw;
+  _color4 = color4;
+  gl_Position = vec4(position4.xy * scale2 - sign(scale2), 0, 1);
+}
+
+export void glyphBatchFragment() {
+  gl_FragColor = _color4 * texture2D(texture, _coord2).r;
 }

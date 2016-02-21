@@ -137,6 +137,7 @@ namespace Editor {
       if _viewSize != viewSize || _scrollSize != scrollSize {
         _viewSize = viewSize
         _scrollSize = scrollSize
+
         if !setScrollOffset(_scrollOffset) {
           _computeMapped
         }
@@ -448,11 +449,13 @@ namespace Editor {
         var max = region.max
         var startY = Math.max(min.y, minY)
         var endY = Math.min(max.y, maxY)
+
         for y = startY; y <= endY; y++ {
           var line = _model[y]
           var count = line.text.count
           var startX = Math.max(y == min.y ? min.x : 0, minX)
           var endX = Math.min(y == max.y ? max.x : count + 1, maxX)
+
           if startX != endX {
             var lineY = translateY + _lineHeight * y
             _renderer.renderBox(translateX + _advanceWidth * startX, lineY, _advanceWidth * (endX - startX), _lineHeight, .BACKGROUND_SELECTED)

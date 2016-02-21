@@ -1,0 +1,98 @@
+namespace Browser {
+  class GlyphProvider :: Graphics.GlyphProvider {
+    var _canvasSize = 0
+    var _fontSize = 0.0
+    var _context = document.createElement("canvas").getContext("2d")
+
+    def setFont(fontNames List<string>, fontSize double) {
+      # Assume glyphs won't ever grow extend out more than twice the font size.
+      # Because the canvas text API is so terrible, we have no way of knowing
+      # what the actual glyph size is, so this is the best we can do.
+      _canvasSize = Math.ceil(fontSize * 2) as int
+      _context.canvas.width = _canvasSize
+      _context.canvas.height = _canvasSize
+
+      # This must be set after resizing the canvas or it will be reset
+      _context.font = "\(fontSize)px " + ", ".join(fontNames)
+      _fontSize = fontSize
+    }
+
+    def advanceWidth(codePoint int) double {
+      return _context.measureText(string.fromCodePoint(codePoint).repeat(100)).width / 100
+    }
+
+    def render(codePoint int, advanceWidth double) Graphics.Glyph {
+      # Round the origin coordinates because some browsers do hinting
+      var size = _canvasSize
+      var originX = size / 4
+      var originY = size / 4
+
+      # Render the glyph
+      _context.clearRect(0, 0, size, size)
+      _context.fillText(string.fromCodePoint(codePoint), originX, originY + _fontSize)
+      var imageData = _context.getImageData(0, 0, size, size)
+
+      # Trim the image in preparation for using it in an atlas texture
+      var minX = 0
+      var minY = 0
+      var maxX = size
+      var maxY = size
+      var input = imageData.data
+
+      # Trim the left
+      for found = false; minX < maxX; minX++ {
+        for y = minY, i = (minX + y * size) * 4 + 3; !found && y < maxY; y++, i += size * 4 {
+          found = input[i] > 0
+        }
+        if found {
+          break
+        }
+      }
+
+      # Trim the right
+      for found = false; minX < maxX; maxX-- {
+        for y = minY, i = (maxX - 1 + y * size) * 4 + 3; !found && y < maxY; y++, i += size * 4 {
+          found = input[i] > 0
+        }
+        if found {
+          break
+        }
+      }
+
+      # Trim the top
+      for found = false; minY < maxY; minY++ {
+        for x = minX, i = (x + minY * size) * 4 + 3; !found && x < maxX; x++, i += 4 {
+          found = input[i] > 0
+        }
+        if found {
+          break
+        }
+      }
+
+      # Trim the bottom
+      for found = false; minY < maxY; maxY-- {
+        for x = minX, i = (x + (maxY - 1) * size) * 4 + 3; !found && x < maxX; x++, i += 4 {
+          found = input[i] > 0
+        }
+        if found {
+          break
+        }
+      }
+
+      # Compact the mask into a linear array of memory
+      var width = maxX - minX
+      var height = maxY - minY
+      var mask = Graphics.Mask.new(width, height)
+      var output = mask.pixels
+      for y = 0, to = 0; y < height; y++ {
+        for x = 0, from = (minX + (minY + y) * size) * 4 + 3; x < width; x++, from += 4, to++ {
+          output.setByte(to, input[from])
+        }
+      }
+
+      # Measure 100 successive characters in an attempt to get a better
+      # measurement since some browsers never return a fractional value
+      return Graphics.Glyph.new(codePoint, mask, originX - minX, originY - minY, advanceWidth)
+    }
+  }
+}

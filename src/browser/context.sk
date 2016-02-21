@@ -784,6 +784,10 @@ namespace Browser {
     }
 
     def resize(width int, height int, pixels Graphics.FixedArray) {
+      assert(width >= 0)
+      assert(height >= 0)
+      assert(pixels == null || pixels.byteCount == width * height * 4)
+
       _width = width
       _height = height
       _pixels = pixels as Uint8Array
@@ -795,6 +799,28 @@ namespace Browser {
         _format = format
         _isFormatDirty = true
       }
+    }
+
+    def upload(sourcePixels Graphics.FixedArray, targetX int, targetY int, sourceWidth int, sourceHeight int) {
+      assert(sourceWidth >= 0)
+      assert(sourceHeight >= 0)
+      assert(sourcePixels.byteCount == sourceWidth * sourceHeight * 4)
+      assert(targetX >= 0 && targetX + sourceWidth <= _width)
+      assert(targetY >= 0 && targetY + sourceHeight <= _height)
+
+      _pixels ?= Uint8Array.new(_width * _height * 4)
+      var gl = _context.gl
+
+      # CPU-side upload
+      for y = 0; y < sourceHeight; y++ {
+        _pixels.set(
+          (sourcePixels as Uint8Array).subarray(y * sourceWidth * 4, sourceWidth * 4),
+          (targetX + (targetY + y) * _width) * 4)
+      }
+
+      # GPU-side upload
+      gl.bindTexture(gl.TEXTURE_2D, texture)
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, targetX, targetY, sourceWidth, sourceHeight, gl.RGBA, gl.UNSIGNED_BYTE, sourcePixels as Uint8Array)
     }
 
     def texture WebGLTexture {
