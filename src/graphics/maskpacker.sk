@@ -7,7 +7,7 @@ namespace Graphics {
     def new(width int, height int) {
       self.width = width
       self.height = height
-      pixels = FixedArray.new(width * height)
+      pixels = FixedArray.new(width * height * 4)
     }
 
     def copyFrom(targetX int, targetY int, source Mask, sourceMinX int, sourceMinY int, sourceMaxX int, sourceMaxY int) {
@@ -15,7 +15,7 @@ namespace Graphics {
       var targetData = pixels
       var sourceStride = source.width
       var targetStride = width
-      var runCount = sourceMaxX - sourceMinX
+      var runByteCount = (sourceMaxX - sourceMinX) * 4
 
       assert(0 <= sourceMinX && sourceMinX <= sourceMaxX && sourceMaxX <= source.width)
       assert(0 <= sourceMinY && sourceMinY <= sourceMaxY && sourceMaxY <= source.height)
@@ -23,8 +23,8 @@ namespace Graphics {
       assert(0 <= targetY && targetY + sourceMaxY - sourceMinY <= height)
 
       for y in sourceMinY..sourceMaxY {
-        targetData.setRange(targetX + (targetY - sourceMinY + y) * targetStride,
-          sourceData.getRange(sourceMinX + y * sourceStride, runCount))
+        targetData.setRange((targetX + (targetY - sourceMinY + y) * targetStride) * 4,
+          sourceData.getRange((sourceMinX + y * sourceStride) * 4, runByteCount))
       }
     }
   }

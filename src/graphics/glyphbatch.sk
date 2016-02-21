@@ -48,7 +48,7 @@ namespace Graphics {
       _platform = platform
       _context = context
       _pool = pool
-      _material = context.createMaterial(.POSITION4_COLOR4, GLSLX_SOURCE_GLYPH_BATCH_VERTEX, GLSLX_SOURCE_GLYPH_BATCH_FRAGMENT)
+      _material = context.createMaterial(.POSITION4_COLOR4_COORD1, GLSLX_SOURCE_GLYPH_BATCH_VERTEX, GLSLX_SOURCE_GLYPH_BATCH_FRAGMENT)
     }
 
     def resize(width double, height double, pixelScale double) {
@@ -110,7 +110,8 @@ namespace Graphics {
       var coords = metadata.coords
       var buffer = _buffer
       var mask = glyph.mask
-      var minX = x - glyph.originX * inversePixelScale
+      var shift = x - Math.floor(x)
+      var minX = x - glyph.originX * inversePixelScale - shift
       var minY = y - glyph.originY * inversePixelScale
       var maxX = minX + mask.width * inversePixelScale
       var maxY = minY + mask.height * inversePixelScale
@@ -120,14 +121,14 @@ namespace Graphics {
       var maxV = coords.maxV
 
       # Triangle 1
-      buffer.appendVertex(minX, minY, minU, minV, color)
-      buffer.appendVertex(maxX, minY, maxU, minV, color)
-      buffer.appendVertex(maxX, maxY, maxU, maxV, color)
+      buffer.appendVertex(minX, minY, minU, minV, color).appendFloat(shift)
+      buffer.appendVertex(maxX, minY, maxU, minV, color).appendFloat(shift)
+      buffer.appendVertex(maxX, maxY, maxU, maxV, color).appendFloat(shift)
 
       # Triangle 2
-      buffer.appendVertex(minX, minY, minU, minV, color)
-      buffer.appendVertex(maxX, maxY, maxU, maxV, color)
-      buffer.appendVertex(minX, maxY, minU, maxV, color)
+      buffer.appendVertex(minX, minY, minU, minV, color).appendFloat(shift)
+      buffer.appendVertex(maxX, maxY, maxU, maxV, color).appendFloat(shift)
+      buffer.appendVertex(minX, maxY, minU, maxV, color).appendFloat(shift)
 
       return glyph.advanceWidth * inversePixelScale
     }
@@ -148,17 +149,10 @@ namespace Graphics {
         if bounds != null {
           var slice = Mask.new(bounds.width, bounds.height)
           slice.copyFrom(0, 0, _packer.mask, bounds.minX, bounds.minY, bounds.maxX, bounds.maxY)
-
-          # TODO: Pack this better
-          var rgba = FixedArray.new(bounds.width * bounds.height * 4)
-          for i in 0..slice.pixels.byteCount {
-            rgba.setByte(i * 4, slice.pixels.getByte(i))
-          }
-
-          _texture.upload(rgba, bounds.minX, bounds.minY, bounds.width, bounds.height)
+          _texture.upload(slice.pixels, bounds.minX, bounds.minY, bounds.width, bounds.height)
         }
 
-        var area = _pool.allocate(.POSITION4_COLOR4, _buffer.fixedArray)
+        var area = _pool.allocate(.POSITION4_COLOR4_COORD1, _buffer.fixedArray)
         if area != null {
           _context.draw(.TRIANGLES, _material, area)
           _buffer.clear

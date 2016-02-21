@@ -5,8 +5,10 @@ uniform sampler2D texture;
 
 attribute vec4 position4;
 attribute vec4 color4;
+attribute float coord1;
 
 varying vec2 _coord2;
+varying vec3 _coord3;
 varying vec4 _color4;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -24,11 +26,16 @@ export void solidBatchFragment() {
 ////////////////////////////////////////////////////////////////////////////////
 
 export void glyphBatchVertex() {
-  _coord2 = position4.zw;
+  _coord3 = vec3(position4.zw, coord1 * 3.0);
   _color4 = color4;
   gl_Position = vec4(position4.xy * scale2 - sign(scale2), 0, 1);
 }
 
 export void glyphBatchFragment() {
-  gl_FragColor = _color4 * texture2D(texture, _coord2).r;
+  vec4 mask = texture2D(texture, _coord3.xy);
+  gl_FragColor = _color4 * (
+    _coord3.z < 1.0 ? mask.x :
+    _coord3.z < 2.0 ? mask.y :
+    _coord3.z < 3.0 ? mask.z :
+    mask.w);
 }

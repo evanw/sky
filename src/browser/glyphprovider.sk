@@ -1,5 +1,6 @@
 namespace Browser {
   class GlyphProvider :: Graphics.GlyphProvider {
+    var _maskData Int32Array = null
     var _canvasSize = 0
     var _fontSize = 0.0
     var _context = document.createElement("canvas").getContext("2d")
@@ -14,6 +15,7 @@ namespace Browser {
 
       # This must be set after resizing the canvas or it will be reset
       _context.font = "\(fontSize)px " + ", ".join(fontNames)
+      _maskData = Int32Array.new(_canvasSize * _canvasSize)
       _fontSize = fontSize
     }
 
@@ -26,23 +28,33 @@ namespace Browser {
       var size = _canvasSize
       var originX = size / 4
       var originY = size / 4
+      var maskData = _maskData
 
-      # Render the glyph
-      _context.clearRect(0, 0, size, size)
-      _context.fillText(string.fromCodePoint(codePoint), originX, originY + _fontSize)
-      var imageData = _context.getImageData(0, 0, size, size)
+      # Render the glyph three times at different offsets
+      for i in 0..3 {
+        _context.clearRect(0, 0, size, size)
+        _context.fillText(string.fromCodePoint(codePoint), originX + i / 3.0, originY + _fontSize)
+
+        var data Uint8ClampedArray = _context.getImageData(0, 0, size, size).data
+        var shift = i * 8
+
+        assert(data.length == maskData.length * 4)
+
+        for j = 0, k = 3; j < maskData.length; j++, k += 4 {
+          maskData[j] = shift != 0 ? maskData[j] | data[k] << shift : data[k]
+        }
+      }
 
       # Trim the image in preparation for using it in an atlas texture
       var minX = 0
       var minY = 0
       var maxX = size
       var maxY = size
-      var input = imageData.data
 
       # Trim the left
       for found = false; minX < maxX; minX++ {
-        for y = minY, i = (minX + y * size) * 4 + 3; !found && y < maxY; y++, i += size * 4 {
-          found = input[i] > 0
+        for y = minY, i = minX + y * size; !found && y < maxY; y++, i += size {
+          found = maskData[i] > 0
         }
         if found {
           break
@@ -51,8 +63,8 @@ namespace Browser {
 
       # Trim the right
       for found = false; minX < maxX; maxX-- {
-        for y = minY, i = (maxX - 1 + y * size) * 4 + 3; !found && y < maxY; y++, i += size * 4 {
-          found = input[i] > 0
+        for y = minY, i = maxX - 1 + y * size; !found && y < maxY; y++, i += size {
+          found = maskData[i] > 0
         }
         if found {
           break
@@ -61,8 +73,8 @@ namespace Browser {
 
       # Trim the top
       for found = false; minY < maxY; minY++ {
-        for x = minX, i = (x + minY * size) * 4 + 3; !found && x < maxX; x++, i += 4 {
-          found = input[i] > 0
+        for x = minX, i = x + minY * size; !found && x < maxX; x++, i++ {
+          found = maskData[i] > 0
         }
         if found {
           break
@@ -71,8 +83,8 @@ namespace Browser {
 
       # Trim the bottom
       for found = false; minY < maxY; maxY-- {
-        for x = minX, i = (x + (maxY - 1) * size) * 4 + 3; !found && x < maxX; x++, i += 4 {
-          found = input[i] > 0
+        for x = minX, i = x + (maxY - 1) * size; !found && x < maxX; x++, i++ {
+          found = maskData[i] > 0
         }
         if found {
           break
@@ -85,8 +97,10 @@ namespace Browser {
       var mask = Graphics.Mask.new(width, height)
       var output = mask.pixels
       for y = 0, to = 0; y < height; y++ {
-        for x = 0, from = (minX + (minY + y) * size) * 4 + 3; x < width; x++, from += 4, to++ {
-          output.setByte(to, input[from])
+        for x = 0, from = minX + (minY + y) * size; x < width; x++, from++, to += 4 {
+          output.setByte(to, maskData[from])
+          output.setByte(to + 1, maskData[from] >> 8)
+          output.setByte(to + 2, maskData[from] >> 16)
         }
       }
 

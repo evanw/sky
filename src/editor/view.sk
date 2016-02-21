@@ -798,7 +798,7 @@ namespace Editor {
     }
 
     def _updateScrollSizeAndInvalidate {
-      _marginWidth = setting(.SHOW_MARGIN) ? _marginPaddingLeft + _model.count.toString.count * _marginAdvanceWidth + _marginPaddingRight : 0
+      _marginWidth = setting(.SHOW_MARGIN) ? Math.floor(_marginPaddingLeft + _model.count.toString.count * _marginAdvanceWidth + _marginPaddingRight) : 0
 
       var scrollWidth = _marginWidth + _paddingLeft + _model.maxLineSize * _advanceWidth + _paddingRight
       var scrollHeight = _model.count * _lineHeight + (setting(.SCROLL_PAST_END) ? _viewHeight - _lineHeight : _paddingBottom + _paddingTop)

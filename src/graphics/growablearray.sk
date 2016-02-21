@@ -50,9 +50,10 @@ namespace Graphics {
       return self
     }
 
-    def appendVertex(x double, y double, u double, v double, color RGBA) {
+    def appendVertex(x double, y double, u double, v double, color RGBA) GrowableArray {
       appendFloat(x).appendFloat(y).appendFloat(u).appendFloat(v)
       appendByte(color.red).appendByte(color.green).appendByte(color.blue).appendByte(color.alpha)
+      return self
     }
 
     def _ensureSpace(space int) {
