@@ -26,7 +26,7 @@ namespace Graphics {
 
     def premultiplied RGBA {
       var a = alpha
-      return a == 0 ? TRANSPARENT : new(red * 255 / a, green * 255 / a, blue * 255 / a, a)
+      return new(red * a / 0xFF, green * a / 0xFF, blue * a / 0xFF, a)
     }
 
     def toString string {

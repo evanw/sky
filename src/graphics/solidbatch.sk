@@ -84,8 +84,6 @@ namespace Graphics {
         return
       }
 
-      color = color.premultiplied
-
       # Reuse existing buffers to avoid extra allocations
       while inside.count < n {
         inside.append(0)
@@ -151,8 +149,6 @@ namespace Graphics {
       if n < 4 {
         return
       }
-
-      color = color.premultiplied
 
       # Emit the start cap
       if stroke != .CLOSED {

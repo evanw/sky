@@ -63,7 +63,7 @@ namespace Browser {
       }
 
       _glyphBatch.flush
-      _solidBatch.fillRect(x, y, width, height, color)
+      _solidBatch.fillRect(x, y, width, height, color.premultiplied)
     }
 
     over fillRoundedBox(x double, y double, width double, height double, color Graphics.RGBA, radius double) {
@@ -86,13 +86,13 @@ namespace Browser {
       _appendQuarterTurn(coordinates, maxX, maxY, radius, 0, Math.PI / 2, isClampedY)
       _appendQuarterTurn(coordinates, minX, maxY, radius, Math.PI / 2, Math.PI, isClampedX)
       _glyphBatch.flush
-      _solidBatch.fillConvexPolygon(coordinates, color)
+      _solidBatch.fillConvexPolygon(coordinates, color.premultiplied)
     }
 
     over strokePolyline(coordinates List<double>, color Graphics.RGBA, thickness double) {
       assert(coordinates.count % 2 == 0)
       _glyphBatch.flush
-      _solidBatch.strokeNonOverlappingPolyline(coordinates, color, thickness, .OPEN)
+      _solidBatch.strokeNonOverlappingPolyline(coordinates, color.premultiplied, thickness, .OPEN)
     }
 
     over renderBoxShadow(boxX double, boxY double, boxWidth double, boxHeight double, clipX double, clipY double, clipWidth double, clipHeight double, blurRadius double) {
@@ -113,6 +113,7 @@ namespace Browser {
 
       _solidBatch.flush
       y += _fontSize - graphicsFont.size
+      color = color.premultiplied
 
       for codePoint = iterator.nextCodePoint; codePoint != -1; codePoint = iterator.nextCodePoint {
         x += _glyphBatch.appendGlyph(graphicsFont, codePoint, x, y, color)
