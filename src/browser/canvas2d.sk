@@ -61,23 +61,38 @@ namespace Browser {
     over strokePolyline(coordinates List<double>, color Graphics.RGBA, thickness double) {
       assert(coordinates.count % 2 == 0)
 
-      _context.strokeStyle = _colorToStyle(color)
-      _context.lineWidth = thickness
-      _context.beginPath()
+      var context = _context
+      context.strokeStyle = _colorToStyle(color)
+      context.lineWidth = thickness
+      context.beginPath()
 
       for i = 0; i < coordinates.count; i += 2 {
-        _context.lineTo(coordinates[i], coordinates[i + 1])
+        context.lineTo(coordinates[i], coordinates[i + 1])
       }
 
-      _context.stroke()
+      context.stroke()
     }
 
-    over renderBoxShadow(boxX double, boxY double, boxWidth double, boxHeight double, clipX double, clipY double, clipWidth double, clipHeight double, blurRadius double) {
+    over renderBoxShadow(
+      boxX double, boxY double, boxWidth double, boxHeight double,
+      clipX double, clipY double, clipWidth double, clipHeight double,
+      shadowAlpha double, blurSigma double) {
+
       if clipX >= _width || clipY >= _height || clipX + clipWidth <= 0 || clipY + clipHeight <= 0 {
         return
       }
 
-      # TODO
+      var context = _context
+      var offset = 1000
+      context.save()
+      context.rect(clipX, clipY, clipWidth, clipHeight)
+      context.clip()
+      context.shadowColor = "rgba(0,0,0,\(shadowAlpha))"
+      context.shadowOffsetX = offset
+      context.shadowOffsetY = offset
+      context.shadowBlur = blurSigma * 3
+      context.fillRect(boxX - offset, boxY - offset, boxWidth, boxHeight)
+      context.restore()
     }
 
     over renderText(x double, y double, text string, font Editor.Font, color Graphics.RGBA) {

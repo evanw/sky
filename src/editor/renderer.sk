@@ -44,8 +44,11 @@ namespace Editor {
     def fillBox(x double, y double, width double, height double, color Graphics.RGBA)
     def fillRoundedBox(x double, y double, width double, height double, color Graphics.RGBA, radius double)
     def strokePolyline(coordinates List<double>, color Graphics.RGBA, thickness double)
-    def renderBoxShadow(boxX double, boxY double, boxWidth double, boxHeight double, clipX double, clipY double, clipWidth double, clipHeight double, blurRadius double)
     def renderText(x double, y double, text string, font Font, color Graphics.RGBA)
+    def renderBoxShadow(
+      boxX double, boxY double, boxWidth double, boxHeight double,
+      clipX double, clipY double, clipWidth double, clipHeight double,
+      shadowAlpha double, blurSigma double)
   }
 
   # This contains all of the mappings from semantic rendering commands to pixels
@@ -99,7 +102,7 @@ namespace Editor {
       _renderer.renderBoxShadow(
         x - 2 * width, y - width, 2 * width, height + 2 * width,
         x, y, width, height,
-        width)
+        0.5, width / 3.0)
     }
 
     def renderText(x double, y double, text string, font Font, color Color, alpha int) {

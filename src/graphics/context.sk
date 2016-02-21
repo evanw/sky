@@ -99,11 +99,14 @@ namespace Graphics {
   }
 
   namespace VertexFormat {
-    const POSITION4_COLOR4 = VertexFormat.new
+    const POSITION_F2 = VertexFormat.new
+      .add(GLSLX_NAME_POSITION2, .FLOAT, 2)
+
+    const POSITION_F4_COLOR_U4 = VertexFormat.new
       .add(GLSLX_NAME_POSITION4, .FLOAT, 4)
       .add(GLSLX_NAME_COLOR4, .BYTE, 4)
 
-    const POSITION4_COLOR4_COORD4 = VertexFormat.new
+    const POSITION_F4_COLOR_U4_COORD_U4 = VertexFormat.new
       .add(GLSLX_NAME_POSITION4, .FLOAT, 4)
       .add(GLSLX_NAME_COLOR4, .BYTE, 4)
       .add(GLSLX_NAME_COORD4, .BYTE, 4)

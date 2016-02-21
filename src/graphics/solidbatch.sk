@@ -22,7 +22,7 @@ namespace Graphics {
     def new(context Context, pool BufferPool) {
       _context = context
       _pool = pool
-      _material = context.createMaterial(.POSITION4_COLOR4, GLSLX_SOURCE_SOLID_BATCH_VERTEX, GLSLX_SOURCE_SOLID_BATCH_FRAGMENT)
+      _material = context.createMaterial(.POSITION_F4_COLOR_U4, GLSLX_SOURCE_SOLID_BATCH_VERTEX, GLSLX_SOURCE_SOLID_BATCH_FRAGMENT)
     }
 
     def resize(width double, height double, pixelScale double) {
@@ -32,7 +32,7 @@ namespace Graphics {
 
     def flush {
       if !_vertices.isEmpty {
-        var area = _pool.allocate(.POSITION4_COLOR4, _vertices.fixedArray)
+        var area = _pool.allocate(.POSITION_F4_COLOR_U4, _vertices.fixedArray)
         if area != null {
           _context.setPremultipliedBlendState
           _context.draw(.TRIANGLE_STRIP, _material, area)

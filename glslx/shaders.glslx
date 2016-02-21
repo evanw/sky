@@ -1,14 +1,19 @@
 precision highp float;
 
-uniform vec2 scale2;
 uniform sampler2D texture;
+uniform vec2 dropShadowOptions;
+uniform vec2 scale2;
+uniform vec4 dropShadowBox;
 
-attribute vec4 position4;
+attribute vec2 position2;
 attribute vec4 color4;
 attribute vec4 coord4;
+attribute vec4 position4;
 
-varying vec4 _coord4;
+varying vec2 _position2;
 varying vec4 _color4;
+varying vec4 _coord4;
+varying vec4 _position4;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -44,4 +49,30 @@ export void glyphBatchFragment() {
   alpha += ((sqrt(mix(bg * bg, fg * fg, sqrt(alpha))) - bg) / (fg - bg) - alpha) * 0.5;
 
   gl_FragColor = _color4 * alpha;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+// This approximates the error function, needed for the gaussian integral
+vec4 erf(vec4 x) {
+  vec4 s = sign(x), a = abs(x);
+  x = a * (a * (a * a * 0.078108 + 0.230389) + 0.278393) + 1.0;
+  x *= x;
+  return s - s / (x * x);
+}
+
+// Return the mask for the shadow of a box from lower to upper
+float boxShadow(vec2 lower, vec2 upper, vec2 point, float sigma) {
+  vec4 query = vec4(point - lower, point - upper);
+  vec4 integral = 0.5 + 0.5 * erf(query * (sqrt(0.5) / sigma));
+  return (integral.z - integral.x) * (integral.w - integral.y);
+}
+
+export void dropShadowVertex() {
+  _position2 = position2;
+  gl_Position = vec4(position2.xy * scale2 - sign(scale2), 0, 1);
+}
+
+export void dropShadowFragment() {
+  gl_FragColor = vec4(0, 0, 0, dropShadowOptions.x * boxShadow(dropShadowBox.xy, dropShadowBox.zw, _position2.xy, dropShadowOptions.y));
 }

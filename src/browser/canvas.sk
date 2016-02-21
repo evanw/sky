@@ -60,8 +60,11 @@ namespace Browser {
     def fillBox(x double, y double, width double, height double, color Graphics.RGBA)
     def fillRoundedBox(x double, y double, width double, height double, color Graphics.RGBA, radius double)
     def strokePolyline(coordinates List<double>, color Graphics.RGBA, thickness double)
-    def renderBoxShadow(boxX double, boxY double, boxWidth double, boxHeight double, clipX double, clipY double, clipWidth double, clipHeight double, blurRadius double)
     def renderText(x double, y double, text string, font Editor.Font, color Graphics.RGBA)
+    def renderBoxShadow(
+      boxX double, boxY double, boxWidth double, boxHeight double,
+      clipX double, clipY double, clipWidth double, clipHeight double,
+      shadowAlpha double, blurSigma double)
 
     def setView(view Editor.View) {
       if _view != view {

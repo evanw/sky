@@ -49,7 +49,7 @@ namespace Graphics {
       _platform = platform
       _context = context
       _pool = pool
-      _material = context.createMaterial(.POSITION4_COLOR4_COORD4, GLSLX_SOURCE_GLYPH_BATCH_VERTEX, GLSLX_SOURCE_GLYPH_BATCH_FRAGMENT)
+      _material = context.createMaterial(.POSITION_F4_COLOR_U4_COORD_U4, GLSLX_SOURCE_GLYPH_BATCH_VERTEX, GLSLX_SOURCE_GLYPH_BATCH_FRAGMENT)
     }
 
     def resize(width double, height double, pixelScale double) {
@@ -159,7 +159,7 @@ namespace Graphics {
           _texture.upload(slice.pixels, bounds.minX, bounds.minY, bounds.width, bounds.height)
         }
 
-        var area = _pool.allocate(.POSITION4_COLOR4_COORD4, _buffer.fixedArray)
+        var area = _pool.allocate(.POSITION_F4_COLOR_U4_COORD_U4, _buffer.fixedArray)
         if area != null {
           _context.draw(.TRIANGLES, _material, area)
           _buffer.clear
