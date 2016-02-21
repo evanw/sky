@@ -26,6 +26,13 @@ namespace Graphics {
         _floats = Float32Array.new(_bytes.buffer, 0, byteCount >> 2)
       }
 
+      def new(array FixedArray, byteIndex int, byteCount int) {
+        assert(byteIndex >= 0 && byteCount >= 0 && byteIndex + byteCount <= array.byteCount)
+        assert(byteCount % 4 == 0) # This is an alignment requirement for Float32Array
+        _bytes = array._bytes.subarray(byteIndex, byteIndex + byteCount)
+        _floats = Float32Array.new(array._bytes.buffer, array._bytes.byteOffset + byteIndex, byteCount >> 2)
+      }
+
       def byteCount int {
         return _bytes.length
       }
@@ -51,10 +58,7 @@ namespace Graphics {
       }
 
       def getRange(byteIndex int, byteCount int) FixedArray {
-        assert(byteIndex >= 0 && byteCount >= 0 && byteIndex + byteCount <= self.byteCount)
-        var array = FixedArray.new(byteCount)
-        array._bytes.set(_bytes.subarray(byteIndex, byteIndex + byteCount))
-        return array
+        return FixedArray.new(self, byteIndex, byteCount)
       }
 
       def setRange(byteIndex int, array FixedArray) {

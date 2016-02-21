@@ -51,8 +51,35 @@ namespace Graphics {
     }
 
     def appendVertex(x double, y double, u double, v double, color RGBA) {
-      appendFloat(x).appendFloat(y).appendFloat(u).appendFloat(v)
-      appendByte(color.red).appendByte(color.green).appendByte(color.blue).appendByte(color.alpha)
+      var byteCount = _byteCount
+      _ensureSpace(4 * 5)
+      _array.setFloat(byteCount, x)
+      _array.setFloat(byteCount + 4, y)
+      _array.setFloat(byteCount + 8, u)
+      _array.setFloat(byteCount + 12, v)
+      _array.setByte(byteCount + 16, color.red)
+      _array.setByte(byteCount + 17, color.green)
+      _array.setByte(byteCount + 18, color.blue)
+      _array.setByte(byteCount + 19, color.alpha)
+      _byteCount = byteCount + 4 * 5
+    }
+
+    def appendVertex(x double, y double, u double, v double, color RGBA, a int, b int, c int, d int) {
+      var byteCount = _byteCount
+      _ensureSpace(4 * 6)
+      _array.setFloat(byteCount, x)
+      _array.setFloat(byteCount + 4, y)
+      _array.setFloat(byteCount + 8, u)
+      _array.setFloat(byteCount + 12, v)
+      _array.setByte(byteCount + 16, color.red)
+      _array.setByte(byteCount + 17, color.green)
+      _array.setByte(byteCount + 18, color.blue)
+      _array.setByte(byteCount + 19, color.alpha)
+      _array.setByte(byteCount + 20, a)
+      _array.setByte(byteCount + 21, b)
+      _array.setByte(byteCount + 22, c)
+      _array.setByte(byteCount + 23, d)
+      _byteCount = byteCount + 4 * 6
     }
 
     def _ensureSpace(space int) {

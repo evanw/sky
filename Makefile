@@ -9,6 +9,9 @@ shaders:
 debug: | node_modules
 	$(SKEW)
 
+profile: | node_modules
+	$(SKEW) --release --js-mangle=false --js-minify=false
+
 release: | node_modules
 	$(SKEW) --release
 
@@ -17,6 +20,9 @@ watch-shaders:
 
 watch-debug:
 	node_modules/.bin/watch src 'clear && make debug'
+
+watch-profile:
+	node_modules/.bin/watch src 'clear && make profile'
 
 watch-release:
 	node_modules/.bin/watch src 'clear && make release'

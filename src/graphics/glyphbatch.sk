@@ -128,14 +128,14 @@ namespace Graphics {
       var maxV = coords.maxV
 
       # Triangle 1
-      _appendVertex(buffer, minX, minY, minU, minV, color, shiftByte, backgroundLuminanceByte)
-      _appendVertex(buffer, maxX, minY, maxU, minV, color, shiftByte, backgroundLuminanceByte)
-      _appendVertex(buffer, maxX, maxY, maxU, maxV, color, shiftByte, backgroundLuminanceByte)
+      buffer.appendVertex(minX, minY, minU, minV, color, shiftByte, backgroundLuminanceByte, 0, 0)
+      buffer.appendVertex(maxX, minY, maxU, minV, color, shiftByte, backgroundLuminanceByte, 0, 0)
+      buffer.appendVertex(maxX, maxY, maxU, maxV, color, shiftByte, backgroundLuminanceByte, 0, 0)
 
       # Triangle 2
-      _appendVertex(buffer, minX, minY, minU, minV, color, shiftByte, backgroundLuminanceByte)
-      _appendVertex(buffer, maxX, maxY, maxU, maxV, color, shiftByte, backgroundLuminanceByte)
-      _appendVertex(buffer, minX, maxY, minU, maxV, color, shiftByte, backgroundLuminanceByte)
+      buffer.appendVertex(minX, minY, minU, minV, color, shiftByte, backgroundLuminanceByte, 0, 0)
+      buffer.appendVertex(maxX, maxY, maxU, maxV, color, shiftByte, backgroundLuminanceByte, 0, 0)
+      buffer.appendVertex(minX, maxY, minU, maxV, color, shiftByte, backgroundLuminanceByte, 0, 0)
 
       return glyph.advanceWidth * inversePixelScale
     }
@@ -202,10 +202,5 @@ namespace Graphics {
   namespace GlyphBatch {
     const SORT_BY_HEIGHT = (a GlyphMetadata, b GlyphMetadata) => a.glyph.mask.height <=> b.glyph.mask.height
     var _nextFontID = 0
-
-    def _appendVertex(buffer GrowableArray, x double, y double, u double, v double, color RGBA, shiftByte int, backgroundLuminanceByte int) {
-      buffer.appendVertex(x, y, u, v, color)
-      buffer.appendByte(shiftByte).appendByte(backgroundLuminanceByte).appendByte(0).appendByte(0)
-    }
   }
 }
