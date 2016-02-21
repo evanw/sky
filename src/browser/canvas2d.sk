@@ -8,6 +8,10 @@ namespace Browser {
       _context = _element.getContext("2d")
     }
 
+    over setDefaultBackgroundColor(color Graphics.RGBA) {
+      _element.style.background = _colorToStyle(color)
+    }
+
     over _renderNothing {
       _context.fillStyle = "rgba(0,0,0,0.001)"
       _context.fillRect(0, 0, 1, 1)

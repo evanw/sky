@@ -5,37 +5,43 @@ uniform sampler2D texture;
 
 attribute vec4 position4;
 attribute vec4 color4;
-attribute float coord1;
+attribute vec4 coord4;
 
-varying vec2 _coord2;
-varying vec3 _coord3;
+varying vec4 _coord4;
 varying vec4 _color4;
 
 ////////////////////////////////////////////////////////////////////////////////
 
 export void solidBatchVertex() {
-  _coord2 = position4.zw;
+  _coord4 = position4;
   _color4 = color4;
   gl_Position = vec4(position4.xy * scale2 - sign(scale2), 0, 1);
 }
 
 export void solidBatchFragment() {
-  gl_FragColor = _color4 * min(1.0, min(_coord2.x, _coord2.y));
+  gl_FragColor = _color4 * min(1.0, min(_coord4.z, _coord4.w));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 export void glyphBatchVertex() {
-  _coord3 = vec3(position4.zw, coord1 * 3.0);
+  _coord4 = vec4(position4.zw, coord4.x * 3.0, coord4.y);
   _color4 = color4;
   gl_Position = vec4(position4.xy * scale2 - sign(scale2), 0, 1);
 }
 
 export void glyphBatchFragment() {
-  vec4 mask = texture2D(texture, _coord3.xy);
-  gl_FragColor = _color4 * (
-    _coord3.z < 1.0 ? mask.x :
-    _coord3.z < 2.0 ? mask.y :
-    _coord3.z < 3.0 ? mask.z :
-    mask.w);
+  vec4 mask = texture2D(texture, _coord4.xy);
+  float bg = _coord4.w;
+  float fg = dot(_color4.rgb, vec3(0.299, 0.587, 0.114));
+  float alpha =
+    _coord4.z < 1.0 ? mask.x :
+    _coord4.z < 2.0 ? mask.y :
+    mask.z;
+
+  // Attempt to correct for some of the gamma-related "bolding" that the OS adds
+  // to the mask values since we know the real background and foreground colors
+  alpha += ((sqrt(mix(bg * bg, fg * fg, sqrt(alpha))) - bg) / (fg - bg) - alpha) * 0.5;
+
+  gl_FragColor = _color4 * alpha;
 }

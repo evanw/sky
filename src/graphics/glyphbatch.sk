@@ -43,12 +43,13 @@ namespace Graphics {
     var _width = 0.0
     var _height = 0.0
     var _inversePixelScale = 0.0
+    var _backgroundLuminanceByte = 0
 
     def new(platform Editor.Platform, context Context, pool BufferPool) {
       _platform = platform
       _context = context
       _pool = pool
-      _material = context.createMaterial(.POSITION4_COLOR4_COORD1, GLSLX_SOURCE_GLYPH_BATCH_VERTEX, GLSLX_SOURCE_GLYPH_BATCH_FRAGMENT)
+      _material = context.createMaterial(.POSITION4_COLOR4_COORD4, GLSLX_SOURCE_GLYPH_BATCH_VERTEX, GLSLX_SOURCE_GLYPH_BATCH_FRAGMENT)
     }
 
     def resize(width double, height double, pixelScale double) {
@@ -62,6 +63,10 @@ namespace Graphics {
         _metadata = {}
         _packer = MaskPacker.new(_packerWidth, _packerHeight, 1)
       }
+    }
+
+    def setBackgroundColor(color Graphics.RGBA) {
+      _backgroundLuminanceByte = color.luminance
     }
 
     def createFont(fontNames List<string>, fontSize double) Font {
@@ -109,8 +114,10 @@ namespace Graphics {
       var glyph = metadata.glyph
       var coords = metadata.coords
       var buffer = _buffer
+      var backgroundLuminanceByte = _backgroundLuminanceByte
       var mask = glyph.mask
       var shift = x - Math.floor(x)
+      var shiftByte = (shift * 255) as int
       var minX = x - glyph.originX * inversePixelScale - shift
       var minY = y - glyph.originY * inversePixelScale
       var maxX = minX + mask.width * inversePixelScale
@@ -121,14 +128,14 @@ namespace Graphics {
       var maxV = coords.maxV
 
       # Triangle 1
-      buffer.appendVertex(minX, minY, minU, minV, color).appendFloat(shift)
-      buffer.appendVertex(maxX, minY, maxU, minV, color).appendFloat(shift)
-      buffer.appendVertex(maxX, maxY, maxU, maxV, color).appendFloat(shift)
+      _appendVertex(buffer, minX, minY, minU, minV, color, shiftByte, backgroundLuminanceByte)
+      _appendVertex(buffer, maxX, minY, maxU, minV, color, shiftByte, backgroundLuminanceByte)
+      _appendVertex(buffer, maxX, maxY, maxU, maxV, color, shiftByte, backgroundLuminanceByte)
 
       # Triangle 2
-      buffer.appendVertex(minX, minY, minU, minV, color).appendFloat(shift)
-      buffer.appendVertex(maxX, maxY, maxU, maxV, color).appendFloat(shift)
-      buffer.appendVertex(minX, maxY, minU, maxV, color).appendFloat(shift)
+      _appendVertex(buffer, minX, minY, minU, minV, color, shiftByte, backgroundLuminanceByte)
+      _appendVertex(buffer, maxX, maxY, maxU, maxV, color, shiftByte, backgroundLuminanceByte)
+      _appendVertex(buffer, minX, maxY, minU, maxV, color, shiftByte, backgroundLuminanceByte)
 
       return glyph.advanceWidth * inversePixelScale
     }
@@ -152,7 +159,7 @@ namespace Graphics {
           _texture.upload(slice.pixels, bounds.minX, bounds.minY, bounds.width, bounds.height)
         }
 
-        var area = _pool.allocate(.POSITION4_COLOR4_COORD1, _buffer.fixedArray)
+        var area = _pool.allocate(.POSITION4_COLOR4_COORD4, _buffer.fixedArray)
         if area != null {
           _context.draw(.TRIANGLES, _material, area)
           _buffer.clear
@@ -195,5 +202,10 @@ namespace Graphics {
   namespace GlyphBatch {
     const SORT_BY_HEIGHT = (a GlyphMetadata, b GlyphMetadata) => a.glyph.mask.height <=> b.glyph.mask.height
     var _nextFontID = 0
+
+    def _appendVertex(buffer GrowableArray, x double, y double, u double, v double, color RGBA, shiftByte int, backgroundLuminanceByte int) {
+      buffer.appendVertex(x, y, u, v, color)
+      buffer.appendByte(shiftByte).appendByte(backgroundLuminanceByte).appendByte(0).appendByte(0)
+    }
   }
 }

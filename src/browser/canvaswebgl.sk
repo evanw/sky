@@ -33,6 +33,10 @@ namespace Browser {
       _glyphBatch = Graphics.GlyphBatch.new(platform, _context, _pool)
     }
 
+    over setDefaultBackgroundColor(color Graphics.RGBA) {
+      _glyphBatch.setBackgroundColor(color)
+    }
+
     over _renderNothing {
       _glyphBatch.flush
       _solidBatch.fillRect(0, 0, 1, 1, .TRANSPARENT)

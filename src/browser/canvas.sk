@@ -56,6 +56,7 @@ namespace Browser {
     }
 
     def _renderNothing
+    def setDefaultBackgroundColor(color Graphics.RGBA)
     def fillBox(x double, y double, width double, height double, color Graphics.RGBA)
     def fillRoundedBox(x double, y double, width double, height double, color Graphics.RGBA, radius double)
     def strokePolyline(coordinates List<double>, color Graphics.RGBA, thickness double)

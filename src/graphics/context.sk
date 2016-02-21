@@ -103,10 +103,10 @@ namespace Graphics {
       .add(GLSLX_NAME_POSITION4, .FLOAT, 4)
       .add(GLSLX_NAME_COLOR4, .BYTE, 4)
 
-    const POSITION4_COLOR4_COORD1 = VertexFormat.new
+    const POSITION4_COLOR4_COORD4 = VertexFormat.new
       .add(GLSLX_NAME_POSITION4, .FLOAT, 4)
       .add(GLSLX_NAME_COLOR4, .BYTE, 4)
-      .add(GLSLX_NAME_COORD1, .FLOAT, 1)
+      .add(GLSLX_NAME_COORD4, .BYTE, 4)
   }
 
   interface VertexBuffer {
