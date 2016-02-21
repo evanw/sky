@@ -310,6 +310,7 @@ namespace Browser {
       on(_textarea, "blur", e => blurKeyboardInput)
       on(_textarea, "input", e => _handleInput)
       on(_textarea, "keydown", e => _handleKeyDown(e))
+      on(_textarea, "paste", e => _handlePaste(e))
 
       var style = _textarea.style
       style.position = "absolute"
@@ -343,10 +344,10 @@ namespace Browser {
       var view = _view
 
       # Clipboard handling in the browser really, really sucks. The standard is
-      # horrible and browsers do different things. We can't use the cut, copy,
-      # and paste events because Firefox doesn't even fire cut/copy if the
-      # element with focus has no selected text. Instead, try to guess when a
-      # cut or copy event is about to happen and quickly set the selected text.
+      # horrible and browsers do different things. We can't use the cut and
+      # copy events because Firefox doesn't even fire cut/copy if the element
+      # with focus has no selected text. Instead, try to guess when a cut or
+      # copy event is about to happen and quickly set the selected text.
       # Clear the selected text immediately afterwards so that it doesn't
       # interfere with our text input detection. This hack won't work with the
       # browser's cut/copy/paste commands triggered through the menu or through
@@ -369,6 +370,29 @@ namespace Browser {
       else if action != .NONE && action != .PASTE {
         event.preventDefault()
         view.triggerAction(action)
+      }
+    }
+
+    def _handlePaste(e dynamic) {
+      var normalClipboard = e.clipboardData
+      var ieClipboard = window.clipboardData
+
+      # Using clipboardData is far faster for large amounts of text, at least
+      # Chrome. The timeline view shows that pasting 32kb of text causes four
+      # successive layouts that all together take a full second to process.
+      # The time to read the same string off the clipboard below is negligible.
+      if normalClipboard {
+        _view?.insertText(normalClipboard.getData("text/plain"))
+      }
+
+      # IE is special as always
+      else if ieClipboard {
+        _view?.insertText(ieClipboard.getData("Text"))
+      }
+
+      # Make sure that this event doesn't actually insert into the textarea
+      if normalClipboard || ieClipboard {
+        e.preventDefault()
       }
     }
   }
