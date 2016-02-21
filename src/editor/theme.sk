@@ -55,67 +55,13 @@ namespace Editor {
     }
   }
 
-  # Colors are stored as 8-bit RGBA values and will be constant-folded at
-  # compile time in release mode. They are stored using a wrapped type instead
-  # of int for type safety and convenience.
-  type RGBA : int {
-    def red int {
-      return (self as int) >> 16 & 255
-    }
-
-    def green int {
-      return (self as int) >> 8 & 255
-    }
-
-    def blue int {
-      return (self as int) & 255
-    }
-
-    def alpha int {
-      return (self as int) >>> 24
-    }
-
-    def multiplyAlpha(a int) RGBA {
-      assert(a >= 0 && a <= 0xFF)
-      return new(red, green, blue, alpha * a / 0xFF)
-    }
-  }
-
-  namespace RGBA {
-    def transparent RGBA {
-      return new(0, 0, 0, 0)
-    }
-
-    def new(r int, g int, b int) RGBA {
-      return new(r, g, b, 255)
-    }
-
-    def new(r int, g int, b int, a int) RGBA {
-      assert(r >= 0 && r <= 0xFF)
-      assert(g >= 0 && g <= 0xFF)
-      assert(b >= 0 && b <= 0xFF)
-      assert(a >= 0 && a <= 0xFF)
-      return (r << 16 | g << 8 | b | a << 24) as RGBA
-    }
-
-    def hex(rgb int) RGBA {
-      return hexa(rgb, 255)
-    }
-
-    def hexa(rgb int, alpha int) RGBA {
-      assert(rgb >= 0 && rgb <= 0xFFFFFF)
-      assert(alpha >= 0 && alpha <= 0xFF)
-      return (rgb | alpha << 24) as RGBA
-    }
-  }
-
   # A theme defines a color map for the view. All color identifiers have
   # default values either by having a theme fallback color directly or by
   # being substituted with another identifier that has a fallback color.
   class Theme {
-    const colors IntMap<RGBA>
+    const colors IntMap<Graphics.RGBA>
 
-    def findColor(color Color) RGBA {
+    def findColor(color Color) Graphics.RGBA {
       while !(color in colors) {
         var next = Color.FALLBACK.get(color, color) as Color
         if next != color {
@@ -123,7 +69,7 @@ namespace Editor {
         } else if self != FALLBACK {
           return FALLBACK.findColor(color)
         } else {
-          return RGBA.transparent
+          return .TRANSPARENT
         }
       }
       return colors[color]
@@ -132,14 +78,14 @@ namespace Editor {
 
   namespace Theme {
     const FALLBACK = Theme.new({
-      Color.BACKGROUND_DEFAULT: RGBA.hex(0xFFFFFF),
-      Color.BACKGROUND_DIAGNOSTIC_ERROR: RGBA.hex(0xFF8877),
-      Color.BACKGROUND_DIAGNOSTIC_WARNING: RGBA.hex(0xFFEF00),
-      Color.BACKGROUND_SELECTED: RGBA.hex(0x7F7F7F),
-      Color.BORDER_MARGIN: RGBA.transparent,
-      Color.FOREGROUND_DEFAULT: RGBA.hex(0x000000),
-      Color.FOREGROUND_DIAGNOSTIC_ERROR: RGBA.hex(0x000000),
-      Color.FOREGROUND_DIAGNOSTIC_WARNING: RGBA.hex(0x000000),
+      Color.BACKGROUND_DEFAULT:            Graphics.RGBA.hex(0xFFFFFF),
+      Color.BACKGROUND_DIAGNOSTIC_ERROR:   Graphics.RGBA.hex(0xFF8877),
+      Color.BACKGROUND_DIAGNOSTIC_WARNING: Graphics.RGBA.hex(0xFFEF00),
+      Color.BACKGROUND_SELECTED:           Graphics.RGBA.hex(0x7F7F7F),
+      Color.BORDER_MARGIN:                 Graphics.RGBA.TRANSPARENT,
+      Color.FOREGROUND_DEFAULT:            Graphics.RGBA.hex(0x000000),
+      Color.FOREGROUND_DIAGNOSTIC_ERROR:   Graphics.RGBA.hex(0x000000),
+      Color.FOREGROUND_DIAGNOSTIC_WARNING: Graphics.RGBA.hex(0x000000),
     })
   }
 }

@@ -1,0 +1,297 @@
+namespace Graphics {
+  class Smooth {
+    enum Fill {
+      NORMAL
+      WITHOUT_AA
+    }
+
+    enum Stroke {
+      CLOSED
+      OPEN
+      OPEN_WITHOUT_ENDPOINT_AA
+    }
+
+    const _inside List<double> = []
+    const _materal Material = null
+    const _outside List<double> = []
+    const _vertices = GrowableArray.new
+    var _context Context = null
+    var _pixelScale = 1.0
+    var _pool BufferPool = null
+    var _previousColor RGBA = .TRANSPARENT
+    var _previousU = 0.0
+    var _previousV = 0.0
+    var _previousX = 0.0
+    var _previousY = 0.0
+
+    def new(context Context, pool BufferPool) {
+      _context = context
+      _pool = pool
+      _materal = context.createMaterial(_format, GLSLX_SOURCE_SMOOTH_VERTEX, GLSLX_SOURCE_SMOOTH_FRAGMENT)
+    }
+
+    def pixelScale double {
+      return _pixelScale
+    }
+
+    def resize(width double, height double, pixelScale double) {
+      _materal.setUniformVec2(GLSLX_NAME_SCALE2, 2 / width, -2 / height)
+      _pixelScale = pixelScale
+    }
+
+    def flush {
+      if !_vertices.isEmpty {
+        var area = _pool.allocate(_format, _vertices.fixedArray)
+        if area != null {
+          _context.setPremultipliedBlendState
+          _context.draw(.TRIANGLE_STRIP, _materal, area)
+          _vertices.clear
+          area.free
+        }
+      }
+    }
+
+    def fillRect(x double, y double, width double, height double, color RGBA, fill Fill) {
+      var coordinates = _rectCoordinates
+      coordinates[0] = x
+      coordinates[1] = y
+      coordinates[2] = x + width
+      coordinates[3] = y
+      coordinates[4] = x + width
+      coordinates[5] = y + height
+      coordinates[6] = x
+      coordinates[7] = y + height
+      fillConvexPolygon(coordinates, color, fill)
+    }
+
+    def strokeLine(startX double, startY double, endX double, endY double, color RGBA, thickness double) {
+      _strokeLine(startX, startY, endX, endY, color, thickness, .OPEN)
+    }
+
+    def strokeLineWithoutEndpointAA(startX double, startY double, endX double, endY double, color RGBA, thickness double) {
+      _strokeLine(startX, startY, endX, endY, color, thickness, .OPEN_WITHOUT_ENDPOINT_AA)
+    }
+
+    def _strokeLine(startX double, startY double, endX double, endY double, color RGBA, thickness double, stroke Stroke) {
+      assert(stroke != .CLOSED)
+      var coordinates = _lineCoordinates
+      coordinates[0] = startX
+      coordinates[1] = startY
+      coordinates[2] = endX
+      coordinates[3] = endY
+      strokeNonOverlappingPolyline(coordinates, color, thickness, stroke)
+    }
+
+    def fillConvexPolygon(coordinates List<double>, color RGBA, fill Fill) {
+      var inside = _inside
+      var outside = _outside
+
+      var n = coordinates.count
+      assert(n % 2 == 0)
+
+      if n < 6 {
+        return
+      }
+
+      color = color.premultiplied
+
+      # Reuse existing buffers to avoid extra allocations
+      while inside.count < n {
+        inside.append(0)
+        inside.append(0)
+        outside.append(0)
+        outside.append(0)
+      }
+
+      # Provide a way to optimize pixel-aligned rectangles
+      if fill == .WITHOUT_AA {
+        # Fill the interior with a triangle strip
+        for i = 0, j = n - 2; i <= j; i += 2, j -= 2 {
+          var vix = coordinates[i]
+          var viy = coordinates[i + 1]
+          var vjx = coordinates[j]
+          var vjy = coordinates[j + 1]
+          _appendVertex(vix, viy, 1, 1, color)
+          if i == 0 { _appendPreviousVertex }
+          if i < j { _appendVertex(vjx, vjy, 1, 1, color) }
+        }
+        _appendPreviousVertex
+      }
+
+      # Add a skirt around the edge for anti-aliasing
+      else {
+        # Compute both rings of points
+        for i = 0; i < n; i += 2 {
+          var v0x = coordinates[(i + n - 2) % n]
+          var v0y = coordinates[(i + n - 1) % n]
+          var v1x = coordinates[i]
+          var v1y = coordinates[i + 1]
+          var v2x = coordinates[(i + 2) % n]
+          var v2y = coordinates[(i + 3) % n]
+          var n01x = v0y - v1y
+          var n01y = v1x - v0x
+          var n01 = _length(n01x, n01y)
+          var n12x = v1y - v2y
+          var n12y = v2x - v1x
+          var n12 = _length(n12x, n12y)
+          var n012x = n01x / n01 + n12x / n12
+          var n012y = n01y / n01 + n12y / n12
+          var scale = 0.5 * _pixelScale * n01 / (n01x * n012x + n01y * n012y)
+          var dx = n012x * scale
+          var dy = n012y * scale
+          outside[i] = v1x - dx
+          outside[i + 1] = v1y - dy
+          inside[i] = v1x + dx
+          inside[i + 1] = v1y + dy
+        }
+
+        # Fill the interior with a triangle strip
+        for i = 0, j = n - 2; i <= j; i += 2, j -= 2 {
+          var vix = inside[i]
+          var viy = inside[i + 1]
+          var vjx = inside[j]
+          var vjy = inside[j + 1]
+          _appendVertex(vix, viy, 1, 1, color)
+          if i == 0 { _appendPreviousVertex }
+          if i < j { _appendVertex(vjx, vjy, 1, 1, color) }
+        }
+        _appendPreviousVertex
+
+        # Outline the edge with anti-aliasing
+        for i = 0; i <= n; i += 2 {
+          var j = i == n ? 0 : i
+          _appendVertex(outside[j], outside[j + 1], 0, 0, color)
+          if i == 0 { _appendPreviousVertex }
+          _appendVertex(inside[j], inside[j + 1], 1, 1, color)
+        }
+        _appendPreviousVertex
+      }
+    }
+
+    def strokeNonOverlappingPolyline(coordinates List<double>, color RGBA, thickness double, stroke Stroke) {
+      # Need to draw the line wider by one pixel for anti-aliasing
+      var aa = (thickness + _pixelScale) / _pixelScale
+      var halfWidth = (thickness + _pixelScale) / 2
+      var n = coordinates.count
+
+      assert(n % 2 == 0)
+      if n < 4 {
+        return
+      }
+
+      color = color.premultiplied
+
+      # Emit the start cap
+      if stroke != .CLOSED {
+        var v0x = coordinates[0]
+        var v0y = coordinates[1]
+        var v1x = coordinates[2]
+        var v1y = coordinates[3]
+        var dx = v1x - v0x
+        var dy = v1y - v0y
+        var d = _length(dx, dy)
+        var u = 0.5 * _pixelScale / d
+        var ux = dx * u
+        var uy = dy * u
+        var v = halfWidth / d
+        var vx = -dy * v
+        var vy = dx * v
+        if stroke == .OPEN_WITHOUT_ENDPOINT_AA {
+          _appendVertex(v0x - vx, v0y - vy, 0, aa, color)
+          _appendPreviousVertex
+          _appendVertex(v0x + vx, v0y + vy, aa, 0, color)
+        } else {
+          _appendVertex(v0x, v0y, aa / 2, aa / 2, color)
+          _appendPreviousVertex
+          _appendVertex(v0x + ux + vx, v0y + uy + vy, 0, aa, color)
+          _appendVertex(v0x - ux + vx, v0y - uy + vy, 0, aa, color)
+          _appendVertex(v0x - ux - vx, v0y - uy - vy, 0, aa, color)
+          _appendVertex(v0x, v0y, aa / 2, aa / 2, color)
+          _appendVertex(v0x + ux - vx, v0y + uy - vy, 0, aa, color)
+          _appendVertex(v0x + ux + vx, v0y + uy + vy, aa, 0, color)
+        }
+      }
+
+      # Emit the joins between segments
+      var minJoin = stroke == .CLOSED ? 0 : 1
+      var maxJoin = stroke == .CLOSED ? n + 1 : n - 1
+      for i = minJoin; i < maxJoin; i += 2 {
+        var v0x = coordinates[(i + n - 2) % n]
+        var v0y = coordinates[(i + n - 1) % n]
+        var v1x = coordinates[i % n]
+        var v1y = coordinates[(i + 1) % n]
+        var v2x = coordinates[(i + 2) % n]
+        var v2y = coordinates[(i + 3) % n]
+        var n01x = v0y - v1y
+        var n01y = v1x - v0x
+        var n01 = _length(n01x, n01y)
+        var n12x = v1y - v2y
+        var n12y = v2x - v1x
+        var n12 = _length(n12x, n12y)
+        var n012x = n01x / n01 + n12x / n12
+        var n012y = n01y / n01 + n12y / n12
+        var scale = halfWidth * n01 / (n01x * n012x + n01y * n012y)
+        var dx = n012x * scale
+        var dy = n012y * scale
+        _appendVertex(v1x - dx, v1y - dy, 0, aa, color)
+        if i == 0 { _appendPreviousVertex } # This only happens in the closed loop case
+        _appendVertex(v1x + dx, v1y + dy, aa, 0, color)
+      }
+
+      # Emit the end cap
+      if stroke != .CLOSED {
+        var v0x = coordinates[n - 4]
+        var v0y = coordinates[n - 3]
+        var v1x = coordinates[n - 2]
+        var v1y = coordinates[n - 1]
+        var dx = v1x - v0x
+        var dy = v1y - v0y
+        var d = _length(dx, dy)
+        var u = 0.5 * _pixelScale / d
+        var ux = dx * u
+        var uy = dy * u
+        var v = halfWidth / d, vx = -dy * v, vy = dx * v
+        if stroke == .OPEN_WITHOUT_ENDPOINT_AA {
+          _appendVertex(v1x - vx, v1y - vy, 0, aa, color)
+          _appendVertex(v1x + vx, v1y + vy, aa, 0, color)
+        } else {
+          _appendVertex(v1x - ux - vx, v1y - uy - vy, 0, aa, color)
+          _appendVertex(v1x - ux + vx, v1y - uy + vy, aa, 0, color)
+          _appendVertex(v1x, v1y, aa / 2, aa / 2, color)
+          _appendVertex(v1x + ux + vx, v1y + uy + vy, aa, 0, color)
+          _appendVertex(v1x + ux - vx, v1y + uy - vy, aa, 0, color)
+          _appendVertex(v1x - ux - vx, v1y - uy - vy, aa, 0, color)
+          _appendVertex(v1x, v1y, aa / 2, aa / 2, color)
+        }
+      }
+      _appendPreviousVertex
+    }
+
+    def _appendVertex(x double, y double, u double, v double, color RGBA) {
+      _previousX = x
+      _previousY = y
+      _previousU = u
+      _previousV = v
+      _previousColor = color
+      _vertices
+        .appendFloat(x).appendFloat(y).appendFloat(u).appendFloat(v)
+        .appendByte(color.red).appendByte(color.green).appendByte(color.blue).appendByte(color.alpha)
+    }
+
+    def _appendPreviousVertex {
+      _appendVertex(_previousX, _previousY, _previousU, _previousV, _previousColor)
+    }
+
+    def _length(x double, y double) double {
+      return Math.sqrt(x * x + y * y)
+    }
+  }
+
+  namespace Smooth {
+    const _rectCoordinates List<double> = [0, 0, 0, 0, 0, 0, 0, 0]
+    const _lineCoordinates List<double> = [0, 0, 0, 0]
+    const _format = VertexFormat.new
+      .add(GLSLX_NAME_POSITION4, .FLOAT, 4)
+      .add(GLSLX_NAME_COORD4, .BYTE, 4)
+  }
+}

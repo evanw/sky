@@ -65,6 +65,23 @@ namespace Editor {
   # one for the vertical scrollbar. The scrollbar size is independent from the
   # size of the viewport into the content.
   class Scrollbar {
+    var _isX bool
+    var _x = 0.0
+    var _y = 0.0
+    var _width = 0.0
+    var _height = 0.0
+    var _minSize = 0.0
+    var _viewSize = 0.0
+    var _viewOffset = 0.0
+    var _scrollSize = 0.0
+    var _scrollOffset = 0.0
+    var _positionOffset = 0.0
+    var _positionSize = 0.0
+    var _mappedSize = 0.0
+    var _mappedOffset = 0.0
+    var _draggingOffset = 0.0
+    var _isDraggingThumb = false
+
     def new(axis Axis) {
       _isX = axis == .X
     }
@@ -161,23 +178,6 @@ namespace Editor {
       _mappedSize = Math.max(_minSize, _positionSize * _viewSize / _scrollSize)
       _mappedOffset = (_positionSize - _mappedSize) * _scrollOffset / (_scrollSize - _viewSize)
     }
-
-    var _isX bool
-    var _x = 0.0
-    var _y = 0.0
-    var _width = 0.0
-    var _height = 0.0
-    var _minSize = 0.0
-    var _viewSize = 0.0
-    var _viewOffset = 0.0
-    var _scrollSize = 0.0
-    var _scrollOffset = 0.0
-    var _positionOffset = 0.0
-    var _positionSize = 0.0
-    var _mappedSize = 0.0
-    var _mappedOffset = 0.0
-    var _draggingOffset = 0.0
-    var _isDraggingThumb = false
   }
 
   # Each view is backed by a model and manages keyboard input, mouse input,
@@ -215,7 +215,7 @@ namespace Editor {
     var _marginWidth = 0.0
     var _marginPaddingLeft = 0.0
     var _marginPaddingRight = 0.0
-    var _scrollbarThickness = 0.0
+    var _scrollbarThickness = 11.0
 
     var _settings IntMap<bool> = {
       ViewSetting.SCROLL_PAST_END: true,

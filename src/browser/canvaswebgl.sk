@@ -1,0 +1,112 @@
+namespace Browser {
+  class CanvasElementWebGL : CanvasElement {
+    var _context Context = null
+    var _pool Graphics.BufferPool = null
+    var _smooth Graphics.Smooth = null
+
+    def new(platform Editor.Platform, shortcuts Editor.ShortcutMap) {
+      super(platform, shortcuts)
+
+      var gl WebGLRenderingContext = null
+      var options dynamic = {
+        "alpha": false,
+        "antialias": false,
+        "depth": false,
+        "preserveDrawingBuffer": true,
+        "stencil": false,
+      }
+
+      # Attempt to use the official WebGL string
+      try {
+        gl = _element.getContext("webgl", options)
+      }
+
+      # Fall back to the older unofficial WebGL string
+      gl ?= _element.getContext("experimental-webgl", options)
+
+      _context = Context.new(gl)
+      _pool = Graphics.BufferPool.new(_context)
+      _smooth = Graphics.Smooth.new(_context, _pool)
+    }
+
+    over _renderNothing {
+      _smooth.fillRect(0, 0, 1, 1, .TRANSPARENT, .WITHOUT_AA)
+    }
+
+    over _updateSize {
+      super
+      _context.resize(_element.width, _element.height)
+      _smooth.resize(_width, _height, 1 / _pixelScale)
+    }
+
+    over _render {
+      super
+      _smooth.flush
+    }
+
+    over fillBox(x double, y double, width double, height double, color Graphics.RGBA) {
+      if x >= _width || y >= _height || x + width <= 0 || y + height <= 0 {
+        return
+      }
+
+      _smooth.fillRect(x, y, width, height, color,
+        x == x as int &&
+        y == y as int &&
+        width == width as int &&
+        height == height as int
+        ? .WITHOUT_AA : .NORMAL)
+    }
+
+    over fillRoundedBox(x double, y double, width double, height double, color Graphics.RGBA, radius double) {
+      if x >= _width || y >= _height || x + width <= 0 || y + height <= 0 {
+        return
+      }
+
+      radius = Math.min(radius, width / 2, height / 2)
+
+      var coordinates List<double> = []
+      var minX = x + radius
+      var minY = y + radius
+      var maxX = x + width - radius
+      var maxY = y + height - radius
+      var isClampedX = radius == width / 2
+      var isClampedY = radius == height / 2
+
+      _appendQuarterTurn(coordinates, minX, minY, radius, -Math.PI, -Math.PI / 2, isClampedY)
+      _appendQuarterTurn(coordinates, maxX, minY, radius, -Math.PI / 2, 0, isClampedX)
+      _appendQuarterTurn(coordinates, maxX, maxY, radius, 0, Math.PI / 2, isClampedY)
+      _appendQuarterTurn(coordinates, minX, maxY, radius, Math.PI / 2, Math.PI, isClampedX)
+      _smooth.fillConvexPolygon(coordinates, color, .NORMAL)
+    }
+
+    over strokePolyline(coordinates List<double>, color Graphics.RGBA, thickness double) {
+      assert(coordinates.count % 2 == 0)
+      _smooth.strokeNonOverlappingPolyline(coordinates, color, thickness, .OPEN)
+    }
+
+    over renderBoxShadow(boxX double, boxY double, boxWidth double, boxHeight double, clipX double, clipY double, clipWidth double, clipHeight double, blurRadius double) {
+      if clipX >= _width || clipY >= _height || clipX + clipWidth <= 0 || clipY + clipHeight <= 0 {
+        return
+      }
+
+      # TODO
+    }
+
+    over renderText(x double, y double, text string, font Editor.Font, color Graphics.RGBA) {
+      if x >= _width || y >= _height || y + _fontSize <= 0 {
+        return
+      }
+
+      # TODO
+    }
+
+    def _appendQuarterTurn(coordinates List<double>, centerX double, centerY double, radius double, fromAngle double, toAngle double, skipStartPoint bool) {
+      var n = 1 + Math.ceil(radius * _pixelScale / Math.PI) as int
+      for i = skipStartPoint as int; i <= n; i++ {
+        var angle = fromAngle + (toAngle - fromAngle) * i / n
+        coordinates.append(centerX + Math.cos(angle) * radius)
+        coordinates.append(centerY + Math.sin(angle) * radius)
+      }
+    }
+  }
+}

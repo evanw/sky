@@ -1,0 +1,145 @@
+namespace Graphics {
+  enum BlendOperation {
+    ZERO
+    ONE
+
+    SOURCE_COLOR
+    TARGET_COLOR
+    INVERSE_SOURCE_COLOR
+    INVERSE_TARGET_COLOR
+
+    SOURCE_ALPHA
+    TARGET_ALPHA
+    INVERSE_SOURCE_ALPHA
+    INVERSE_TARGET_ALPHA
+
+    CONSTANT
+    INVERSE_CONSTANT
+  }
+
+  enum Primitive {
+    TRIANGLES
+    TRIANGLE_STRIP
+  }
+
+  interface Context {
+    def addContextResetHandler(callback fn())
+    def beginFrame
+    def clear(color RGBA)
+    def createMaterial(format VertexFormat, vertexSource string, fragmentSource string) Material
+    def createTexture(format TextureFormat, width int, height int) Texture { return createTexture(format, width, height, null) }
+    def createTexture(format TextureFormat, width int, height int, pixels FixedArray) Texture
+    def createRenderTarget(texture Texture) RenderTarget
+    def createVertexBuffer(byteCount int) VertexBuffer
+    def currentRenderTarget RenderTarget
+    def draw(primitive Primitive, material Material, area BufferArea)
+    def endFrame
+    def height int
+    def removeContextResetHandler(callback fn())
+    def resize(width int, height int)
+    def setRenderTarget(renderTarget RenderTarget)
+    def setViewport(x int, y int, width int, height int)
+    def width int
+
+    def setBlendState(source BlendOperation, target BlendOperation)
+    def setCopyBlendState { setBlendState(.ONE, .ZERO) }
+    def setAddBlendState { setBlendState(.ONE, .ONE) }
+    def setPremultipliedBlendState { setBlendState(.ONE, .INVERSE_SOURCE_ALPHA) }
+    def setUnpremultipliedBlendState { setBlendState(.SOURCE_ALPHA, .INVERSE_SOURCE_ALPHA) }
+  }
+
+  interface Material {
+    def context Context
+    def format VertexFormat
+    def fragmentSource string
+    def vertexSource string
+    def setUniformFloat(name string, x double)
+    def setUniformInt(name string, x int)
+    def setUniformVec2(name string, x double, y double)
+    def setUniformVec3(name string, x double, y double, z double)
+    def setUniformVec4(name string, x double, y double, z double, w double)
+    def setUniformVec4(name string, c RGBA) { setUniformVec4(name, c.red / 255.0, c.green / 255.0, c.blue / 255.0, c.alpha / 255.0) }
+    def setUniformMat3(name string, m00 double, m01 double, m02 double, m10 double, m11 double, m12 double, m20 double, m21 double, m22 double)
+    def setUniformSampler(name string, texture Texture, index int)
+  }
+
+  enum AttributeType {
+    FLOAT
+    BYTE
+
+    def byteLength int {
+      return self == FLOAT ? 4 : 1
+    }
+  }
+
+  class Attribute {
+    const name string
+    const type AttributeType
+    const count int
+    const byteOffset int
+  }
+
+  class VertexFormat {
+    var _attributes List<Attribute> = []
+    var _stride = 0
+
+    def attributes List<Attribute> {
+      return _attributes
+    }
+
+    def stride int {
+      return _stride
+    }
+
+    def add(name string, type AttributeType, count int) VertexFormat {
+      _attributes.append(Attribute.new(name, type, count, _stride))
+      _stride += count * type.byteLength
+      return self
+    }
+  }
+
+  interface VertexBuffer {
+    def byteCount int
+    def context Context
+    def move(sourceByteOffset int, targetByteOffset int, byteCount int)
+    def upload(array FixedArray) { upload(array, 0) }
+    def upload(array FixedArray, byteOffset int)
+  }
+
+  enum PixelFilter {
+    NEAREST
+    LINEAR
+  }
+
+  enum PixelWrap {
+    REPEAT
+    CLAMP
+  }
+
+  class TextureFormat {
+    const minFilter PixelFilter
+    const magFilter PixelFilter
+    const wrap PixelWrap
+  }
+
+  namespace TextureFormat {
+    const LINEAR_CLAMP = new(.LINEAR, .LINEAR, .CLAMP)
+    const LINEAR_MIN_NEAREST_MAG_CLAMP = new(.LINEAR, .NEAREST, .CLAMP)
+    const NEAREST_CLAMP = new(.NEAREST, .NEAREST, .CLAMP)
+  }
+
+  interface Texture {
+    def context Context
+    def format TextureFormat
+    def height int
+    def resize(width int, height int, pixels FixedArray)
+    def setFormat(format TextureFormat)
+    def width int
+  }
+
+  interface RenderTarget {
+    def context Context
+    def texture Texture
+    def setColor(texture Texture)
+  }
+}

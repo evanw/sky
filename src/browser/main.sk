@@ -5,7 +5,7 @@ namespace Browser {
     var model = Editor.Model.new("<demo>", platform)
     model.setLexer(.SKEW)
 
-    var canvas = CanvasElement2D.new(platform, Editor.ShortcutMap.new(platform))
+    var canvas = _createCanvas(platform)
     canvas.changeFont(12, 10, 16, ["Menlo", "Monaco", "Consolas"])
 
     var translator = Editor.SemanticToPixelTranslator.new(canvas)
@@ -29,5 +29,18 @@ namespace Browser {
       dynamic.requestAnimationFrame(tick)
     }
     tick()
+  }
+
+  def _createCanvas(platform Editor.Platform) CanvasElement {
+    var shortcuts = Editor.ShortcutMap.new(platform)
+
+    # Attempt to use WebGL first because it's a lot faster
+    try {
+      # TODO: This isn't fully working yet
+      # return CanvasElementWebGL.new(platform, shortcuts)
+    }
+
+    # Fall back to the 2D canvas API
+    return CanvasElement2D.new(platform, shortcuts)
   }
 }

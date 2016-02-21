@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "fast-watch": "1.0.0",
-    "skew": "0.7.25"
+    "glslx": "0.1.18",
+    "skew": "0.7.26"
   }
 }

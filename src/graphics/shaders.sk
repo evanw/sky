@@ -1,0 +1,6 @@
+const GLSLX_SOURCE_SMOOTH_VERTEX = "precision highp float;uniform vec2 d;attribute vec4 c,f;varying vec2 a;varying vec4 b;void main(){a=c.zw,b=f,gl_Position=vec4(c.xy*d-sign(d),0,1);}"
+const GLSLX_SOURCE_SMOOTH_FRAGMENT = "precision highp float;varying vec2 a;varying vec4 b;void main(){gl_FragColor=b*min(1.,min(a.x,a.y));}"
+
+const GLSLX_NAME_POSITION4 = "c"
+const GLSLX_NAME_SCALE2 = "d"
+const GLSLX_NAME_COORD4 = "f"

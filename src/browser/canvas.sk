@@ -25,7 +25,7 @@ namespace Browser {
     190: .PERIOD,
   }
 
-  class CanvasElement {
+  class CanvasElement :: Editor.PixelRenderer {
     var _width = 0
     var _height = 0
     var _pixelScale = 0.0
@@ -55,6 +55,13 @@ namespace Browser {
       _installEventHandlers
     }
 
+    def _renderNothing
+    def fillBox(x double, y double, width double, height double, color Graphics.RGBA)
+    def fillRoundedBox(x double, y double, width double, height double, color Graphics.RGBA, radius double)
+    def strokePolyline(coordinates List<double>, color Graphics.RGBA, thickness double)
+    def renderBoxShadow(boxX double, boxY double, boxWidth double, boxHeight double, clipX double, clipY double, clipWidth double, clipHeight double, blurRadius double)
+    def renderText(x double, y double, text string, font Editor.Font, color Graphics.RGBA)
+
     def setView(view Editor.View) {
       if _view != view {
         _view = view
@@ -66,8 +73,6 @@ namespace Browser {
         }
       }
     }
-
-    def _renderNothing
 
     def width int {
       return _width

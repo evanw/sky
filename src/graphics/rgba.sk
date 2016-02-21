@@ -1,0 +1,72 @@
+namespace Graphics {
+  # Colors are stored as 8-bit RGBA values and will be constant-folded at
+  # compile time in release mode. They are stored using a wrapped type instead
+  # of int for type safety and convenience.
+  type RGBA : int {
+    def red int {
+      return (self as int) >> 16 & 255
+    }
+
+    def green int {
+      return (self as int) >> 8 & 255
+    }
+
+    def blue int {
+      return (self as int) & 255
+    }
+
+    def alpha int {
+      return (self as int) >>> 24
+    }
+
+    def multiplyAlpha(a int) RGBA {
+      assert(a >= 0 && a <= 0xFF)
+      return new(red, green, blue, alpha * a / 0xFF)
+    }
+
+    def premultiplied RGBA {
+      var a = alpha
+      return a == 0 ? TRANSPARENT : new(red * 255 / a, green * 255 / a, blue * 255 / a, a)
+    }
+
+    def toString string {
+      return "RGBA(\(red), \(green), \(blue), \(alpha))"
+    }
+  }
+
+  namespace RGBA {
+    const TRANSPARENT = new(0, 0, 0, 0)
+    const BLACK = hex(0x000000)
+    const WHITE = hex(0xFFFFFF)
+
+    const RED = hex(0xFF0000)
+    const GREEN = hex(0x00FF00)
+    const BLUE = hex(0x0000FF)
+
+    const CYAN = hex(0x00FFFF)
+    const MAGENTA = hex(0xFF00FF)
+    const YELLOW = hex(0xFFFF00)
+
+    def new(r int, g int, b int) RGBA {
+      return new(r, g, b, 255)
+    }
+
+    def new(r int, g int, b int, a int) RGBA {
+      assert(r >= 0 && r <= 0xFF)
+      assert(g >= 0 && g <= 0xFF)
+      assert(b >= 0 && b <= 0xFF)
+      assert(a >= 0 && a <= 0xFF)
+      return (r << 16 | g << 8 | b | a << 24) as RGBA
+    }
+
+    def hex(rgb int) RGBA {
+      return hexa(rgb, 255)
+    }
+
+    def hexa(rgb int, alpha int) RGBA {
+      assert(rgb >= 0 && rgb <= 0xFFFFFF)
+      assert(alpha >= 0 && alpha <= 0xFF)
+      return (rgb | alpha << 24) as RGBA
+    }
+  }
+}

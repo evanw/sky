@@ -1,5 +1,5 @@
 namespace Browser {
-  class CanvasElement2D : CanvasElement :: Editor.PixelRenderer {
+  class CanvasElement2D : CanvasElement {
     var _context dynamic
     var _cachedStyles IntMap<string> = {}
 
@@ -18,7 +18,7 @@ namespace Browser {
       _context.scale(_pixelScale, _pixelScale)
     }
 
-    def fillBox(x double, y double, width double, height double, color Editor.RGBA) {
+    over fillBox(x double, y double, width double, height double, color Graphics.RGBA) {
       if x >= _width || y >= _height || x + width <= 0 || y + height <= 0 {
         return
       }
@@ -27,7 +27,7 @@ namespace Browser {
       _context.fillRect(x, y, width, height)
     }
 
-    def fillRoundedBox(x double, y double, width double, height double, color Editor.RGBA, radius double) {
+    over fillRoundedBox(x double, y double, width double, height double, color Graphics.RGBA, radius double) {
       if x >= _width || y >= _height || x + width <= 0 || y + height <= 0 {
         return
       }
@@ -54,7 +54,7 @@ namespace Browser {
       context.fill()
     }
 
-    def strokePolyline(coordinates List<double>, color Editor.RGBA, thickness double) {
+    over strokePolyline(coordinates List<double>, color Graphics.RGBA, thickness double) {
       assert(coordinates.count % 2 == 0)
 
       _context.strokeStyle = _colorToStyle(color)
@@ -68,7 +68,7 @@ namespace Browser {
       _context.stroke()
     }
 
-    def renderBoxShadow(boxX double, boxY double, boxWidth double, boxHeight double, clipX double, clipY double, clipWidth double, clipHeight double, blurRadius double) {
+    over renderBoxShadow(boxX double, boxY double, boxWidth double, boxHeight double, clipX double, clipY double, clipWidth double, clipHeight double, blurRadius double) {
       if clipX >= _width || clipY >= _height || clipX + clipWidth <= 0 || clipY + clipHeight <= 0 {
         return
       }
@@ -76,7 +76,7 @@ namespace Browser {
       # TODO
     }
 
-    def renderText(x double, y double, text string, font Editor.Font, color Editor.RGBA) {
+    over renderText(x double, y double, text string, font Editor.Font, color Graphics.RGBA) {
       if x >= _width || y >= _height || y + _fontSize <= 0 {
         return
       }
@@ -92,7 +92,7 @@ namespace Browser {
       _context.fillText(text, x, y + _fontSize)
     }
 
-    def _colorToStyle(color Editor.RGBA) string {
+    def _colorToStyle(color Graphics.RGBA) string {
       var style = _cachedStyles.get(color as int, null)
       if style == null {
         style = "rgba(\(color.red),\(color.green),\(color.blue),\(color.alpha / 255.0))"

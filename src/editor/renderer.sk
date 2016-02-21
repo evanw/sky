@@ -40,11 +40,11 @@ namespace Editor {
     # Commands
     def invalidate
     def setCursor(cursor Cursor)
-    def fillBox(x double, y double, width double, height double, color RGBA)
-    def fillRoundedBox(x double, y double, width double, height double, color RGBA, radius double)
-    def strokePolyline(coordinates List<double>, color RGBA, thickness double)
+    def fillBox(x double, y double, width double, height double, color Graphics.RGBA)
+    def fillRoundedBox(x double, y double, width double, height double, color Graphics.RGBA, radius double)
+    def strokePolyline(coordinates List<double>, color Graphics.RGBA, thickness double)
     def renderBoxShadow(boxX double, boxY double, boxWidth double, boxHeight double, clipX double, clipY double, clipWidth double, clipHeight double, blurRadius double)
-    def renderText(x double, y double, text string, font Font, color RGBA)
+    def renderText(x double, y double, text string, font Font, color Graphics.RGBA)
   }
 
   # This contains all of the mappings from semantic rendering commands to pixels
@@ -123,7 +123,7 @@ namespace Editor {
       width -= 2 * padding
       height -= 2 * padding
 
-      _renderer.fillRoundedBox(x, y, width, height, _theme.findColor(color), width / 2)
+      _renderer.fillRoundedBox(x, y, width, height, _theme.findColor(color).multiplyAlpha(127), width / 2)
     }
   }
 }
