@@ -126,14 +126,14 @@ namespace Editor {
       }
     }
 
-    def render(renderer Renderer) {
+    def render(renderer SemanticRenderer) {
       if isNeeded {
         renderer.renderScrollbarThumb(
           _isX ? _x + _mappedOffset : _x,
           _isX ? _y : _y + _mappedOffset,
           _isX ? _mappedSize : _width,
           _isX ? _height : _mappedSize,
-          .SCROLLBAR_THUMB, 127)
+          .FOREGROUND_DEFAULT)
       }
     }
 
@@ -188,8 +188,8 @@ namespace Editor {
   # and everything will still work.
   class View :: ModelObserver {
     const _platform Platform
-    const _renderer Renderer
-    var _model Model = null
+    const _renderer SemanticRenderer
+    var _model Model
     var _selection = Selection.new([.EMPTY])
 
     # Mouse handling
@@ -220,6 +220,12 @@ namespace Editor {
     var _settings IntMap<bool> = {
       ViewSetting.SCROLL_PAST_END: true,
       ViewSetting.SHOW_MARGIN: true,
+    }
+
+    def new(platform Platform, renderer SemanticRenderer, model Model) {
+      _platform = platform
+      _renderer = renderer
+      setModel(model)
     }
 
     def setting(setting ViewSetting) bool {
@@ -564,7 +570,7 @@ namespace Editor {
         }
 
         # Render the border on top so the margin highlight doesn't obscure it
-        _renderer.renderVerticalLine(_marginWidth, 0, _viewHeight, .BORDER_MARGIN, 255)
+        _renderer.renderVerticalLine(_marginWidth, 0, _viewHeight, .BORDER_MARGIN)
       }
 
       # Render lines for errors and warnings under the scrollbars
@@ -573,7 +579,7 @@ namespace Editor {
         if line.diagnostics != null {
           _renderer.renderHorizontalLine(_viewWidth - _scrollbarThickness, _viewWidth,
             _scrollbarY.mappedPosition(_paddingTop + _lineHeight * (i + 0.5)),
-            line.hasErrors ? .BACKGROUND_DIAGNOSTIC_ERROR : .BACKGROUND_DIAGNOSTIC_WARNING, 255)
+            line.hasErrors ? .BACKGROUND_DIAGNOSTIC_ERROR : .BACKGROUND_DIAGNOSTIC_WARNING)
         }
       }
 

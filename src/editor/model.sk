@@ -4,10 +4,6 @@ namespace Editor {
     REDO
   }
 
-  interface Time {
-    def nowInSeconds double
-  }
-
   interface ModelObserver {
     def handleLexerChange(model Model)
     def handleToggleCommit(model Model, commit Commit, direction CommitDirection)
@@ -18,6 +14,16 @@ namespace Editor {
   # syntax highlighting information up to date by running a lexer as needed.
   # The model is separate from the view so one model can have multiple views.
   class Model {
+    var _name string
+    var _platform Platform
+    var _lexer Lexer = null
+    var _observers List<ModelObserver> = []
+    var _commits List<Commit> = []
+    var _task DiagnosticTask = null
+    var _lines = LineBuffer.new
+    var _commitIndex = 0
+    var _dirtyIndex = 0
+
     def toString string {
       return _lines.toString
     }
@@ -119,7 +125,7 @@ namespace Editor {
         while _commits.count > _commitIndex {
           _commits.removeLast
         }
-        _commits.append(Commit.new(changes, _time.nowInSeconds, Change.isSpace(changes)))
+        _commits.append(Commit.new(changes, _platform.nowInSeconds, Change.isSpace(changes)))
         redo
 
         # Attempt to merge this commit onto the previous one after it's applied
@@ -209,16 +215,6 @@ namespace Editor {
         _task.changeFileContents(_name, toString)
       }
     }
-
-    var _name string
-    var _time Time
-    var _lexer Lexer = null
-    var _observers List<ModelObserver> = []
-    var _commits List<Commit> = []
-    var _task DiagnosticTask = null
-    var _lines = LineBuffer.new
-    var _commitIndex = 0
-    var _dirtyIndex = 0
   }
 
   namespace Model {

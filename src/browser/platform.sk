@@ -1,0 +1,56 @@
+namespace Browser {
+  class Platform :: Editor.Platform {
+    var _operatingSystem Editor.OperatingSystem
+    var _userAgent Editor.UserAgent
+
+    def new {
+      var platform string = dynamic.navigator.platform
+      var userAgent string = dynamic.navigator.userAgent
+      var vendor string = dynamic.navigator.vendor
+
+      _operatingSystem =
+        # OS X encodes the architecture into the platform
+        platform == "MacIntel" || platform == "MacPPC" ? .OSX :
+
+        # MSDN sources say Win64 is used
+        platform == "Win32" || platform == "Win64" ? .WINDOWS :
+
+        # Assume the user is using Mobile Safari or Chrome and not some random
+        # browser with a strange platform (Opera apparently messes with this)
+        platform == "iPhone" || platform == "iPad" ? .IOS :
+
+        # Apparently most Android devices have a platform of "Linux" instead
+        # of "Android", so check the user agent instead. Also make sure to test
+        # for Android before Linux for this reason.
+        "Android" in userAgent ? .ANDROID :
+        "Linux" in platform ? .LINUX :
+
+        # The platform string has no specification and can be literally anything.
+        # Other examples: "BlackBerry", "Nintendo 3DS", "PlayStation 4", etc.
+        .UNKNOWN
+
+      _userAgent =
+        "Trident" in userAgent ? .IE :
+        "Chrome" in userAgent ? .CHROME :
+        "Firefox" in userAgent ? .FIREFOX :
+        "Apple" in vendor ? .SAFARI :
+        .UNKNOWN
+    }
+
+    def operatingSystem Editor.OperatingSystem {
+      return _operatingSystem
+    }
+
+    def userAgent Editor.UserAgent {
+      return _userAgent
+    }
+
+    def baseModifier Editor.Modifiers {
+      return _operatingSystem == .OSX ? .META : .CONTROL
+    }
+
+    def nowInSeconds double {
+      return dynamic.performance.now() / 1000
+    }
+  }
+}

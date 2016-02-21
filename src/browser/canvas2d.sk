@@ -1,0 +1,104 @@
+namespace Browser {
+  class CanvasElement2D : CanvasElement :: Editor.PixelRenderer {
+    var _context dynamic
+    var _cachedStyles IntMap<string> = {}
+
+    def new(platform Editor.Platform, shortcuts Editor.ShortcutMap) {
+      super(platform, shortcuts)
+      _context = _element.getContext("2d")
+    }
+
+    over _renderNothing {
+      _context.fillStyle = "rgba(0,0,0,0.001)"
+      _context.fillRect(0, 0, 1, 1)
+    }
+
+    over _updateSize {
+      super
+      _context.scale(_pixelScale, _pixelScale)
+    }
+
+    def fillBox(x double, y double, width double, height double, color Editor.RGBA) {
+      if x >= _width || y >= _height || x + width <= 0 || y + height <= 0 {
+        return
+      }
+
+      _context.fillStyle = _colorToStyle(color)
+      _context.fillRect(x, y, width, height)
+    }
+
+    def fillRoundedBox(x double, y double, width double, height double, color Editor.RGBA, radius double) {
+      if x >= _width || y >= _height || x + width <= 0 || y + height <= 0 {
+        return
+      }
+
+      radius = Math.min(radius, width / 2, height / 2)
+
+      const BEZIER_CIRCLE_CONSTANT = (7 - 4 * Math.SQRT_2) / 3
+      var context = _context
+      var r = radius * BEZIER_CIRCLE_CONSTANT
+      var xw = x + width
+      var yh = y + height
+
+      # Render an approximate rounded rectangle
+      context.fillStyle = _colorToStyle(color)
+      context.beginPath()
+      context.lineTo(x, y + radius)
+      context.bezierCurveTo(x, y + r, x + r, y, x + radius, y)
+      context.lineTo(xw - radius, y)
+      context.bezierCurveTo(xw - r, y, xw, y + r, xw, y + radius)
+      context.lineTo(xw, yh - radius)
+      context.bezierCurveTo(xw, yh - r, xw - r, yh, xw - radius, yh)
+      context.lineTo(x + radius, yh)
+      context.bezierCurveTo(x + r, yh, x, yh - r, x, yh - radius)
+      context.fill()
+    }
+
+    def strokePolyline(coordinates List<double>, color Editor.RGBA, thickness double) {
+      assert(coordinates.count % 2 == 0)
+
+      _context.strokeStyle = _colorToStyle(color)
+      _context.lineWidth = thickness
+      _context.beginPath()
+
+      for i = 0; i < coordinates.count; i += 2 {
+        _context.lineTo(coordinates[i], coordinates[i + 1])
+      }
+
+      _context.stroke()
+    }
+
+    def renderBoxShadow(boxX double, boxY double, boxWidth double, boxHeight double, clipX double, clipY double, clipWidth double, clipHeight double, blurRadius double) {
+      if clipX >= _width || clipY >= _height || clipX + clipWidth <= 0 || clipY + clipHeight <= 0 {
+        return
+      }
+
+      # TODO
+    }
+
+    def renderText(x double, y double, text string, font Editor.Font, color Editor.RGBA) {
+      if x >= _width || y >= _height || y + _fontSize <= 0 {
+        return
+      }
+
+      # Assigning to the font is really expensive in Chrome even if it's the same value
+      if !_isPreviousFontValid || font != _previousFont {
+        _previousFont = font
+        _isPreviousFontValid = true
+        _context.font = font == .MARGIN ? _marginFontText : _fontText
+      }
+
+      _context.fillStyle = _colorToStyle(color)
+      _context.fillText(text, x, y + _fontSize)
+    }
+
+    def _colorToStyle(color Editor.RGBA) string {
+      var style = _cachedStyles.get(color as int, null)
+      if style == null {
+        style = "rgba(\(color.red),\(color.green),\(color.blue),\(color.alpha / 255.0))"
+        _cachedStyles[color as int] = style
+      }
+      return style
+    }
+  }
+}

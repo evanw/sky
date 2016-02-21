@@ -33,9 +33,6 @@ namespace Editor {
     FOREGROUND_PREPROCESSOR
     FOREGROUND_STRING
     FOREGROUND_TYPE
-
-    # Scrollbar colors
-    SCROLLBAR_THUMB
   }
 
   namespace Color {
@@ -55,13 +52,12 @@ namespace Editor {
       FOREGROUND_PREPROCESSOR:       FOREGROUND_DEFAULT,
       FOREGROUND_STRING:             FOREGROUND_DEFAULT,
       FOREGROUND_TYPE:               FOREGROUND_DEFAULT,
-      SCROLLBAR_THUMB:               FOREGROUND_DEFAULT,
     }
   }
 
   # Colors are stored as 8-bit RGBA values and will be constant-folded at
-  # compile time in release mode. They are stored using an enum type instead
-  # of int for type safety.
+  # compile time in release mode. They are stored using a wrapped type instead
+  # of int for type safety and convenience.
   type RGBA : int {
     def red int {
       return (self as int) >> 16 & 255
@@ -77,6 +73,11 @@ namespace Editor {
 
     def alpha int {
       return (self as int) >>> 24
+    }
+
+    def multiplyAlpha(a int) RGBA {
+      assert(a >= 0 && a <= 0xFF)
+      return new(red, green, blue, alpha * a / 0xFF)
     }
   }
 
@@ -140,32 +141,5 @@ namespace Editor {
       Color.FOREGROUND_DIAGNOSTIC_ERROR: RGBA.hex(0x000000),
       Color.FOREGROUND_DIAGNOSTIC_WARNING: RGBA.hex(0x000000),
     })
-  }
-
-  enum Cursor {
-    ARROW
-    TEXT
-  }
-
-  # The margin font is different so the renderer can use a different font if
-  # it makes sense. Margin numbers usually use a smaller font than the content.
-  enum Font {
-    DEFAULT
-    MARGIN
-  }
-
-  # This rendering interface is super simple so that it'll work for both a pixel-
-  # based interface and a terminal-based interface.
-  interface Renderer {
-    def invalidate
-    def setCursor(cursor Cursor)
-    def renderBox(x double, y double, width double, height double, color Color)
-    def renderCaret(x double, y double, color Color)
-    def renderSquiggle(x double, y double, width double, height double, color Color)
-    def renderRightwardShadow(x double, y double, width double, height double)
-    def renderText(x double, y double, text string, font Font, color Color, alpha int)
-    def renderHorizontalLine(x1 double, x2 double, y double, color Color, alpha int)
-    def renderVerticalLine(x double, y1 double, y2 double, color Color, alpha int)
-    def renderScrollbarThumb(x double, y double, width double, height double, color Color, alpha int)
   }
 }

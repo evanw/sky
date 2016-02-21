@@ -22,6 +22,7 @@ namespace Editor {
       var count = text.count
       var delta = direction.delta
       var increment = step == .LINE ? delta * count : delta
+
       if step == .WORD {
         for i = index + delta; i > 0 && i < count; i += delta {
           var left = classify(text[i - 1])
@@ -32,6 +33,7 @@ namespace Editor {
         }
         increment *= count
       }
+
       return Math.clamp(index + increment, 0, count)
     }
   }
@@ -99,9 +101,12 @@ namespace Editor {
       # Invalidate the maximum line size
       if _hasMaxLineSize {
         var size = Line.maxSize(lines)
+
         if size > _maxLineSize {
           _maxLineSize = size
-        } else if Line.maxSize(_lines.slice(start, end)) == _maxLineSize {
+        }
+
+        else if Line.maxSize(_lines.slice(start, end)) == _maxLineSize {
           _hasMaxLineSize = false
         }
       }
@@ -119,6 +124,7 @@ namespace Editor {
         _maxLineSize = Line.maxSize(_lines)
         _hasMaxLineSize = true
       }
+
       return _maxLineSize
     }
 
@@ -134,8 +140,10 @@ namespace Editor {
       for i in 0.._lines.count {
         var line = _lines[i]
         var values = diagnostics.get(i, null)
+
         line.diagnostics = values
         line.hasErrors = false
+
         if values != null {
           for value in values {
             if value.kind == .ERROR {

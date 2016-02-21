@@ -1,0 +1,25 @@
+namespace Editor {
+  enum OperatingSystem {
+    ANDROID
+    IOS
+    LINUX
+    OSX
+    UNKNOWN
+    WINDOWS
+  }
+
+  enum UserAgent {
+    CHROME
+    FIREFOX
+    IE
+    SAFARI
+    UNKNOWN
+  }
+
+  interface Platform {
+    def operatingSystem OperatingSystem
+    def userAgent UserAgent
+    def baseModifier Editor.Modifiers
+    def nowInSeconds double
+  }
+}

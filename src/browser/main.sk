@@ -1,0 +1,33 @@
+namespace Browser {
+  @entry
+  def main {
+    var platform Editor.Platform = Platform.new
+    var model = Editor.Model.new("<demo>", platform)
+    model.setLexer(.SKEW)
+
+    var canvas = CanvasElement2D.new(platform, Editor.ShortcutMap.new(platform))
+    canvas.changeFont(12, 10, 16, ["Menlo", "Monaco", "Consolas"])
+
+    var translator = Editor.SemanticToPixelTranslator.new(canvas)
+    translator.setTheme(.XCODE)
+
+    var view = Editor.View.new(platform, translator, model)
+    view.changePadding(5, 5, 5, 5)
+    view.changeMarginPadding(15, 5)
+    canvas.setView(view)
+
+    on(window, "focus", e => {
+      canvas.focusKeyboardInput
+      canvas.avoidChromeBugOnWindowFocus
+    })
+
+    canvas.stretchToFitElement(document.body)
+    canvas.focusKeyboardInput
+
+    var tick fn() = => {
+      canvas.tick
+      dynamic.requestAnimationFrame(tick)
+    }
+    tick()
+  }
+}

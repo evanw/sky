@@ -1,0 +1,129 @@
+namespace Editor {
+  enum Cursor {
+    ARROW
+    TEXT
+  }
+
+  # The margin font is different so the renderer can use a different font if
+  # it makes sense. Margin numbers usually use a smaller font than the content.
+  enum Font {
+    DEFAULT
+    MARGIN
+  }
+
+  # This rendering interface is super simple so that it'll work for both a pixel-
+  # based interface and a terminal-based interface.
+  interface SemanticRenderer {
+    def invalidate
+    def setCursor(cursor Cursor)
+    def renderBox(x double, y double, width double, height double, color Color)
+    def renderCaret(x double, y double, color Color)
+    def renderSquiggle(x double, y double, width double, height double, color Color)
+    def renderRightwardShadow(x double, y double, width double, height double)
+    def renderText(x double, y double, text string, font Font, color Color, alpha int)
+    def renderHorizontalLine(x1 double, x2 double, y double, color Color)
+    def renderVerticalLine(x double, y1 double, y2 double, color Color)
+    def renderScrollbarThumb(x double, y double, width double, height double, color Color)
+  }
+
+  # This rendering interface contains the minimal requirements for pixel-based
+  # renderers. That way those renderers can just worry about rendering pixels
+  # and not about translating semanting rendering commands.
+  interface PixelRenderer {
+    # Getters
+    def width int
+    def height int
+    def pixelScale double
+    def fontSize double
+    def lineHeight double
+
+    # Commands
+    def invalidate
+    def setCursor(cursor Cursor)
+    def fillBox(x double, y double, width double, height double, color RGBA)
+    def fillRoundedBox(x double, y double, width double, height double, color RGBA, radius double)
+    def strokePolyline(coordinates List<double>, color RGBA, thickness double)
+    def renderBoxShadow(boxX double, boxY double, boxWidth double, boxHeight double, clipX double, clipY double, clipWidth double, clipHeight double, blurRadius double)
+    def renderText(x double, y double, text string, font Font, color RGBA)
+  }
+
+  # This contains all of the mappings from semantic rendering commands to pixels
+  class SemanticToPixelTranslator :: SemanticRenderer {
+    const _renderer PixelRenderer
+    var _theme Theme = .FALLBACK
+
+    def setTheme(theme Theme) {
+      _theme = theme
+      invalidate
+    }
+
+    def invalidate {
+      _renderer.invalidate
+    }
+
+    def setCursor(cursor Cursor) {
+      _renderer.setCursor(cursor)
+    }
+
+    def renderBox(x double, y double, width double, height double, color Color) {
+      _renderer.fillBox(x, y, width, height, _theme.findColor(color))
+    }
+
+    def renderCaret(x double, y double, color Color) {
+      _renderer.fillBox(Math.round(x), Math.round(y), 1, _renderer.lineHeight, _theme.findColor(color))
+    }
+
+    def renderSquiggle(x double, y double, width double, height double, color Color) {
+      const SIZE = 2.0
+      var flip = SIZE
+      var coordinates List<double> = []
+
+      x = Math.floor(x) + 0.5
+      y = Math.floor(y + height * 0.9) + 0.5
+
+      while width > 0 {
+        coordinates.append(x)
+        coordinates.append(y)
+        x += SIZE
+        y += flip
+        width -= SIZE
+        flip = -flip
+      }
+
+      _renderer.strokePolyline(coordinates, _theme.findColor(color), 1)
+    }
+
+    def renderRightwardShadow(x double, y double, width double, height double) {
+      _renderer.renderBoxShadow(
+        x - 2 * width, y - width, 2 * width, height + 2 * width,
+        x, y, width, height,
+        width)
+    }
+
+    def renderText(x double, y double, text string, font Font, color Color, alpha int) {
+      _renderer.renderText(x, y, text, font, _theme.findColor(color).multiplyAlpha(alpha))
+    }
+
+    def renderHorizontalLine(x1 double, x2 double, y double, color Color) {
+      assert(x1 <= x2)
+      _renderer.fillBox(x1, Math.floor(y), x2 - x1, 1, _theme.findColor(color))
+    }
+
+    def renderVerticalLine(x double, y1 double, y2 double, color Color) {
+      assert(y1 <= y2)
+      _renderer.fillBox(Math.floor(x), y1, 1, y2 - y1, _theme.findColor(color))
+    }
+
+    def renderScrollbarThumb(x double, y double, width double, height double, color Color) {
+      var padding = Math.round(Math.min(width, height) / 6)
+
+      # Shrink the bounds by the padding
+      x += padding
+      y += padding
+      width -= 2 * padding
+      height -= 2 * padding
+
+      _renderer.fillRoundedBox(x, y, width, height, _theme.findColor(color), width / 2)
+    }
+  }
+}

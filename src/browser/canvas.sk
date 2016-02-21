@@ -5,52 +5,60 @@ namespace Browser {
     PAGE
   }
 
-  class CanvasRenderer :: Editor.Renderer, AnimationLoopObserver {
-    var _platform Platform = null
-    var _keyboardInput KeyboardInput = null
-    var _element dynamic = null
-    var _context dynamic = null
-    var _mousemove fn(dynamic) = null
-    var _mouseup fn(dynamic) = null
+  const _whichToKeyCode IntMap<Editor.KeyCode> = {
+    8:   .BACKSPACE,
+    13:  .ENTER,
+    27:  .ESCAPE,
+    33:  .PAGE_UP,
+    34:  .PAGE_DOWN,
+    35:  .END,
+    36:  .HOME,
+    37:  .ARROW_LEFT,
+    38:  .ARROW_UP,
+    39:  .ARROW_RIGHT,
+    40:  .ARROW_DOWN,
+    44:  .COMMA,
+    46:  .DELETE,
+    59:  .SEMICOLON,
+    186: .SEMICOLON,
+    188: .COMMA,
+    190: .PERIOD,
+  }
+
+  class CanvasElement {
     var _width = 0
     var _height = 0
-    var _view Editor.View = null
+    var _pixelScale = 0.0
+    var _fontSize = 0.0
+    var _lineHeight = 0.0
+    var _isInvalid = false
     var _fontText = ""
     var _marginFontText = ""
-    var _fontSize = 0.0
-    var _fontNames = [""]
-    var _lineHeight = 0.0
     var _advanceWidth = 0.0
     var _marginAdvanceWidth = 0.0
-    var _isInvalid = false
+    var _previousFont Editor.Font = .DEFAULT
     var _isPreviousFontValid = false
     var _idleCount = 0
-    var _theme Editor.Theme = null
-    var _previousFont Editor.Font = .DEFAULT
-    var _cachedColors IntMap<string> = null
+    var _element = document.createElement("canvas")
+    var _mousemove fn(dynamic) = null
+    var _mouseup fn(dynamic) = null
+    var _view Editor.View = null
+    var _platform Editor.Platform = null
+    var _shortcuts Editor.ShortcutMap = null
+    var _textarea = document.createElement("textarea")
+    var _previousValue = ""
+    var _fontContext = document.createElement("canvas").getContext("2d")
 
-    def new(platform Platform, keyboardInput KeyboardInput, animationLoop AnimationLoop) {
+    def new(platform Editor.Platform, shortcuts Editor.ShortcutMap) {
       _platform = platform
-      _keyboardInput = keyboardInput
-      _element = document.createElement("canvas")
-      _context = _element.getContext("2d")
-      setCursor(.TEXT)
-      setTheme(.XCODE)
-      animationLoop.addObserver(self)
-      _addEventHandlers
-    }
-
-    def setTheme(theme Editor.Theme) {
-      if _theme != theme {
-        _theme = theme
-        _cachedColors = {}
-        invalidate
-      }
+      _shortcuts = shortcuts
+      _installEventHandlers
     }
 
     def setView(view Editor.View) {
       if _view != view {
         _view = view
+
         if view != null {
           view.resize(_width, _height)
           view.resizeFont(_advanceWidth, _marginAdvanceWidth, _lineHeight)
@@ -59,54 +67,131 @@ namespace Browser {
       }
     }
 
-    def _updateSize {
-      var width int = _element.clientWidth
-      var height int = _element.clientHeight
-      var ratio double = dynamic.devicePixelRatio
+    def _renderNothing
 
-      if _width != width || _height != height {
-        _element.width = Math.round(width * ratio)
-        _element.height = Math.round(height * ratio)
-        _context.scale(ratio, ratio)
-        _width = width
-        _height = height
-        if _view != null {
-          _view.resize(width, height)
-        }
-      }
+    def width int {
+      return _width
+    }
+
+    def height int {
+      return _height
+    }
+
+    def pixelScale double {
+      return _pixelScale
+    }
+
+    def fontSize double {
+      return _fontSize
+    }
+
+    def lineHeight double {
+      return _lineHeight
+    }
+
+    def invalidate {
+      _isInvalid = true
+    }
+
+    def setCursor(cursor Editor.Cursor) {
+      _element.style.cursor =
+        cursor == .TEXT ? "text" :
+        "default"
+    }
+
+    def tick {
+      _render
     }
 
     def changeFont(fontSize double, marginFontSize double, lineHeight double, fontNames List<string>) {
-      _fontNames = fontNames
       fontNames = fontNames.clone
       fontNames.append("monospace")
+
       var fontSuffix = "px " + ",".join(fontNames)
       _fontSize = fontSize
-      _fontText = fontSize.toString + fontSuffix
-      _context.font = _fontText
-      _marginFontText = marginFontSize.toString + fontSuffix
-      _advanceWidth = _measureTextWidth("x".repeat(100)) / 100
+      _fontText = "\(fontSize)\(fontSuffix)"
+      _marginFontText = "\(marginFontSize)\(fontSuffix)"
+      _fontContext.font = _fontText
+      _advanceWidth = _fontContext.measureText("x".repeat(100)).width / 100
       _marginAdvanceWidth = _advanceWidth * marginFontSize / fontSize
       _lineHeight = lineHeight
+
       if _view != null {
         _view.resizeFont(_advanceWidth, _marginAdvanceWidth, _lineHeight)
       }
     }
 
-    def stretchToFitBody {
+    def _changeValue(value string) {
+      _textarea.value = value
+      _previousValue = value
+    }
+
+    def _render {
+      # Skip rendering if not invalid
+      if !_isInvalid {
+        _idleCount++
+
+        # Render something at 10 fps even when idle otherwise Chrome's
+        # render loop goes idle and stutters when starting back up
+        if _idleCount == 6 {
+          _renderNothing
+          _idleCount = 0
+        }
+
+        return
+      }
+
+      # Reset render state
+      _idleCount = 0
+      _isInvalid = false
+      _isPreviousFontValid = false
+
+      # Delegate to the view
+      _view?.render
+    }
+
+    def _updateSize {
+      var width int = _element.clientWidth
+      var height int = _element.clientHeight
+      var pixelScale double = dynamic.devicePixelRatio
+
+      if _width != width || _height != height || _pixelScale != pixelScale {
+        _element.width = Math.round(width * pixelScale)
+        _element.height = Math.round(height * pixelScale)
+        _width = width
+        _height = height
+        _pixelScale = pixelScale
+        _view?.resize(width, height)
+      }
+    }
+
+    def stretchToFitElement(element dynamic) {
       var style = _element.style
       style.position = "fixed"
       style.left = 0
       style.top = 0
       style.width = "100%"
       style.height = "100%"
+
       on(window, "resize", e => {
         _updateSize
         _render
       })
-      document.body.style.overflow = "hidden"
-      document.body.appendChild(_element)
+
+      element.style.overflow = "hidden"
+      element.appendChild(_element)
+      element.appendChild(_textarea)
       _updateSize
+    }
+
+    def focusKeyboardInput {
+      _textarea.enabled = true
+      _textarea.focus()
+    }
+
+    def blurKeyboardInput {
+      _textarea.blur()
+      _textarea.enabled = false
     }
 
     # https://bugs.chromium.org/p/chromium/issues/detail?id=588434
@@ -121,188 +206,19 @@ namespace Browser {
       }
     }
 
-    def invalidate {
-      _isInvalid = true
-    }
-
-    def setCursor(cursor Editor.Cursor) {
-      _element.style.cursor =
-        cursor == .TEXT ? "text" :
-        "default"
-    }
-
-    def renderCaret(x double, y double, color Editor.Color) {
-      _context.fillStyle = _colorToStyle(color)
-      _context.fillRect(Math.round(x), Math.round(y), 1, _lineHeight)
-    }
-
-    def renderBox(x double, y double, width double, height double, color Editor.Color) {
-      if x >= _width || y >= _height || x + width <= 0 || y + height <= 0 {
-        return
-      }
-
-      _renderBoxWithAlpha(x, y, width, height, color, 255)
-    }
-
-    def renderHorizontalLine(x1 double, x2 double, y double, color Editor.Color, alpha int) {
-      y = Math.floor(y) + 0.5
-      _renderLineWithAlpha(x1, y, x2, y, color, alpha)
-    }
-
-    def renderVerticalLine(x double, y1 double, y2 double, color Editor.Color, alpha int) {
-      x = Math.floor(x) + 0.5
-      _renderLineWithAlpha(x, y1, x, y2, color, alpha)
-    }
-
-    def renderText(x double, y double, text string, font Editor.Font, color Editor.Color, alpha int) {
-      if x >= _width || y >= _height || y + _fontSize <= 0 {
-        return
-      }
-
-      # Assigning to the font is really expensive in Chrome even if it's the same value
-      if !_isPreviousFontValid || font != _previousFont {
-        _previousFont = font
-        _isPreviousFontValid = true
-        _context.font = font == .MARGIN ? _marginFontText : _fontText
-      }
-
-      _context.fillStyle = _colorToStyleWithAlpha(color, alpha)
-      _context.fillText(text, x, y + _fontSize)
-    }
-
-    def renderRightwardShadow(x double, y double, width double, height double) {
-      var context = _context
-      var gradient = context.createLinearGradient(x + width, 0, x, 0)
-      for t = 0.0; t <= 1; t += 1.0 / 4 {
-        gradient.addColorStop(t, "rgba(0,0,0,\(t * t / 3))")
-      }
-      context.fillStyle = gradient
-      context.fillRect(x, y, width, height)
-    }
-
-    def renderScrollbarThumb(x double, y double, width double, height double, color Editor.Color, alpha int) {
-      var context = _context
-      var padding = Math.round(Math.min(width, height) / 6)
-      var radius = Math.min(width, height) / 2 - padding
-      var r = radius * BEZIER_CIRCLE_CONSTANT
-
-      # Shrink the bounds by the padding
-      x += padding
-      y += padding
-      width -= 2 * padding
-      height -= 2 * padding
-      var xw = x + width
-      var yh = y + height
-
-      # Render an approximate rounded rectangle
-      context.fillStyle = _colorToStyleWithAlpha(color, alpha)
-      context.beginPath()
-      context.lineTo(x, y + radius)
-      context.bezierCurveTo(x, y + r, x + r, y, x + radius, y)
-      context.lineTo(xw - radius, y)
-      context.bezierCurveTo(xw - r, y, xw, y + r, xw, y + radius)
-      context.lineTo(xw, yh - radius)
-      context.bezierCurveTo(xw, yh - r, xw - r, yh, xw - radius, yh)
-      context.lineTo(x + radius, yh)
-      context.bezierCurveTo(x + r, yh, x, yh - r, x, yh - radius)
-      context.fill()
-    }
-
-    def renderSquiggle(x double, y double, width double, height double, color Editor.Color) {
-      const SIZE = 2.0
-      var flip = SIZE
-      x = Math.floor(x) + 0.5
-      y = Math.floor(y + height * 0.9) + 0.5
-      _context.strokeStyle = _colorToStyle(color)
-      _context.beginPath()
-      while width > 0 {
-        _context.lineTo(x, y)
-        x += SIZE
-        y += flip
-        width -= SIZE
-        flip = -flip
-      }
-      _context.stroke()
-    }
-
-    def tick {
-      _render
-    }
-
-    def _measureTextWidth(text string) double {
-      return _context.measureText(text).width
-    }
-
-    def _colorToStyle(color Editor.Color) string {
-      return _colorToStyleWithAlpha(color, 255)
-    }
-
-    def _colorToStyleWithAlpha(color Editor.Color, alpha int) string {
-      assert(alpha >= 0 && alpha <= 0xFF)
-      var key = color | alpha << 24
-      if key in _cachedColors {
-        return _cachedColors[key]
-      }
-      var rgba = _theme.findColor(color)
-      var text = "rgba(\(rgba.red),\(rgba.green),\(rgba.blue),\(rgba.alpha * alpha / (255.0 * 255.0)))"
-      _cachedColors[key] = text
-      return text
-    }
-
-    def _renderLineWithAlpha(x1 double, y1 double, x2 double, y2 double, color Editor.Color, alpha int) {
-      assert(alpha >= 0 && alpha <= 0xFF)
-      _context.strokeStyle = _colorToStyleWithAlpha(color, alpha)
-      _context.beginPath()
-      _context.lineTo(x1, y1)
-      _context.lineTo(x2, y2)
-      _context.stroke()
-    }
-
-    def _renderBoxWithAlpha(x double, y double, width double, height double, color Editor.Color, alpha int) {
-      assert(alpha >= 0 && alpha <= 0xFF)
-      var minX = Math.round(x)
-      var minY = Math.round(y)
-      var maxX = Math.round(x + width)
-      var maxY = Math.round(y + height)
-      _context.fillStyle = _colorToStyleWithAlpha(color, alpha)
-      _context.fillRect(minX, minY, maxX - minX, maxY - minY)
-    }
-
-    def _render {
-      # Skip rendering if not invalid
-      if !_isInvalid {
-        _idleCount++
-
-        # Render something at 10 fps even when idle otherwise Chrome's
-        # render loop goes idle and stutters when starting back up
-        if _idleCount == 6 {
-          _context.fillStyle = _colorToStyle(.BACKGROUND_MARGIN)
-          _context.fillRect(0, 0, 1, 1)
-          _idleCount = 0
-        }
-
-        return
-      }
-
-      # Reset render state
-      _idleCount = 0
-      _isInvalid = false
-      _isPreviousFontValid = false
-
-      # Delegate to the view
-      if _view != null {
-        _view.render
-      }
+    def _modifiersFromEvent(event dynamic) Editor.Modifiers {
+      return
+        (event.altKey ? .ALT : 0) |
+        (event.metaKey ? .META : 0) |
+        (event.shiftKey ? .SHIFT : 0) |
+        (event.ctrlKey ? .CONTROL : 0)
     }
 
     def _mouseEventFromEvent(e dynamic) Editor.MouseEvent {
-      var x double = e.pageX
-      var y double = e.pageY
-      for element = _element; element != null; element = element.offsetParent {
-        x -= element.offsetLeft
-        y -= element.offsetTop
-      }
-      return Editor.MouseEvent.new(x, y, KeyboardInput.modifiersFromEvent(e))
+      var bounds = _element.getBoundingClientRect()
+      var x double = e.pageX - bounds.left
+      var y double = e.pageY - bounds.top
+      return Editor.MouseEvent.new(x, y, _modifiersFromEvent(e))
     }
 
     enum ChangeDragHandlers {
@@ -313,26 +229,44 @@ namespace Browser {
     def _changeDragHandlers(mode ChangeDragHandlers) {
       var old = mode == .GLOBAL ? _element : document
       var new = mode == .GLOBAL ? document : _element
+
       off(old, "mousemove", _mousemove)
       off(old, "mouseup", _mouseup)
+
       on(new, "mousemove", _mousemove)
       on(new, "mouseup", _mouseup)
     }
 
-    def _addEventHandlers {
+    def _handleInput {
+      # Text input in browsers really sucks. There's no API for text insertion
+      # events so the only way to do it is to shove an input field off screen
+      # somewhere, give it focus, and keep checking for inserted text. We keep
+      # clearing the input field so that adjacent inputs don't interfere with
+      # each other. Listening for key presses and decoding key codes is not a
+      # good way to do things because that doesn't account for international
+      # keyboard layouts and IMEs. This method still doesn't get dead characters
+      # but at least it's close. A textarea is used instead of an input field
+      # because we need newlines too.
+      if _textarea.value != _previousValue {
+        _view?.insertText(_textarea.value)
+        _changeValue("")
+      }
+    }
+
+    def _installEventHandlers {
       _mousemove = e => {
-        _view.handleMouseMove(_mouseEventFromEvent(e))
+        _view?.handleMouseMove(_mouseEventFromEvent(e))
       }
 
       _mouseup = e => {
-        _view.handleMouseUp(_mouseEventFromEvent(e))
+        _view?.handleMouseUp(_mouseEventFromEvent(e))
         _changeDragHandlers(.LOCAL)
       }
 
       on(_element, "mousedown", e => {
         e.preventDefault()
-        _keyboardInput.focus(_view)
-        _view.handleMouseDown(_mouseEventFromEvent(e))
+        focusKeyboardInput
+        _view?.handleMouseDown(_mouseEventFromEvent(e))
         _changeDragHandlers(.GLOBAL)
       })
 
@@ -355,15 +289,73 @@ namespace Browser {
           deltaMode == DeltaMode.PAGE ? _height :
           1
 
-        _view.handleScroll(deltaX * scale, deltaY * scale)
+        _view?.handleScroll(deltaX * scale, deltaY * scale)
         e.preventDefault()
       })
 
+      on(_textarea, "blur", e => blurKeyboardInput)
+      on(_textarea, "input", e => _handleInput)
+      on(_textarea, "keydown", e => _handleKeyDown(e))
+
+      var style = _textarea.style
+      style.position = "absolute"
+      style.right = "200%"
+      style.bottom = "200%"
+
       _changeDragHandlers(.LOCAL)
     }
-  }
 
-  namespace CanvasRenderer {
-    const BEZIER_CIRCLE_CONSTANT = (7 - 4 * Math.SQRT_2) / 3
+    def _keyCodeFromEvent(event dynamic) Editor.KeyCode {
+      var which = event.which as int
+
+      if which >= 'A' && which <= 'Z' {
+        return (Editor.KeyCode.LETTER_A - 'A' + which) as Editor.KeyCode
+      }
+
+      if which >= '0' && which <= '9' {
+        return (Editor.KeyCode.NUMBER_0 - '0' + which) as Editor.KeyCode
+      }
+
+      return _whichToKeyCode.get(event.which as int, .NONE)
+    }
+
+    def _handleKeyDown(event dynamic) {
+      if _view == null {
+        return
+      }
+
+      var modifiers = _modifiersFromEvent(event)
+      var action = _shortcuts.get( _keyCodeFromEvent(event), modifiers)
+      var view = _view
+
+      # Clipboard handling in the browser really, really sucks. The standard is
+      # horrible and browsers do different things. We can't use the cut, copy,
+      # and paste events because Firefox doesn't even fire cut/copy if the
+      # element with focus has no selected text. Instead, try to guess when a
+      # cut or copy event is about to happen and quickly set the selected text.
+      # Clear the selected text immediately afterwards so that it doesn't
+      # interfere with our text input detection. This hack won't work with the
+      # browser's cut/copy/paste commands triggered through the menu or through
+      # other assistive devices.
+      if action == .CUT || action == .COPY {
+        var selection = view.selection.isEmpty ? view.selectionExpandedToLines : view.selection
+        _changeValue(view.textInSelection(selection))
+        _textarea.select()
+        dynamic.setTimeout(=> _changeValue(""), 50)
+
+        if action == .CUT {
+          view.changeSelection(selection, .DO_NOT_SCROLL)
+          view.insertText("")
+        }
+      }
+
+      # Don't call preventDefault() for paste events since we want the paste to
+      # happen. That way the change will go through our regular text insertion
+      # detection.
+      else if action != .NONE && action != .PASTE {
+        event.preventDefault()
+        view.triggerAction(action)
+      }
+    }
   }
 }
