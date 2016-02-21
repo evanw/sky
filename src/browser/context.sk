@@ -195,7 +195,7 @@ namespace Browser {
     }
 
     def createTexture(format Graphics.TextureFormat, width int, height int, pixels Graphics.FixedArray) Graphics.Texture {
-      return Texture.new(self, format, width, height, pixels as Uint8Array)
+      return Texture.new(self, format, width, height, pixels?.bytesForJavaScript)
     }
 
     def createRenderTarget(texture Graphics.Texture) Graphics.RenderTarget {
@@ -709,7 +709,7 @@ namespace Browser {
 
     def upload(array Graphics.FixedArray, byteOffset int) {
       assert(byteOffset >= 0 && byteOffset + array.byteCount <= _byteCount)
-      _bytes.set(array as Uint8Array, byteOffset)
+      _bytes.set(array.bytesForJavaScript, byteOffset)
       _growDirtyRegion(byteOffset, byteOffset + array.byteCount)
     }
 
@@ -790,7 +790,7 @@ namespace Browser {
 
       _width = width
       _height = height
-      _pixels = pixels as Uint8Array
+      _pixels = pixels?.bytesForJavaScript
       _isContentDirty = true
     }
 
@@ -814,13 +814,13 @@ namespace Browser {
       # CPU-side upload
       for y = 0; y < sourceHeight; y++ {
         _pixels.set(
-          (sourcePixels as Uint8Array).subarray(y * sourceWidth * 4, sourceWidth * 4),
+          sourcePixels.bytesForJavaScript.subarray(y * sourceWidth * 4, sourceWidth * 4),
           (targetX + (targetY + y) * _width) * 4)
       }
 
       # GPU-side upload
       gl.bindTexture(gl.TEXTURE_2D, texture)
-      gl.texSubImage2D(gl.TEXTURE_2D, 0, targetX, targetY, sourceWidth, sourceHeight, gl.RGBA, gl.UNSIGNED_BYTE, sourcePixels as Uint8Array)
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, targetX, targetY, sourceWidth, sourceHeight, gl.RGBA, gl.UNSIGNED_BYTE, sourcePixels.bytesForJavaScript)
     }
 
     def texture WebGLTexture {

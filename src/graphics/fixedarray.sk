@@ -1,81 +1,69 @@
 namespace Graphics {
-  type FixedArray {
+  class FixedArray {
+    def new(byteCount int)
+
     def byteCount int
 
-    def getByte(index int) int
-    def setByte(index int, value int)
+    def getByte(byteIndex int) int
+    def setByte(byteIndex int, value int)
 
-    def getFloat(index int) double
-    def setFloat(index int, value double)
+    def getFloat(byteIndex int) double
+    def setFloat(byteIndex int, value double)
 
-    def getRange(index int, byteCount int) FixedArray
-    def setRange(index int, values FixedArray)
-  }
-
-  namespace FixedArray {
-    def new(byteCount int) FixedArray
+    def getRange(byteIndex int, byteCount int) FixedArray
+    def setRange(byteIndex int, values FixedArray)
   }
 
   ################################################################################
 
   if TARGET == .JAVASCRIPT {
-    type FixedArray : Uint8Array {
-      def byteCount int {
-        return (self as Uint8Array).length
-      }
-
-      def getByte(index int) int {
-        assert(index >= 0 && index + 1 <= byteCount)
-        return (self as Uint8Array)[index]
-      }
-
-      def setByte(index int, value int) {
-        assert(index >= 0 && index + 1 <= byteCount)
-        (self as Uint8Array)[index] = value
-      }
-
-      def getFloat(index int) double {
-        assert(index >= 0 && index + 4 <= byteCount)
-        _initialize
-        _bytes[0] = (self as Uint8Array)[index]
-        _bytes[1] = (self as Uint8Array)[index + 1]
-        _bytes[2] = (self as Uint8Array)[index + 2]
-        _bytes[3] = (self as Uint8Array)[index + 3]
-        return _float[0]
-      }
-
-      def setFloat(index int, value double) {
-        assert(index >= 0 && index + 4 <= byteCount)
-        _initialize
-        _float[0] = value
-        (self as Uint8Array)[index] = _bytes[0]
-        (self as Uint8Array)[index + 1] = _bytes[1]
-        (self as Uint8Array)[index + 2] = _bytes[2]
-        (self as Uint8Array)[index + 3] = _bytes[3]
-      }
-
-      def getRange(index int, byteCount int) FixedArray {
-        assert(index >= 0 && byteCount >= 0 && index + byteCount <= self.byteCount)
-        return (self as Uint8Array).subarray(index, index + byteCount) as FixedArray
-      }
-
-      def setRange(index int, values FixedArray) {
-        assert(index >= 0 && index + values.byteCount <= byteCount)
-        (self as Uint8Array).set(values as Uint8Array, index)
-      }
-    }
-
-    namespace FixedArray {
+    class FixedArray {
       var _bytes Uint8Array = null
-      var _float Float32Array = null
+      var _floats Float32Array = null
 
-      def new(byteCount int) FixedArray {
-        return Uint8Array.new(byteCount) as FixedArray
+      def new(byteCount int) {
+        _bytes = Uint8Array.new(byteCount)
+        _floats = Float32Array.new(_bytes.buffer, 0, byteCount >> 2)
       }
 
-      def _initialize {
-        _float ?= Float32Array.new(1)
-        _bytes ?= Uint8Array.new(_float.buffer)
+      def byteCount int {
+        return _bytes.length
+      }
+
+      def getByte(byteIndex int) int {
+        assert(byteIndex >= 0 && byteIndex + 1 <= byteCount)
+        return _bytes[byteIndex]
+      }
+
+      def setByte(byteIndex int, value int) {
+        assert(byteIndex >= 0 && byteIndex + 1 <= byteCount)
+        _bytes[byteIndex] = value
+      }
+
+      def getFloat(byteIndex int) double {
+        assert(byteIndex >= 0 && byteIndex + 4 <= byteCount && byteIndex % 4 == 0)
+        return _floats[byteIndex >> 2]
+      }
+
+      def setFloat(byteIndex int, value double) {
+        assert(byteIndex >= 0 && byteIndex + 4 <= byteCount && byteIndex % 4 == 0)
+        _floats[byteIndex >> 2] = value
+      }
+
+      def getRange(byteIndex int, byteCount int) FixedArray {
+        assert(byteIndex >= 0 && byteCount >= 0 && byteIndex + byteCount <= self.byteCount)
+        var array = FixedArray.new(byteCount)
+        array._bytes.set(_bytes.subarray(byteIndex, byteIndex + byteCount))
+        return array
+      }
+
+      def setRange(byteIndex int, array FixedArray) {
+        assert(byteIndex >= 0 && byteIndex + array.byteCount <= byteCount)
+        _bytes.set(array._bytes, byteIndex)
+      }
+
+      def bytesForJavaScript Uint8Array {
+        return _bytes
       }
     }
   }
