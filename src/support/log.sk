@@ -1,6 +1,7 @@
 namespace Log {
   const USE_LOG = !RELEASE
 
+  @import if TARGET != .JAVASCRIPT
   @skip if !USE_LOG {
     def info(text string)
     def warning(text string)

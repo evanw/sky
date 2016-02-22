@@ -1,7 +1,41 @@
 namespace Browser {
+  class Window :: Editor.Window {
+    const _canvas CanvasElement
+
+    def renderer Editor.SemanticRenderer {
+      return _canvas.translator
+    }
+
+    def setView(view Editor.View) {
+      _canvas.setView(view)
+    }
+
+    def new(platform Platform) {
+      var canvas = _createCanvas(platform)
+      canvas.changeFont(12, 10, 16, ["Menlo", "Monaco", "Consolas", "monospace"])
+      canvas.translator.setTheme(.XCODE)
+      _canvas = canvas
+
+      on(window, "focus", e => {
+        canvas.focusKeyboardInput
+        canvas.avoidChromeBugOnWindowFocus
+      })
+
+      canvas.stretchToFitElement(document.body)
+      canvas.focusKeyboardInput
+
+      var tick fn() = => {
+        canvas.tick
+        (window.requestAnimationFrame ? window.requestAnimationFrame : dynamic.setTimeout)(tick)
+      }
+      tick()
+    }
+  }
+
   class Platform :: Editor.Platform {
     var _operatingSystem Editor.OperatingSystem
     var _userAgent Editor.UserAgent
+    var _window Window
 
     def new {
       var platform string = dynamic.navigator.platform
@@ -35,6 +69,9 @@ namespace Browser {
         "Firefox" in userAgent ? .FIREFOX :
         "Apple" in vendor ? .SAFARI :
         .UNKNOWN
+
+      # The browser lacks the ability to create additional windows
+      _window = Window.new(self)
     }
 
     def operatingSystem Editor.OperatingSystem {
@@ -45,10 +82,6 @@ namespace Browser {
       return _userAgent
     }
 
-    def baseModifier Editor.Modifiers {
-      return _operatingSystem == .OSX ? .META : .CONTROL
-    }
-
     @neverinline
     def nowInSeconds double {
       return (window.performance ? window.performance : dynamic.Date).now() / 1000
@@ -57,5 +90,28 @@ namespace Browser {
     def createGlyphProvider Graphics.GlyphProvider {
       return GlyphProvider.new
     }
+
+    def createWindow Editor.Window {
+      var window = _window
+      _window = null
+      return window
+    }
+  }
+
+  def _createCanvas(platform Editor.Platform) CanvasElement {
+    var shortcuts = Editor.ShortcutMap.new(platform)
+
+    # Attempt to use WebGL first because it's a lot faster
+    try {
+      return CanvasElementWebGL.new(platform, shortcuts)
+    }
+
+    # Fall back to the 2D canvas API
+    return CanvasElement2D.new(platform, shortcuts)
+  }
+
+  @entry if BUILD == .BROWSER
+  def main {
+    Editor.App.new(Platform.new)
   }
 }

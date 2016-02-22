@@ -1,5 +1,11 @@
-SKEW = node_modules/.bin/skewc src/*/*.sk --target=js --output-file=www/compiled.js --message-limit=0
+SKEW = node skew/skewc.js src/*/*.sk --message-limit=0
 GLSLX = node_modules/.bin/glslx glslx/shaders.glslx --format=skew --output=src/graphics/shaders.sk
+
+FLAGS_JS += --output-file=www/compiled.js
+FLAGS_JS += --define:BUILD=BROWSER
+
+FLAGS_OSX += --output-file=osx/compiled.cpp
+FLAGS_OSX += --define:BUILD=NATIVE
 
 default: debug
 
@@ -7,13 +13,16 @@ shaders:
 	$(GLSLX)
 
 debug: | node_modules
-	$(SKEW)
+	$(SKEW) $(FLAGS_JS)
 
 profile: | node_modules
-	$(SKEW) --release --js-mangle=false --js-minify=false
+	$(SKEW) $(FLAGS_JS) --release --js-mangle=false --js-minify=false
 
 release: | node_modules
-	$(SKEW) --release
+	$(SKEW) $(FLAGS_JS) --release
+
+cpp-osx: | node_modules
+	$(SKEW) $(FLAGS_OSX)
 
 watch-shaders:
 	node_modules/.bin/watch glslx 'clear && make shaders && echo done'

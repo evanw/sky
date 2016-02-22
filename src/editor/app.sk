@@ -1,0 +1,19 @@
+namespace Editor {
+  class App {
+    const _platform Platform
+    const _window Window
+
+    def new(platform Platform) {
+      _platform = platform
+      _window = platform.createWindow
+
+      var model = Model.new("<demo>", platform)
+      model.setLexer(.SKEW)
+
+      var view = View.new(platform, _window.renderer, model)
+      view.changePadding(5, 5, 5, 5)
+      view.changeMarginPadding(15, 5)
+      _window.setView(view)
+    }
+  }
+}

@@ -1,0 +1,7 @@
+enum Build {
+  NONE
+  BROWSER
+  NATIVE
+}
+
+const BUILD Build = .NONE

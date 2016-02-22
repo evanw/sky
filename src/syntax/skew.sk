@@ -1,4 +1,4 @@
-namespace Syntax.Skew {
+namespace Syntax.SkewLexer {
   const _characterState = Editor.LexerState.new
   const _defaultState = Editor.LexerState.new
   const _stringState = Editor.LexerState.new
@@ -168,5 +168,5 @@ namespace Syntax.Skew {
 }
 
 namespace Editor.Lexer {
-  const SKEW = CustomLexer.new(lexer => Syntax.Skew.tokenize(lexer))
+  const SKEW = CustomLexer.new(lexer => Syntax.SkewLexer.tokenize(lexer))
 }
