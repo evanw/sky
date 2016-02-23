@@ -40,6 +40,7 @@ namespace Editor {
     const x double
     const y double
     const modifiers Modifiers
+    const clickCount int
   }
 
   enum MouseMode {
@@ -199,7 +200,9 @@ namespace Editor {
     var _mergeBehavior SelectionMerge = .NONE
     var _draggingScrollbar Scrollbar = null
     var _mouseMode MouseMode = .NONE
-    var _draggingAnchor Marker = null
+    var _mouseStep StepX = .CHARACTER
+    var _draggingMarker Marker = null
+    var _draggingRegion Region = null
     var _scrollbarX = Scrollbar.new(.X)
     var _scrollbarY = Scrollbar.new(.Y)
 
@@ -296,7 +299,9 @@ namespace Editor {
         _mergeBehavior = _platform.baseModifier in event.modifiers ? .UNION : .SHIFT in event.modifiers ? .EXTEND : .NONE
         _previousSelection = _selection
         _mouseMode = event.x < _marginWidth ? .SELECTING_LINES : .ALT in event.modifiers ? .SELECTING_BOX : .SELECTING_CHARACTERS
-        _draggingAnchor = _markerFromEvent(event, _mouseMode)
+        _mouseStep = ((event.clickCount + 2) % 3) as StepX
+        _draggingMarker = _markerFromEvent(event, _mouseMode)
+        _draggingRegion = _regionFromEvent(event, _mouseMode, _mouseStep)
       }
       handleMouseMove(event)
     }
@@ -315,24 +320,26 @@ namespace Editor {
 
         switch _mouseMode {
           case .SELECTING_CHARACTERS {
-            regions.append(_mergeBehavior == .EXTEND ? Region.span(regions.takeLast, Region.new(marker)) : Region.new(_draggingAnchor, marker))
+            regions.append(_mergeBehavior == .EXTEND
+              ? Region.span(regions.takeLast, Region.new(marker))
+              : Region.span(_draggingRegion, _regionFromEvent(event, _mouseMode, _mouseStep)))
           }
 
           case .SELECTING_LINES {
-            var minY = Math.min(_draggingAnchor.y, marker.y)
-            var maxY = Math.max(_draggingAnchor.y, marker.y)
+            var minY = Math.min(_draggingMarker.y, marker.y)
+            var maxY = Math.max(_draggingMarker.y, marker.y)
             var lastLine = _model.count - 1
             var first = Marker.new(0, minY)
             var last = maxY == lastLine ? Marker.new(_model[lastLine].text.count, maxY) : Marker.new(0, maxY + 1)
-            var region = marker.y < _draggingAnchor.y ? Region.new(last, first) : Region.new(first, last)
+            var region = marker.y < _draggingMarker.y ? Region.new(last, first) : Region.new(first, last)
             regions.append(_mergeBehavior == .EXTEND ? Region.span(regions.takeLast, Region.new(region.end)) : region)
           }
 
           case .SELECTING_BOX {
-            var minX = Math.min(_draggingAnchor.x, marker.x)
-            var maxX = Math.max(_draggingAnchor.x, marker.x)
-            var minY = Math.min(_draggingAnchor.y, marker.y)
-            var maxY = Math.max(_draggingAnchor.y, marker.y)
+            var minX = Math.min(_draggingMarker.x, marker.x)
+            var maxX = Math.max(_draggingMarker.x, marker.x)
+            var minY = Math.min(_draggingMarker.y, marker.y)
+            var maxY = Math.max(_draggingMarker.y, marker.y)
             var first = regions.count
             var hasArea = false
 
@@ -662,12 +669,29 @@ namespace Editor {
     def _markerFromEvent(event MouseEvent, mode MouseMode) Marker {
       var x = Math.round((event.x + _scrollbarX.scrollOffset - _paddingLeft - _marginWidth) / _advanceWidth) as int
       var y = Math.floor((event.y + _scrollbarY.scrollOffset - _paddingTop) / _lineHeight) as int
+
       if mode == .SELECTING_BOX {
         return Marker.new(x, y)
       }
+
       var clampedY = Math.clamp(y, 0, _model.count - 1)
       var clampedX = Math.clamp(x, 0, _model[clampedY].text.count)
       return Marker.new(clampedX, clampedY)
+    }
+
+    def _regionFromEvent(event MouseEvent, mode MouseMode, step StepX) Region {
+      var marker = _markerFromEvent(event, mode)
+      var x = marker.x
+      var y = marker.y
+      var line = _model[y]
+
+      if step != .CHARACTER {
+        return Region.new(
+          Marker.new(step == .LINE || !line.isWordBoundary(x, .PREVIOUS) ? line.seekToBoundary(x, .PREVIOUS, step) : x, y),
+          Marker.new(step == .LINE || !line.isWordBoundary(x, .NEXT) ? line.seekToBoundary(x, .NEXT, step) : x, y))
+      }
+
+      return Region.new(marker)
     }
 
     def _selectFirstRegion {

@@ -83,7 +83,7 @@ namespace Editor {
     def span(first Region, second Region) Region {
       var start = Marker.min(first.min, second.min)
       var end = Marker.max(first.max, second.max)
-      return start.equals(first.start) || start.equals(second.start) ? new(start, end) : new(end, start)
+      return start.equals(first.start) || end.equals(second.end) ? new(start, end) : new(end, start)
     }
   }
 

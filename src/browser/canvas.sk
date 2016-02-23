@@ -229,7 +229,7 @@ namespace Browser {
       var bounds = _element.getBoundingClientRect()
       var x double = e.pageX - bounds.left
       var y double = e.pageY - bounds.top
-      return Editor.MouseEvent.new(x, y, _modifiersFromEvent(e))
+      return Editor.MouseEvent.new(x, y, _modifiersFromEvent(e), e.detail as int)
     }
 
     enum ChangeDragHandlers {

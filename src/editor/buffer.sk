@@ -18,6 +18,16 @@ namespace Editor {
     var diagnostics List<Diagnostic> = null
     var hasErrors = false
 
+    def isWordBoundary(index int, direction Direction) bool {
+      var count = text.count
+      assert(index >= 0 && index <= count)
+      if index == 0 { return direction == .PREVIOUS }
+      if index == count { return direction != .PREVIOUS }
+      var left = classify(text[index - 1])
+      var right = classify(text[index])
+      return direction == .PREVIOUS ? left > right : left < right
+    }
+
     def seekToBoundary(index int, direction Direction, step StepX) int {
       var count = text.count
       var delta = direction.delta
@@ -25,9 +35,7 @@ namespace Editor {
 
       if step == .WORD {
         for i = index + delta; i > 0 && i < count; i += delta {
-          var left = classify(text[i - 1])
-          var right = classify(text[i])
-          if direction == .PREVIOUS ? left > right : left < right {
+          if isWordBoundary(i, direction) {
             return i
           }
         }
