@@ -182,8 +182,8 @@ namespace Graphics {
       }
 
       # Emit the joins between segments
-      var minJoin = stroke == .CLOSED ? 0 : 1
-      var maxJoin = stroke == .CLOSED ? n + 1 : n - 1
+      var minJoin = stroke == .CLOSED ? 0 : 2
+      var maxJoin = stroke == .CLOSED ? n + 2 : n - 2
       for i = minJoin; i < maxJoin; i += 2 {
         var v0x = coordinates[(i + n - 2) % n]
         var v0y = coordinates[(i + n - 1) % n]

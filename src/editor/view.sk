@@ -232,6 +232,10 @@ namespace Editor {
       setModel(model)
     }
 
+    def model Model {
+      return _model
+    }
+
     def setting(setting ViewSetting) bool {
       assert(setting in _settings)
       return _settings[setting]
@@ -923,7 +927,7 @@ namespace Editor {
       if y <= minY {
         offsetY = y * _lineHeight
       } else if y >= maxY {
-        # Use max to ensure offsetY doesn't go backwards, which it would otherwise due with SCROLL_PAST_END on
+        # Use max to ensure offsetY doesn't go backwards, which it would otherwise do with SCROLL_PAST_END on
         offsetY = Math.max(offsetY, (y + 1) * _lineHeight - (_viewHeight - _paddingTop - _paddingBottom))
       }
 
