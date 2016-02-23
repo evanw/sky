@@ -49,6 +49,7 @@ namespace Browser {
       return _operatingSystem == .OSX ? .META : .CONTROL
     }
 
+    @neverinline
     def nowInSeconds double {
       return (window.performance ? window.performance : dynamic.Date).now() / 1000
     }

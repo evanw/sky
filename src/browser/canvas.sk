@@ -39,12 +39,15 @@ namespace Browser {
     var _previousFont Editor.Font = .DEFAULT
     var _isPreviousFontValid = false
     var _idleCount = 0
+    var _timeOfLastEdit = 0.0
+    var _areCaretsVisible = true
     var _element = document.createElement("canvas")
     var _mousemove fn(dynamic) = null
     var _mouseup fn(dynamic) = null
     var _view Editor.View = null
     var _platform Editor.Platform = null
     var _shortcuts Editor.ShortcutMap = null
+    var _translator Editor.SemanticToPixelTranslator = null
     var _textarea = document.createElement("textarea")
     var _previousValue = ""
     var _fontContext = document.createElement("canvas").getContext("2d")
@@ -52,6 +55,8 @@ namespace Browser {
     def new(platform Editor.Platform, shortcuts Editor.ShortcutMap) {
       _platform = platform
       _shortcuts = shortcuts
+      _translator = Editor.SemanticToPixelTranslator.new(self)
+      _timeOfLastEdit = _platform.nowInSeconds
       _installEventHandlers
     }
 
@@ -78,6 +83,10 @@ namespace Browser {
       }
     }
 
+    def translator Editor.SemanticToPixelTranslator {
+      return _translator
+    }
+
     def width int {
       return _width
     }
@@ -100,6 +109,7 @@ namespace Browser {
 
     def invalidate {
       _isInvalid = true
+      _timeOfLastEdit = _platform.nowInSeconds
     }
 
     def setCursor(cursor Editor.Cursor) {
@@ -133,8 +143,10 @@ namespace Browser {
     }
 
     def _render {
+      var areCaretsVisible = ((((_platform.nowInSeconds - _timeOfLastEdit) * 2) as int) & 1) == 0
+
       # Skip rendering if not invalid
-      if !_isInvalid {
+      if !_isInvalid && areCaretsVisible == _areCaretsVisible {
         _idleCount++
 
         # Render something at 10 fps even when idle otherwise Chrome's
@@ -151,6 +163,8 @@ namespace Browser {
       _idleCount = 0
       _isInvalid = false
       _isPreviousFontValid = false
+      _areCaretsVisible = areCaretsVisible
+      _translator.setShowCarets(areCaretsVisible)
 
       # Delegate to the view
       _view?.render

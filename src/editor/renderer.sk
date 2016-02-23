@@ -55,11 +55,16 @@ namespace Editor {
   class SemanticToPixelTranslator :: SemanticRenderer {
     const _renderer PixelRenderer
     var _theme Theme = .FALLBACK
+    var _showCarets = true
 
     def setTheme(theme Theme) {
       _theme = theme
       _renderer.setDefaultBackgroundColor(theme.findColor(.BACKGROUND_DEFAULT))
       invalidate
+    }
+
+    def setShowCarets(value bool) {
+      _showCarets = value
     }
 
     def invalidate {
@@ -75,7 +80,9 @@ namespace Editor {
     }
 
     def renderCaret(x double, y double, color Color) {
-      _renderer.fillBox(x, y, 1, _renderer.lineHeight, _theme.findColor(color))
+      if _showCarets {
+        _renderer.fillBox(x, y, 1, _renderer.lineHeight, _theme.findColor(color))
+      }
     }
 
     def renderSquiggle(x double, y double, width double, height double, color Color) {

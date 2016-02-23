@@ -7,11 +7,9 @@ namespace Browser {
 
     var canvas = _createCanvas(platform)
     canvas.changeFont(12, 10, 16, ["Menlo", "Monaco", "Consolas", "monospace"])
+    canvas.translator.setTheme(.XCODE)
 
-    var translator = Editor.SemanticToPixelTranslator.new(canvas)
-    translator.setTheme(.XCODE)
-
-    var view = Editor.View.new(platform, translator, model)
+    var view = Editor.View.new(platform, canvas.translator, model)
     view.changePadding(5, 5, 5, 5)
     view.changeMarginPadding(15, 5)
     canvas.setView(view)
