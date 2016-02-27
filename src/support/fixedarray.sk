@@ -12,9 +12,9 @@ class FixedArray {
   def setFloat(byteIndex int, value double)
 
   def getRange(byteIndex int, byteCount int) FixedArray
-  def setRange(byteIndex int, values FixedArray)
+  def setRange(byteIndex int, array FixedArray)
 
-  def bytesForJavaScript Uint8Array
+  def bytesForJS Uint8Array
 }
 
 if TARGET == .JAVASCRIPT {
@@ -64,10 +64,11 @@ if TARGET == .JAVASCRIPT {
 
     def setRange(byteIndex int, array FixedArray) {
       assert(byteIndex >= 0 && byteIndex + array.byteCount <= byteCount)
+      assert(byteIndex % 4 == 0) # This is an alignment requirement for Float32Array
       _bytes.set(array._bytes, byteIndex)
     }
 
-    def bytesForJavaScript Uint8Array {
+    def bytesForJS Uint8Array {
       return _bytes
     }
   }

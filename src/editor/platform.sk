@@ -19,6 +19,7 @@ namespace Editor {
   interface Window {
     def renderer SemanticRenderer
     def setView(view Editor.View)
+    def setTitle(title string)
   }
 
   interface Platform {

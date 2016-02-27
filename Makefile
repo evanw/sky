@@ -21,8 +21,11 @@ profile: | node_modules
 release: | node_modules
 	$(SKEW) $(FLAGS_JS) --release
 
-cpp-osx: | node_modules
+cpp-osx-debug: | node_modules
 	$(SKEW) $(FLAGS_OSX)
+
+cpp-osx-release: | node_modules
+	$(SKEW) $(FLAGS_OSX) --fold-constants --inline-functions
 
 watch-shaders:
 	node_modules/.bin/watch glslx 'clear && make shaders && echo done'

@@ -839,19 +839,19 @@ namespace Editor {
     }
 
     def _leftCharacter int {
-      return Math.max(0, Math.floor((_scrollbarX.scrollOffset - _paddingLeft) / _advanceWidth) as int)
+      return Math.clamp(Math.floor((_scrollbarX.scrollOffset - _paddingLeft) / _advanceWidth) as int, 0, _model.maxLineSize)
     }
 
     def _rightCharacter int {
-      return Math.min(_model.maxLineSize, Math.ceil((_viewWidth - _marginWidth + _scrollbarX.scrollOffset - _paddingRight) / _advanceWidth) as int)
+      return Math.clamp(Math.ceil((_viewWidth - _marginWidth + _scrollbarX.scrollOffset - _paddingRight) / _advanceWidth) as int, 0, _model.maxLineSize)
     }
 
     def _topLine int {
-      return Math.max(0, Math.floor((_scrollbarY.scrollOffset - _paddingTop) / _lineHeight) as int)
+      return Math.clamp(Math.floor((_scrollbarY.scrollOffset - _paddingTop) / _lineHeight) as int, 0, _model.count - 1)
     }
 
     def _bottomLine int {
-      return Math.min(_model.count, Math.ceil((_viewHeight + _scrollbarY.scrollOffset - _paddingTop) / _lineHeight) as int) - 1
+      return Math.clamp(Math.ceil((_viewHeight + _scrollbarY.scrollOffset - _paddingTop) / _lineHeight) as int - 1, 0, _model.count - 1)
     }
 
     def _scrollSelectionIntoView(selection Selection, scroll ScrollBehavior) {

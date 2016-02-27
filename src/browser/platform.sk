@@ -2,14 +2,6 @@ namespace Browser {
   class Window :: Editor.Window {
     const _canvas CanvasElement
 
-    def renderer Editor.SemanticRenderer {
-      return _canvas.translator
-    }
-
-    def setView(view Editor.View) {
-      _canvas.setView(view)
-    }
-
     def new(platform Platform) {
       var canvas = _createCanvas(platform)
       canvas.changeFont(12, 10, 16, ["Menlo", "Monaco", "Consolas", "monospace"])
@@ -29,6 +21,18 @@ namespace Browser {
         (window.requestAnimationFrame ? window.requestAnimationFrame : dynamic.setTimeout)(tick)
       }
       tick()
+    }
+
+    def renderer Editor.SemanticRenderer {
+      return _canvas.translator
+    }
+
+    def setView(view Editor.View) {
+      _canvas.setView(view)
+    }
+
+    def setTitle(title string) {
+      document.title = title
     }
   }
 

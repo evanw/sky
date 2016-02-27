@@ -6,6 +6,7 @@ namespace Editor {
     def new(platform Platform) {
       _platform = platform
       _window = platform.createWindow
+      _window.setTitle("Untitled - Sky")
 
       var model = Model.new("<demo>", platform)
       model.setLexer(.SKEW)

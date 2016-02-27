@@ -116,7 +116,7 @@ namespace Browser {
       # Update the vertex buffer before updating the format so attributes can bind correctly
       _vertexBuffer ?= _gl.createBuffer
       _gl.bindBuffer(_gl.ARRAY_BUFFER, _vertexBuffer)
-      _gl.bufferData(_gl.ARRAY_BUFFER, vertices.bytesForJavaScript, _gl.DYNAMIC_DRAW)
+      _gl.bufferData(_gl.ARRAY_BUFFER, vertices.bytesForJS, _gl.DYNAMIC_DRAW)
       _updateFormat(material.format)
 
       # Draw now that everything is ready
@@ -166,7 +166,7 @@ namespace Browser {
     }
 
     def createTexture(format Graphics.TextureFormat, width int, height int, pixels FixedArray) Graphics.Texture {
-      return Texture.new(self, format, width, height, pixels?.bytesForJavaScript)
+      return Texture.new(self, format, width, height, pixels?.bytesForJS)
     }
 
     def createRenderTarget(texture Graphics.Texture) Graphics.RenderTarget {
@@ -610,7 +610,7 @@ namespace Browser {
 
       _width = width
       _height = height
-      _pixels = pixels?.bytesForJavaScript
+      _pixels = pixels?.bytesForJS
       _isContentDirty = true
     }
 
@@ -627,13 +627,13 @@ namespace Browser {
       # CPU-side upload
       for y = 0; y < sourceHeight; y++ {
         _pixels.set(
-          sourcePixels.bytesForJavaScript.subarray(y * sourceWidth * 4, (y + 1) * sourceWidth * 4),
+          sourcePixels.bytesForJS.subarray(y * sourceWidth * 4, (y + 1) * sourceWidth * 4),
           (targetX + (targetY + y) * _width) * 4)
       }
 
       # GPU-side upload
       gl.bindTexture(gl.TEXTURE_2D, texture)
-      gl.texSubImage2D(gl.TEXTURE_2D, 0, targetX, targetY, sourceWidth, sourceHeight, gl.RGBA, gl.UNSIGNED_BYTE, sourcePixels.bytesForJavaScript)
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, targetX, targetY, sourceWidth, sourceHeight, gl.RGBA, gl.UNSIGNED_BYTE, sourcePixels.bytesForJS)
     }
 
     def texture WebGLTexture {

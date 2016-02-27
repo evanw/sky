@@ -1,8 +1,4 @@
 @export if BUILD == .NATIVE {
-  class Editor.App {}
-  class Editor.View {}
-  enum Editor.OperatingSystem {}
-  enum Editor.UserAgent {}
-  interface Editor.Platform {}
-  interface Editor.Window {}
+  namespace Editor {}
+  namespace Graphics {}
 }
