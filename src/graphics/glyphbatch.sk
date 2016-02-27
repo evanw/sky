@@ -32,7 +32,6 @@ namespace Graphics {
   class GlyphBatch {
     const _platform Editor.Platform
     const _context Context
-    const _pool BufferPool
     const _material Material
     var _texture Texture = null
     var _packer MaskPacker = null
@@ -45,10 +44,9 @@ namespace Graphics {
     var _inversePixelScale = 0.0
     var _backgroundLuminanceByte = 0
 
-    def new(platform Editor.Platform, context Context, pool BufferPool) {
+    def new(platform Editor.Platform, context Context) {
       _platform = platform
       _context = context
-      _pool = pool
       _material = context.createMaterial(.POSITION_F4_COLOR_U4_COORD_U4, GLSLX_SOURCE_GLYPH_BATCH_VERTEX, GLSLX_SOURCE_GLYPH_BATCH_FRAGMENT)
     }
 
@@ -147,6 +145,7 @@ namespace Graphics {
         # Create or resize the texture if needed
         if _texture == null {
           _texture = _context.createTexture(.NEAREST_CLAMP, _packerWidth, _packerHeight)
+          _material.setUniformSampler(GLSLX_NAME_TEXTURE, _texture, 0)
         } else if _texture.width != _packerWidth || _texture.height != _packerHeight {
           _texture.resize(_packerWidth, _packerHeight)
         }
@@ -161,12 +160,9 @@ namespace Graphics {
             "size \(bounds.width)x\(bounds.height) to texture with size \(_packerWidth)x\(_packerHeight)")
         }
 
-        var area = _pool.allocate(.POSITION_F4_COLOR_U4_COORD_U4, _buffer.fixedArray)
-        if area != null {
-          _context.draw(.TRIANGLES, _material, area)
-          _buffer.clear
-          area.free
-        }
+        _context.setPremultipliedBlendState
+        _context.draw(.TRIANGLES, _material, _buffer.fixedArray)
+        _buffer.clear
       }
     }
 

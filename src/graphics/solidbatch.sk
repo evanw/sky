@@ -12,16 +12,14 @@ namespace Graphics {
     const _vertices = GrowableArray.new
     var _context Context = null
     var _inversePixelScale = 1.0
-    var _pool BufferPool = null
     var _previousColor RGBA = .TRANSPARENT
     var _previousU = 0.0
     var _previousV = 0.0
     var _previousX = 0.0
     var _previousY = 0.0
 
-    def new(context Context, pool BufferPool) {
+    def new(context Context) {
       _context = context
-      _pool = pool
       _material = context.createMaterial(.POSITION_F4_COLOR_U4, GLSLX_SOURCE_SOLID_BATCH_VERTEX, GLSLX_SOURCE_SOLID_BATCH_FRAGMENT)
     }
 
@@ -32,13 +30,9 @@ namespace Graphics {
 
     def flush {
       if !_vertices.isEmpty {
-        var area = _pool.allocate(.POSITION_F4_COLOR_U4, _vertices.fixedArray)
-        if area != null {
-          _context.setPremultipliedBlendState
-          _context.draw(.TRIANGLE_STRIP, _material, area)
-          _vertices.clear
-          area.free
-        }
+        _context.setPremultipliedBlendState
+        _context.draw(.TRIANGLE_STRIP, _material, _vertices.fixedArray)
+        _vertices.clear
       }
     }
 

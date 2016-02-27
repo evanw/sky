@@ -24,21 +24,16 @@ namespace Graphics {
 
   interface Context {
     def addContextResetHandler(callback fn())
-    def beginFrame
     def clear(color RGBA)
     def createMaterial(format VertexFormat, vertexSource string, fragmentSource string) Material
     def createTexture(format TextureFormat, width int, height int) Texture { return createTexture(format, width, height, null) }
     def createTexture(format TextureFormat, width int, height int, pixels FixedArray) Texture
     def createRenderTarget(texture Texture) RenderTarget
-    def createVertexBuffer(byteCount int) VertexBuffer
-    def currentRenderTarget RenderTarget
-    def draw(primitive Primitive, material Material, area BufferArea)
-    def endFrame
+    def draw(primitive Primitive, material Material, vertices FixedArray)
     def height int
     def removeContextResetHandler(callback fn())
     def resize(width int, height int)
     def setRenderTarget(renderTarget RenderTarget)
-    def setViewport(x int, y int, width int, height int)
     def width int
 
     def setBlendState(source BlendOperation, target BlendOperation)
@@ -51,15 +46,12 @@ namespace Graphics {
   interface Material {
     def context Context
     def format VertexFormat
-    def fragmentSource string
-    def vertexSource string
     def setUniformFloat(name string, x double)
     def setUniformInt(name string, x int)
     def setUniformVec2(name string, x double, y double)
     def setUniformVec3(name string, x double, y double, z double)
     def setUniformVec4(name string, x double, y double, z double, w double)
     def setUniformVec4(name string, c RGBA) { setUniformVec4(name, c.red / 255.0, c.green / 255.0, c.blue / 255.0, c.alpha / 255.0) }
-    def setUniformMat3(name string, m00 double, m01 double, m02 double, m10 double, m11 double, m12 double, m20 double, m21 double, m22 double)
     def setUniformSampler(name string, texture Texture, index int)
   }
 
@@ -112,14 +104,6 @@ namespace Graphics {
       .add(GLSLX_NAME_COORD4, .BYTE, 4)
   }
 
-  interface VertexBuffer {
-    def byteCount int
-    def context Context
-    def move(sourceByteOffset int, targetByteOffset int, byteCount int)
-    def upload(array FixedArray) { upload(array, 0) }
-    def upload(array FixedArray, byteOffset int)
-  }
-
   enum PixelFilter {
     NEAREST
     LINEAR
@@ -148,7 +132,6 @@ namespace Graphics {
     def height int
     def resize(width int, height int) { resize(width, height, null) }
     def resize(width int, height int, pixels FixedArray)
-    def setFormat(format TextureFormat)
     def upload(sourcePixels FixedArray, targetX int, targetY int, sourceWidth int, sourceHeight int)
     def width int
   }
@@ -156,6 +139,5 @@ namespace Graphics {
   interface RenderTarget {
     def context Context
     def texture Texture
-    def setColor(texture Texture)
   }
 }

@@ -2,6 +2,7 @@ class FixedArray {
   def new(byteCount int)
 
   def byteCount int
+  def isEmpty bool { return byteCount == 0 }
 
   def getByte(byteIndex int) int
   def setByte(byteIndex int, value int)

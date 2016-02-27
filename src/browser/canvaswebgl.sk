@@ -1,7 +1,6 @@
 namespace Browser {
   class CanvasElementWebGL : CanvasElement {
     var _context Context = null
-    var _pool Graphics.BufferPool = null
     var _solidBatch Graphics.SolidBatch = null
     var _glyphBatch Graphics.GlyphBatch = null
     var _font Graphics.Font = null
@@ -30,9 +29,8 @@ namespace Browser {
       gl ?= _element.getContext("experimental-webgl", options)
 
       _context = Context.new(gl)
-      _pool = Graphics.BufferPool.new(_context)
-      _solidBatch = Graphics.SolidBatch.new(_context, _pool)
-      _glyphBatch = Graphics.GlyphBatch.new(platform, _context, _pool)
+      _solidBatch = Graphics.SolidBatch.new(_context)
+      _glyphBatch = Graphics.GlyphBatch.new(platform, _context)
       _dropShadowMaterial = _context.createMaterial(.POSITION_F2, GLSLX_SOURCE_DROP_SHADOW_VERTEX, GLSLX_SOURCE_DROP_SHADOW_FRAGMENT)
 
       Log.info("initialized WebGL canvas")
@@ -129,14 +127,9 @@ namespace Browser {
       _dropShadowVertices.setFloat(24, clipX + clipWidth)
       _dropShadowVertices.setFloat(28, clipY + clipHeight)
 
-      var area = _pool.allocate(.POSITION_F2, _dropShadowVertices)
-
-      if area != null {
-        _dropShadowMaterial.setUniformVec4(GLSLX_NAME_DROP_SHADOW_BOX, boxX, boxY, boxX + boxWidth, boxY + boxHeight)
-        _dropShadowMaterial.setUniformVec2(GLSLX_NAME_DROP_SHADOW_OPTIONS, shadowAlpha, blurSigma)
-        _context.draw(.TRIANGLE_STRIP, _dropShadowMaterial, area)
-        area.free
-      }
+      _dropShadowMaterial.setUniformVec4(GLSLX_NAME_DROP_SHADOW_BOX, boxX, boxY, boxX + boxWidth, boxY + boxHeight)
+      _dropShadowMaterial.setUniformVec2(GLSLX_NAME_DROP_SHADOW_OPTIONS, shadowAlpha, blurSigma)
+      _context.draw(.TRIANGLE_STRIP, _dropShadowMaterial, _dropShadowVertices)
     }
 
     over renderText(x double, y double, text string, font Editor.Font, color Graphics.RGBA) {
