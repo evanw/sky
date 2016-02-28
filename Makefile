@@ -1,4 +1,4 @@
-SKEW = node skew/skewc.js src/*/*.sk --message-limit=0
+SKEW = node_modules/.bin/skewc src/*/*.sk --message-limit=0
 GLSLX = node_modules/.bin/glslx glslx/shaders.glslx --format=skew --output=src/graphics/shaders.sk
 
 FLAGS_JS += --output-file=www/compiled.js
