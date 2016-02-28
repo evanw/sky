@@ -547,33 +547,118 @@ namespace OpenGL {
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace OSX {
+  template <typename T, void (*F)(T)>
+  struct CFDeleter {
+    void operator () (T ref) {
+      if (ref) {
+        F(ref);
+      }
+    }
+  };
+
+  template <typename T, typename X, void (*F)(X)>
+  using CFPtr = std::unique_ptr<typename std::remove_pointer<T>::type, CFDeleter<X, F>>;
+
+  using CTFontPtr = CFPtr<CTFontRef, CFTypeRef, CFRelease>;
+  using CFStringPtr = CFPtr<CFStringRef, CFTypeRef, CFRelease>;
+  using CGContextPtr = CFPtr<CGContextRef, CGContextRef, CGContextRelease>;
+  using CGColorSpacePtr = CFPtr<CGColorSpaceRef, CGColorSpaceRef, CGColorSpaceRelease>;
+
   struct GlyphProvider : Graphics::GlyphProvider {
     virtual void setFont(Skew::List<Skew::string> *fontNames, double fontSize) override {
+      for (const auto &name : *fontNames) {
+        CFStringPtr cfName(CFStringCreateWithCString(kCFAllocatorDefault, name.c_str(), kCFStringEncodingUTF8));
+        _font.reset(CTFontCreateWithName(cfName.get(), fontSize, nullptr));
+        if (_font != nullptr) {
+          break;
+        }
+      }
+      if (_font == nullptr) {
+        _font.reset(CTFontCreateUIFontForLanguage(kCTFontUserFontType, fontSize, nullptr));
+      }
+      _ascent = std::round(CTFontGetAscent(_font.get()));
     }
 
     virtual double advanceWidth(int codePoint) override {
-      return 10;
+      auto glyph = _glyphForCodePoint(codePoint);
+      return CTFontGetAdvancesForGlyphs(_font.get(), kCTFontOrientationDefault, &glyph, nullptr, 1);
     }
 
     virtual Graphics::Glyph *render(int codePoint, double advanceWidth) override {
-      auto mask = new Graphics::Mask(10, 10);
-      auto bytes = mask->pixels->bytesForCPP();
-      for (int y = 0; y < 10; y++) {
-        for (int x = 0; x < 10; x++) {
-          int c = (x ^ y) & 1 ? 255 : 0;
-          bytes[(x + y * 10) * 4] = c;
-          bytes[(x + y * 10) * 4 + 1] = c;
-          bytes[(x + y * 10) * 4 + 2] = c;
-          bytes[(x + y * 10) * 4 + 3] = c;
+      auto glyph = _glyphForCodePoint(codePoint);
+      auto bounds = CTFontGetBoundingRectsForGlyphs(_font.get(), kCTFontOrientationDefault, &glyph, nullptr, 1);
+
+      // Make sure the context is big enough
+      int minX = std::floor(bounds.origin.x) - 1;
+      int minY = std::floor(bounds.origin.y - _ascent) - 1;
+      int maxX = std::ceil(bounds.origin.x + bounds.size.width) + 2;
+      int maxY = std::ceil(bounds.origin.y + bounds.size.height - _ascent) + 2;
+      int width = maxX - minX;
+      int height = maxY - minY;
+      if (!_context || width > _width || height > _height) {
+        _width = std::max(width * 2, _width);
+        _height = std::max(height * 2, _height);
+        _bytes.resize(_width * _height * 4);
+        _context = CGContextPtr(CGBitmapContextCreate(_bytes.data(), _width, _height, 8, _width * 4, _deviceRGB.get(), kCGImageAlphaPremultipliedLast));
+      }
+
+      auto mask = new Graphics::Mask(width, height);
+
+      // Render the glyph three times at different offsets
+      for (int i = 0; i < 3; i++) {
+        auto position = CGPointMake(-minX + i / 3.0, -minY - _ascent);
+        CGContextClearRect(_context.get(), CGRectMake(0, 0, width, height));
+        CTFontDrawGlyphs(_font.get(), &glyph, &position, 1, _context.get());
+
+        // Extract the mask (keep in mind CGContext is upside-down)
+        auto from = _bytes.data() + (_height - height) * _width * 4 + 3;
+        auto to = mask->pixels->bytesForCPP() + i;
+        for (int y = 0; y < height; y++, from += (_width - width) * 4) {
+          for (int x = 0; x < width; x++, to += 4, from += 4) {
+            *to = *from;
+          }
         }
       }
-      return new Graphics::Glyph('x', mask, 0, 0, 10);
+
+      return new Graphics::Glyph(codePoint, mask, -minX, maxY, advanceWidth);
     }
 
     #ifdef SKEW_GC_MARK_AND_SWEEP
       virtual void __gc_mark() override {
       }
     #endif
+
+  private:
+    CGGlyph _glyphForCodePoint(int codePoint) {
+      if (_cachedCodePoint != codePoint) {
+        _cachedCodePoint = codePoint;
+
+        // The code point must be UTF-16 encoded
+        if (codePoint < 0x10000) {
+          uint16_t codeUnit = codePoint;
+          CTFontGetGlyphsForCharacters(_font.get(), &codeUnit, &_cachedGlyph, 1);
+        } else {
+          codePoint -= 0x10000;
+          uint16_t codeUnits[2] = {
+            static_cast<uint16_t>((codePoint >> 10) + 0xD800),
+            static_cast<uint16_t>((codePoint & ((1 << 10) - 1)) + 0xDC00),
+          };
+          CTFontGetGlyphsForCharacters(_font.get(), codeUnits, &_cachedGlyph, 2);
+        }
+      }
+
+      return _cachedGlyph;
+    }
+
+    double _ascent = 0;
+    int _width = 0;
+    int _height = 0;
+    int _cachedCodePoint = -1;
+    CGGlyph _cachedGlyph = -1;
+    CTFontPtr _font = nullptr;
+    CGContextPtr _context = nullptr;
+    CGColorSpacePtr _deviceRGB = CGColorSpacePtr(CGColorSpaceCreateDeviceRGB());
+    std::vector<uint8_t> _bytes;
   };
 
   struct AppWindow : Editor::Window, Editor::PixelRenderer {
@@ -598,8 +683,18 @@ namespace OSX {
       _glyphBatch = new Graphics::GlyphBatch(_platform, _context);
 
       auto fontNames = new Skew::List<Skew::string> { "Menlo", "Monaco", "Consolas", "Courier New" };
+
       _font = _glyphBatch->createFont(fontNames, _fontSize);
+      _font->glyphProvider->setFont(fontNames, _fontSize);
+      _advanceWidth = _font->glyphProvider->advanceWidth(' ');
+
       _marginFont = _glyphBatch->createFont(fontNames, _marginFontSize);
+      _marginFont->glyphProvider->setFont(fontNames, _marginFontSize);
+      _marginAdvanceWidth = _marginFont->glyphProvider->advanceWidth(' ');
+
+      if (_view != nullptr) {
+        _view->resizeFont(_advanceWidth, _marginAdvanceWidth, _lineHeight);
+      }
 
       handleResize();
     }
@@ -710,8 +805,8 @@ namespace OSX {
     double _fontSize = 12;
     double _marginFontSize = 10;
     double _lineHeight = 16;
-    double _advanceWidth = 10;
-    double _marginAdvanceWidth = 10;
+    double _advanceWidth = 0;
+    double _marginAdvanceWidth = 0;
     bool _needsToBeShown = true;
     NSWindow *_window = nullptr;
     NSCursor *_cursor = [NSCursor arrowCursor];
@@ -939,10 +1034,21 @@ void OSX::AppWindow::handleResize() {
 
   [[_appView openGLContext] makeCurrentContext];
 
-  if (_view) _view->resize(_width, _height);
-  if (_context) _context->resize(pixelSize.width, pixelSize.height);
-  if (_solidBatch) _solidBatch->resize(_width, _height, _pixelScale);
-  if (_glyphBatch) _glyphBatch->resize(_width, _height, _pixelScale);
+  if (_view != nullptr) {
+    _view->resize(_width, _height);
+  }
+
+  if (_context != nullptr) {
+    _context->resize(pixelSize.width, pixelSize.height);
+  }
+
+  if (_solidBatch != nullptr) {
+    _solidBatch->resize(_width, _height, _pixelScale);
+  }
+
+  if (_glyphBatch != nullptr) {
+    _glyphBatch->resize(_width, _height, _pixelScale);
+  }
 }
 
 void OSX::AppWindow::handleActivate(bool isActive) {

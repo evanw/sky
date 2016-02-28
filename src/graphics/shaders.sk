@@ -1,7 +1,7 @@
 const GLSLX_SOURCE_SOLID_BATCH_VERTEX = "precision highp float;uniform vec2 e;attribute vec4 j,g;varying vec4 f,c;void main(){c=g,f=j,gl_Position=vec4(g.xy*e-sign(e),0,1);}"
 const GLSLX_SOURCE_SOLID_BATCH_FRAGMENT = "precision highp float;varying vec4 f,c;void main(){gl_FragColor=f*min(1.,min(c.z,c.w));}"
 const GLSLX_SOURCE_GLYPH_BATCH_VERTEX = "precision highp float;uniform vec2 e;attribute vec4 j,m,g;varying vec4 f,c;void main(){c=vec4(g.zw,m.x*3.,m.y),f=j,gl_Position=vec4(g.xy*e-sign(e),0,1);}"
-const GLSLX_SOURCE_GLYPH_BATCH_FRAGMENT = "precision highp float;uniform sampler2D o;varying vec4 f,c;void main(){vec4 d=1.-texture2D(o,c.xy);float a=c.w,h=dot(f.rgb,vec3(.299,.587,.114)),b=c.z<1.?d.x:c.z<2.?d.y:d.z;b+=((sqrt(mix(a*a,h*h,sqrt(b)))-a)/(h-a)-b)*.5,gl_FragColor=f*b;}"
+const GLSLX_SOURCE_GLYPH_BATCH_FRAGMENT = "precision highp float;uniform sampler2D o;varying vec4 f,c;void main(){vec4 d=texture2D(o,c.xy);float a=c.w,h=dot(f.rgb,vec3(.299,.587,.114)),b=c.z<1.?d.x:c.z<2.?d.y:d.z;b+=((sqrt(mix(a*a,h*h,sqrt(b)))-a)/(h-a)-b)*.5,gl_FragColor=f*b;}"
 const GLSLX_SOURCE_DROP_SHADOW_VERTEX = "precision highp float;uniform vec2 e;attribute vec2 n;varying vec2 i;void main(){i=n,gl_Position=vec4(n.xy*e-sign(e),0,1);}"
 const GLSLX_SOURCE_DROP_SHADOW_FRAGMENT = "precision highp float;uniform vec2 l;uniform vec4 k;varying vec2 i;vec4 p(vec4 a){vec4 d=sign(a),b=abs(a);a=b*(b*(b*b*.078108+.230389)+.278393)+1.,a*=a;return d-d/(a*a);}float q(vec2 d,vec2 h,vec2 b,float r){vec4 s=vec4(b-d,b-h),a=.5+.5*p(s*(sqrt(.5)/r));return (a.z-a.x)*(a.w-a.y);}void main(){gl_FragColor=vec4(0,0,0,l.x*q(k.xy,k.zw,i.xy,l.y));}"
 
