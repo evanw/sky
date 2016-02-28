@@ -681,6 +681,7 @@ namespace OSX {
 
       _solidBatch = new Graphics::SolidBatch(_context);
       _glyphBatch = new Graphics::GlyphBatch(_platform, _context);
+      _dropShadow = new Graphics::DropShadow(_context);
 
       auto fontNames = new Skew::List<Skew::string> { "Menlo", "Monaco", "Consolas", "Courier New" };
 
@@ -783,6 +784,10 @@ namespace OSX {
       double boxX, double boxY, double boxWidth, double boxHeight,
       double clipX, double clipY, double clipWidth, double clipHeight,
       double shadowAlpha, double blurSigma) override {
+
+      _solidBatch->flush();
+      _glyphBatch->flush();
+      _dropShadow->render(boxX, boxY, boxWidth, boxHeight, clipX, clipY, clipWidth, clipHeight, shadowAlpha, blurSigma);
     }
 
     #ifdef SKEW_GC_MARK_AND_SWEEP
@@ -795,6 +800,7 @@ namespace OSX {
         Skew::GC::mark(_glyphBatch);
         Skew::GC::mark(_font);
         Skew::GC::mark(_marginFont);
+        Skew::GC::mark(_dropShadow);
       }
     #endif
 
@@ -819,6 +825,7 @@ namespace OSX {
     Graphics::GlyphBatch *_glyphBatch = nullptr;
     Graphics::Font *_font = nullptr;
     Graphics::Font *_marginFont = nullptr;
+    Graphics::DropShadow *_dropShadow = nullptr;
   };
 
   struct Platform : Editor::Platform {
@@ -1048,6 +1055,10 @@ void OSX::AppWindow::handleResize() {
 
   if (_glyphBatch != nullptr) {
     _glyphBatch->resize(_width, _height, _pixelScale);
+  }
+
+  if (_dropShadow != nullptr) {
+    _dropShadow->resize(_width, _height);
   }
 }
 

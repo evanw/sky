@@ -72,7 +72,7 @@ namespace Browser {
     }
 
     over renderRectShadow(
-      boxX double, boxY double, boxWidth double, boxHeight double,
+      rectX double, rectY double, rectWidth double, rectHeight double,
       clipX double, clipY double, clipWidth double, clipHeight double,
       shadowAlpha double, blurSigma double) {
 
@@ -90,7 +90,7 @@ namespace Browser {
       context.shadowOffsetY = offset
       context.shadowBlur = blurSigma * 3
       context.fillStyle = "#000"
-      context.fillRect(boxX - offset, boxY - offset, boxWidth, boxHeight)
+      context.fillRect(rectX - offset, rectY - offset, rectWidth, rectHeight)
       context.restore()
     }
 

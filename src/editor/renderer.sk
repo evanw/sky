@@ -46,7 +46,7 @@ namespace Editor {
     def strokePolyline(coordinates List<double>, color Graphics.RGBA, thickness double)
     def renderText(x double, y double, text string, font Font, color Graphics.RGBA)
     def renderRectShadow(
-      boxX double, boxY double, boxWidth double, boxHeight double,
+      rectX double, rectY double, rectWidth double, rectHeight double,
       clipX double, clipY double, clipWidth double, clipHeight double,
       shadowAlpha double, blurSigma double)
   }

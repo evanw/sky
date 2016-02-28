@@ -1,0 +1,48 @@
+namespace Graphics {
+  class DropShadow {
+    var _width = 0.0
+    var _height = 0.0
+    var _context Context = null
+    var _material Material = null
+    var _vertices = FixedArray.new(4 * 2 * 4)
+
+    def new(context Context) {
+      _context = context
+      _material = context.createMaterial(.POSITION_F2, GLSLX_SOURCE_DROP_SHADOW_VERTEX, GLSLX_SOURCE_DROP_SHADOW_FRAGMENT)
+    }
+
+    def resize(width double, height double) {
+      _width = width
+      _height = height
+      _material.setUniformVec2(GLSLX_NAME_SCALE2, 2.0 / _width, -2.0 / _height)
+    }
+
+    def render(
+      boxX double, boxY double, boxWidth double, boxHeight double,
+      clipX double, clipY double, clipWidth double, clipHeight double,
+      shadowAlpha double, blurSigma double) {
+
+      if clipX >= _width || clipY >= _height || clipX + clipWidth <= 0 || clipY + clipHeight <= 0 {
+        return
+      }
+
+      _vertices.setFloat(0, clipX)
+      _vertices.setFloat(4, clipY)
+
+      _vertices.setFloat(8, clipX + clipWidth)
+      _vertices.setFloat(12, clipY)
+
+      _vertices.setFloat(16, clipX)
+      _vertices.setFloat(20, clipY + clipHeight)
+
+      _vertices.setFloat(24, clipX + clipWidth)
+      _vertices.setFloat(28, clipY + clipHeight)
+
+      _material.setUniformVec4(GLSLX_NAME_DROP_SHADOW_BOX, boxX, boxY, boxX + boxWidth, boxY + boxHeight)
+      _material.setUniformVec2(GLSLX_NAME_DROP_SHADOW_OPTIONS, shadowAlpha, blurSigma)
+
+      _context.setPremultipliedBlendState
+      _context.draw(.TRIANGLE_STRIP, _material, _vertices)
+    }
+  }
+}

@@ -3,10 +3,9 @@ namespace Browser {
     var _context Context = null
     var _solidBatch Graphics.SolidBatch = null
     var _glyphBatch Graphics.GlyphBatch = null
+    var _dropShadow Graphics.DropShadow = null
     var _font Graphics.Font = null
     var _marginFont Graphics.Font = null
-    var _dropShadowMaterial Graphics.Material = null
-    var _dropShadowVertices = FixedArray.new(4 * 2 * 4)
 
     def new(platform Editor.Platform, shortcuts Editor.ShortcutMap) {
       super(platform, shortcuts)
@@ -31,7 +30,7 @@ namespace Browser {
       _context = Context.new(gl)
       _solidBatch = Graphics.SolidBatch.new(_context)
       _glyphBatch = Graphics.GlyphBatch.new(platform, _context)
-      _dropShadowMaterial = _context.createMaterial(.POSITION_F2, GLSLX_SOURCE_DROP_SHADOW_VERTEX, GLSLX_SOURCE_DROP_SHADOW_FRAGMENT)
+      _dropShadow = Graphics.DropShadow.new(_context)
 
       Log.info("initialized WebGL canvas")
     }
@@ -50,7 +49,7 @@ namespace Browser {
       _context.resize(_element.width, _element.height)
       _solidBatch.resize(_width, _height, _pixelScale)
       _glyphBatch.resize(_width, _height, _pixelScale)
-      _dropShadowMaterial.setUniformVec2(GLSLX_NAME_SCALE2, 2.0 / _width, -2.0 / _height)
+      _dropShadow.resize(_width, _height)
     }
 
     over changeFont(fontSize double, marginFontSize double, lineHeight double, fontNames List<string>) {
@@ -82,32 +81,13 @@ namespace Browser {
     }
 
     over renderRectShadow(
-      boxX double, boxY double, boxWidth double, boxHeight double,
+      rectX double, rectY double, rectWidth double, rectHeight double,
       clipX double, clipY double, clipWidth double, clipHeight double,
       shadowAlpha double, blurSigma double) {
 
-      if clipX >= _width || clipY >= _height || clipX + clipWidth <= 0 || clipY + clipHeight <= 0 {
-        return
-      }
-
       _solidBatch.flush
       _glyphBatch.flush
-
-      _dropShadowVertices.setFloat(0, clipX)
-      _dropShadowVertices.setFloat(4, clipY)
-
-      _dropShadowVertices.setFloat(8, clipX + clipWidth)
-      _dropShadowVertices.setFloat(12, clipY)
-
-      _dropShadowVertices.setFloat(16, clipX)
-      _dropShadowVertices.setFloat(20, clipY + clipHeight)
-
-      _dropShadowVertices.setFloat(24, clipX + clipWidth)
-      _dropShadowVertices.setFloat(28, clipY + clipHeight)
-
-      _dropShadowMaterial.setUniformVec4(GLSLX_NAME_DROP_SHADOW_BOX, boxX, boxY, boxX + boxWidth, boxY + boxHeight)
-      _dropShadowMaterial.setUniformVec2(GLSLX_NAME_DROP_SHADOW_OPTIONS, shadowAlpha, blurSigma)
-      _context.draw(.TRIANGLE_STRIP, _dropShadowMaterial, _dropShadowVertices)
+      _dropShadow.render(rectX, rectY, rectWidth, rectHeight, clipX, clipY, clipWidth, clipHeight, shadowAlpha, blurSigma)
     }
 
     over renderText(x double, y double, text string, font Editor.Font, color Graphics.RGBA) {
