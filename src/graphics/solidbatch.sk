@@ -11,6 +11,8 @@ namespace Graphics {
     const _outside List<double> = []
     const _vertices = GrowableArray.new
     var _context Context = null
+    var _width = 0.0
+    var _height = 0.0
     var _inversePixelScale = 1.0
     var _previousColor RGBA = .TRANSPARENT
     var _previousU = 0.0
@@ -24,6 +26,8 @@ namespace Graphics {
     }
 
     def resize(width double, height double, pixelScale double) {
+      _width = width
+      _height = height
       _material.setUniformVec2(GLSLX_NAME_SCALE2, 2 / width, -2 / height)
       _inversePixelScale = 1 / pixelScale
     }
@@ -37,6 +41,10 @@ namespace Graphics {
     }
 
     def fillRect(x double, y double, width double, height double, color RGBA) {
+      if x >= _width || y >= _height || x + width <= 0 || y + height <= 0 {
+        return
+      }
+
       var coordinates = _rectCoordinates
       coordinates[0] = x
       coordinates[1] = y
@@ -47,6 +55,38 @@ namespace Graphics {
       coordinates[6] = x
       coordinates[7] = y + height
       fillConvexPolygon(coordinates, color)
+    }
+
+    def fillRoundedRect(x double, y double, width double, height double, color RGBA, radius double) {
+      if x >= _width || y >= _height || x + width <= 0 || y + height <= 0 {
+        return
+      }
+
+      radius = Math.min(radius, width / 2, height / 2)
+
+      var coordinates List<double> = []
+      var minX = x + radius
+      var minY = y + radius
+      var maxX = x + width - radius
+      var maxY = y + height - radius
+      var isClampedX = radius == width / 2
+      var isClampedY = radius == height / 2
+
+      _appendQuarterTurn(coordinates, minX, minY, radius, -Math.PI, -Math.PI / 2, isClampedY)
+      _appendQuarterTurn(coordinates, maxX, minY, radius, -Math.PI / 2, 0, isClampedX)
+      _appendQuarterTurn(coordinates, maxX, maxY, radius, 0, Math.PI / 2, isClampedY)
+      _appendQuarterTurn(coordinates, minX, maxY, radius, Math.PI / 2, Math.PI, isClampedX)
+
+      fillConvexPolygon(coordinates, color)
+    }
+
+    def _appendQuarterTurn(coordinates List<double>, centerX double, centerY double, radius double, fromAngle double, toAngle double, skipStartPoint bool) {
+      var n = 1 + Math.ceil(radius / (_inversePixelScale * Math.PI)) as int
+      for i = skipStartPoint as int; i <= n; i++ {
+        var angle = fromAngle + (toAngle - fromAngle) * i / n
+        coordinates.append(centerX + Math.cos(angle) * radius)
+        coordinates.append(centerY + Math.sin(angle) * radius)
+      }
     }
 
     def strokeLine(startX double, startY double, endX double, endY double, color RGBA, thickness double) {

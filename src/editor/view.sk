@@ -452,7 +452,7 @@ namespace Editor {
       _model.styleLinesIfNeeded(minY, maxY)
 
       # Clear the background
-      _renderer.renderBox(0, 0, _viewWidth, _viewHeight, .BACKGROUND_DEFAULT)
+      _renderer.renderRect(0, 0, _viewWidth, _viewHeight, .BACKGROUND_DEFAULT)
 
       # Render selections
       for region in regions {
@@ -469,7 +469,7 @@ namespace Editor {
 
           if startX != endX {
             var lineY = translateY + _lineHeight * y
-            _renderer.renderBox(translateX + _advanceWidth * startX, lineY, _advanceWidth * (endX - startX), _lineHeight, .BACKGROUND_SELECTED)
+            _renderer.renderRect(translateX + _advanceWidth * startX, lineY, _advanceWidth * (endX - startX), _lineHeight, .BACKGROUND_SELECTED)
 
             # Render whitespace characters
             var limit = Math.min(endX, count)
@@ -568,7 +568,7 @@ namespace Editor {
         }
 
         # Clear the background behind the line number margin
-        _renderer.renderBox(0, 0, _marginWidth, _viewHeight, .BACKGROUND_MARGIN)
+        _renderer.renderRect(0, 0, _marginWidth, _viewHeight, .BACKGROUND_MARGIN)
 
         # Render line numbers
         var rightAlignWidth = _model.count.toString.count
@@ -577,7 +577,7 @@ namespace Editor {
           var offsetY = translateY + y * _lineHeight
           var isHighlighted = y in shouldHighlightLineInMargin
           if isHighlighted {
-            _renderer.renderBox(0, offsetY, _marginWidth, _lineHeight, .BACKGROUND_MARGIN_HIGHLIGHTED)
+            _renderer.renderRect(0, offsetY, _marginWidth, _lineHeight, .BACKGROUND_MARGIN_HIGHLIGHTED)
           }
           _renderer.renderText(_marginPaddingLeft + _marginAdvanceWidth * (rightAlignWidth - text.count),
             offsetY, text, .MARGIN, isHighlighted ? .FOREGROUND_MARGIN_HIGHLIGHTED : .FOREGROUND_MARGIN, 255)

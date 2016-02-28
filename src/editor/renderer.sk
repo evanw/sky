@@ -16,7 +16,7 @@ namespace Editor {
   interface SemanticRenderer {
     def invalidate
     def setCursor(cursor Cursor)
-    def renderBox(x double, y double, width double, height double, color Color)
+    def renderRect(x double, y double, width double, height double, color Color)
     def renderCaret(x double, y double, color Color)
     def renderSquiggle(x double, y double, width double, height double, color Color)
     def renderRightwardShadow(x double, y double, width double, height double)
@@ -41,11 +41,11 @@ namespace Editor {
     def invalidate
     def setCursor(cursor Cursor)
     def setDefaultBackgroundColor(color Graphics.RGBA)
-    def fillBox(x double, y double, width double, height double, color Graphics.RGBA)
-    def fillRoundedBox(x double, y double, width double, height double, color Graphics.RGBA, radius double)
+    def fillRect(x double, y double, width double, height double, color Graphics.RGBA)
+    def fillRoundedRect(x double, y double, width double, height double, color Graphics.RGBA, radius double)
     def strokePolyline(coordinates List<double>, color Graphics.RGBA, thickness double)
     def renderText(x double, y double, text string, font Font, color Graphics.RGBA)
-    def renderBoxShadow(
+    def renderRectShadow(
       boxX double, boxY double, boxWidth double, boxHeight double,
       clipX double, clipY double, clipWidth double, clipHeight double,
       shadowAlpha double, blurSigma double)
@@ -75,13 +75,13 @@ namespace Editor {
       _renderer.setCursor(cursor)
     }
 
-    def renderBox(x double, y double, width double, height double, color Color) {
-      _renderer.fillBox(x, y, width, height, _theme.findColor(color))
+    def renderRect(x double, y double, width double, height double, color Color) {
+      _renderer.fillRect(x, y, width, height, _theme.findColor(color))
     }
 
     def renderCaret(x double, y double, color Color) {
       if _showCarets {
-        _renderer.fillBox(x, y, 1, _renderer.lineHeight, _theme.findColor(color))
+        _renderer.fillRect(x, y, 1, _renderer.lineHeight, _theme.findColor(color))
       }
     }
 
@@ -106,7 +106,7 @@ namespace Editor {
     }
 
     def renderRightwardShadow(x double, y double, width double, height double) {
-      _renderer.renderBoxShadow(
+      _renderer.renderRectShadow(
         x - 2 * width, y - width, 2 * width, height + 2 * width,
         x, y, width, height,
         0.5, width / 3.0)
@@ -118,12 +118,12 @@ namespace Editor {
 
     def renderHorizontalLine(x1 double, x2 double, y double, color Color) {
       assert(x1 <= x2)
-      _renderer.fillBox(x1, y, x2 - x1, 1, _theme.findColor(color))
+      _renderer.fillRect(x1, y, x2 - x1, 1, _theme.findColor(color))
     }
 
     def renderVerticalLine(x double, y1 double, y2 double, color Color) {
       assert(y1 <= y2)
-      _renderer.fillBox(x, y1, 1, y2 - y1, _theme.findColor(color))
+      _renderer.fillRect(x, y1, 1, y2 - y1, _theme.findColor(color))
     }
 
     def renderScrollbarThumb(x double, y double, width double, height double, color Color) {
@@ -135,7 +135,7 @@ namespace Editor {
       width -= 2 * padding
       height -= 2 * padding
 
-      _renderer.fillRoundedBox(x, y, width, height, _theme.findColor(color).multiplyAlpha(127), width / 2)
+      _renderer.fillRoundedRect(x, y, width, height, _theme.findColor(color).multiplyAlpha(127), width / 2)
     }
   }
 }

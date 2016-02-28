@@ -62,11 +62,11 @@ namespace Browser {
 
     def _renderNothing
     def setDefaultBackgroundColor(color Graphics.RGBA)
-    def fillBox(x double, y double, width double, height double, color Graphics.RGBA)
-    def fillRoundedBox(x double, y double, width double, height double, color Graphics.RGBA, radius double)
+    def fillRect(x double, y double, width double, height double, color Graphics.RGBA)
+    def fillRoundedRect(x double, y double, width double, height double, color Graphics.RGBA, radius double)
     def strokePolyline(coordinates List<double>, color Graphics.RGBA, thickness double)
     def renderText(x double, y double, text string, font Editor.Font, color Graphics.RGBA)
-    def renderBoxShadow(
+    def renderRectShadow(
       boxX double, boxY double, boxWidth double, boxHeight double,
       clipX double, clipY double, clipWidth double, clipHeight double,
       shadowAlpha double, blurSigma double)
@@ -351,7 +351,7 @@ namespace Browser {
       }
 
       var modifiers = _modifiersFromEvent(event)
-      var action = _shortcuts.get( _keyCodeFromEvent(event), modifiers)
+      var action = _shortcuts.get(_keyCodeFromEvent(event), modifiers)
       var view = _view
 
       # Clipboard handling in the browser really, really sucks. The standard is

@@ -24,7 +24,7 @@ namespace Browser {
       _context.scale(_pixelScale, _pixelScale)
     }
 
-    over fillBox(x double, y double, width double, height double, color Graphics.RGBA) {
+    over fillRect(x double, y double, width double, height double, color Graphics.RGBA) {
       if x >= _width || y >= _height || x + width <= 0 || y + height <= 0 {
         return
       }
@@ -33,7 +33,7 @@ namespace Browser {
       _context.fillRect(x, y, width, height)
     }
 
-    over fillRoundedBox(x double, y double, width double, height double, color Graphics.RGBA, radius double) {
+    over fillRoundedRect(x double, y double, width double, height double, color Graphics.RGBA, radius double) {
       if x >= _width || y >= _height || x + width <= 0 || y + height <= 0 {
         return
       }
@@ -71,7 +71,7 @@ namespace Browser {
       context.stroke()
     }
 
-    over renderBoxShadow(
+    over renderRectShadow(
       boxX double, boxY double, boxWidth double, boxHeight double,
       clipX double, clipY double, clipWidth double, clipHeight double,
       shadowAlpha double, blurSigma double) {

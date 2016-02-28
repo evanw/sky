@@ -88,6 +88,8 @@ namespace Log {
 
 #import "compiled.cpp"
 #import <skew.cpp>
+#import <codecvt>
+#import <locale>
 #import <sys/time.h>
 #import <Cocoa/Cocoa.h>
 #import <OpenGL/OpenGL.h>
@@ -102,13 +104,14 @@ namespace OpenGL {
 
   struct Texture : Graphics::Texture {
     Texture(Graphics::Context *context, Graphics::TextureFormat *format, int width, int height, FixedArray *pixels)
-        : _context(context), _format(format), _width(width), _height(height) {
+        : _context(context), _format(format), _width(0), _height(0) {
       glGenTextures(1, &_texture);
       glBindTexture(GL_TEXTURE_2D, _texture);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, format->magFilter == Graphics::PixelFilter::NEAREST ? GL_NEAREST : GL_LINEAR);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, format->minFilter == Graphics::PixelFilter::NEAREST ? GL_NEAREST : GL_LINEAR);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, format->wrap == Graphics::PixelWrap::REPEAT ? GL_REPEAT : GL_CLAMP_TO_EDGE);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, format->wrap == Graphics::PixelWrap::REPEAT ? GL_REPEAT : GL_CLAMP_TO_EDGE);
+      resize(width, height, pixels);
     }
 
     ~Texture() {
@@ -136,15 +139,17 @@ namespace OpenGL {
     }
 
     virtual void resize(int width, int height, FixedArray *pixels) override {
-      assert(width >= 0);
-      assert(height >= 0);
+      assert(width > 0);
+      assert(height > 0);
       assert(pixels == nullptr || pixels->byteCount() == width * height * 4);
 
-      _width = width;
-      _height = height;
+      if (width != _width || height != _height) {
+        _width = width;
+        _height = height;
 
-      glBindTexture(GL_TEXTURE_2D, _texture);
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels != nullptr ? pixels->bytesForCPP() : nullptr);
+        glBindTexture(GL_TEXTURE_2D, _texture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels != nullptr ? pixels->bytesForCPP() : nullptr);
+      }
     }
 
     virtual void upload(FixedArray *sourcePixels, int targetX, int targetY, int sourceWidth, int sourceHeight) override {
@@ -547,11 +552,22 @@ namespace OSX {
     }
 
     virtual double advanceWidth(int codePoint) override {
-      return 0;
+      return 10;
     }
 
     virtual Graphics::Glyph *render(int codePoint, double advanceWidth) override {
-      return new Graphics::Glyph('x', nullptr, 0, 0, 0);
+      auto mask = new Graphics::Mask(10, 10);
+      auto bytes = mask->pixels->bytesForCPP();
+      for (int y = 0; y < 10; y++) {
+        for (int x = 0; x < 10; x++) {
+          int c = (x ^ y) & 1 ? 255 : 0;
+          bytes[(x + y * 10) * 4] = c;
+          bytes[(x + y * 10) * 4 + 1] = c;
+          bytes[(x + y * 10) * 4 + 2] = c;
+          bytes[(x + y * 10) * 4 + 3] = c;
+        }
+      }
+      return new Graphics::Glyph('x', mask, 0, 0, 10);
     }
 
     #ifdef SKEW_GC_MARK_AND_SWEEP
@@ -562,18 +578,31 @@ namespace OSX {
 
   struct AppWindow : Editor::Window, Editor::PixelRenderer {
     AppWindow(NSWindow *window, AppView *appView, Editor::Platform *platform) : _window(window), _appView(appView), _platform(platform) {
+      _shortcuts = new Editor::ShortcutMap(platform);
     }
 
     void handleFrame();
     void handleResize();
-    void setIsActive(bool value) {}
+    void setIsActive(bool value);
+    void handleKeyEvent(NSEvent *event);
+    void handleMouseEvent(NSEvent *event);
 
     void initializeOpenGL() {
       assert(_context == nullptr);
       _context = new OpenGL::Context();
+
       _solidBatch = new Graphics::SolidBatch(_context);
       _glyphBatch = new Graphics::GlyphBatch(_platform, _context);
+
+      auto fontNames = new Skew::List<Skew::string> { "Menlo", "Monaco", "Consolas", "Courier New" };
+      _font = _glyphBatch->createFont(fontNames, _fontSize);
+      _marginFont = _glyphBatch->createFont(fontNames, _marginFontSize);
+
       handleResize();
+    }
+
+    Editor::View *view() {
+      return _view;
     }
 
     virtual Editor::SemanticRenderer *renderer() override {
@@ -584,6 +613,9 @@ namespace OSX {
 
     virtual void setView(Editor::View *view) override {
       _view = view;
+      if (_view != nullptr) {
+        _view->resizeFont(_advanceWidth, _marginAdvanceWidth, _lineHeight);
+      }
       handleResize();
     }
 
@@ -616,40 +648,44 @@ namespace OSX {
 
     virtual void setCursor(Editor::Cursor cursor) override {
       switch (cursor) {
-        case Editor::Cursor::ARROW: {
-          [[NSCursor arrowCursor] set];
-          break;
-        }
-
-        case Editor::Cursor::TEXT: {
-          [[NSCursor IBeamCursor] set];
-          break;
-        }
+        case Editor::Cursor::ARROW: _cursor = [NSCursor arrowCursor]; break;
+        case Editor::Cursor::TEXT: _cursor = [NSCursor IBeamCursor]; break;
       }
     }
 
     virtual void setDefaultBackgroundColor(int color) override {
     }
 
-    virtual void fillBox(double x, double y, double width, double height, int color) override {
-      if (x >= _width || y >= _height || x + width <= 0 || y + height <= 0) {
-        return;
-      }
-
+    virtual void fillRect(double x, double y, double width, double height, int color) override {
       _glyphBatch->flush();
       _solidBatch->fillRect(x, y, width, height, Graphics::RGBA::premultiplied(color));
     }
 
-    virtual void fillRoundedBox(double x, double y, double width, double height, int color, double radius) override {
+    virtual void fillRoundedRect(double x, double y, double width, double height, int color, double radius) override {
+      _glyphBatch->flush();
+      _solidBatch->fillRoundedRect(x, y, width, height, Graphics::RGBA::premultiplied(color), radius);
     }
 
     virtual void strokePolyline(Skew::List<double> *coordinates, int color, double thickness) override {
     }
 
     virtual void renderText(double x, double y, Skew::string text, Editor::Font font, int color) override {
+      if (x >= _width || y >= _height || y + _fontSize <= 0) {
+        return;
+      }
+
+      auto graphicsFont = font == Editor::Font::MARGIN ? _marginFont : _font;
+
+      _solidBatch->flush();
+      y += _fontSize - graphicsFont->size;
+      color = Graphics::RGBA::premultiplied(color);
+
+      for (const auto &codePoint : std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t>().from_bytes(text.std_str())) {
+        x += _glyphBatch->appendGlyph(graphicsFont, codePoint, x, y, color);
+      }
     }
 
-    virtual void renderBoxShadow(
+    virtual void renderRectShadow(
       double boxX, double boxY, double boxWidth, double boxHeight,
       double clipX, double clipY, double clipWidth, double clipHeight,
       double shadowAlpha, double blurSigma) override {
@@ -658,9 +694,13 @@ namespace OSX {
     #ifdef SKEW_GC_MARK_AND_SWEEP
       virtual void __gc_mark() override {
         Skew::GC::mark(_view);
+        Skew::GC::mark(_platform);
+        Skew::GC::mark(_shortcuts);
         Skew::GC::mark(_context);
         Skew::GC::mark(_solidBatch);
         Skew::GC::mark(_glyphBatch);
+        Skew::GC::mark(_font);
+        Skew::GC::mark(_marginFont);
       }
     #endif
 
@@ -669,15 +709,22 @@ namespace OSX {
     int _height = 0;
     double _pixelScale = 0;
     double _fontSize = 12;
+    double _marginFontSize = 10;
     double _lineHeight = 16;
+    double _advanceWidth = 10;
+    double _marginAdvanceWidth = 10;
     bool _needsToBeShown = true;
     NSWindow *_window = nullptr;
+    NSCursor *_cursor = [NSCursor arrowCursor];
     AppView *_appView = nullptr;
     Editor::View *_view = nullptr;
     Editor::Platform *_platform = nullptr;
+    Editor::ShortcutMap *_shortcuts = nullptr;
     Graphics::Context *_context = nullptr;
     Graphics::SolidBatch *_solidBatch = nullptr;
     Graphics::GlyphBatch *_glyphBatch = nullptr;
+    Graphics::Font *_font = nullptr;
+    Graphics::Font *_marginFont = nullptr;
   };
 
   struct Platform : Editor::Platform {
@@ -781,6 +828,56 @@ static CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeSt
   appWindow->setIsActive(false);
 }
 
+- (void)keyDown:(NSEvent *)event {
+  appWindow->handleKeyEvent(event);
+}
+
+- (void)insertText:(NSString *)text {
+  if (auto view = appWindow->view()) {
+    view->insertText(Skew::string([text UTF8String]));
+  }
+}
+
+- (void)mouseDown:(NSEvent *)event {
+  appWindow->handleMouseEvent(event);
+}
+
+- (void)mouseDragged:(NSEvent *)event {
+  appWindow->handleMouseEvent(event);
+}
+
+- (void)mouseUp:(NSEvent *)event {
+  appWindow->handleMouseEvent(event);
+}
+
+- (void)mouseMoved:(NSEvent *)event {
+  appWindow->handleMouseEvent(event);
+}
+
+- (void)rightMouseDown:(NSEvent *)event {
+  appWindow->handleMouseEvent(event);
+}
+
+- (void)rightMouseDragged:(NSEvent *)event {
+  appWindow->handleMouseEvent(event);
+}
+
+- (void)rightMouseUp:(NSEvent *)event {
+  appWindow->handleMouseEvent(event);
+}
+
+- (void)otherMouseDown:(NSEvent *)event {
+  appWindow->handleMouseEvent(event);
+}
+
+- (void)otherMouseDragged:(NSEvent *)event {
+  appWindow->handleMouseEvent(event);
+}
+
+- (void)otherMouseUp:(NSEvent *)event {
+  appWindow->handleMouseEvent(event);
+}
+
 @end
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -819,6 +916,146 @@ void OSX::AppWindow::handleResize() {
   if (_glyphBatch) _glyphBatch->resize(_width, _height, _pixelScale);
 }
 
+void OSX::AppWindow::setIsActive(bool value) {
+}
+
+static Editor::KeyCode keyCodeFromEvent(NSEvent *event) {
+  static std::unordered_map<int, Editor::KeyCode> map = {
+    { '.',                       Editor::KeyCode::PERIOD },
+    { '0',                       Editor::KeyCode::NUMBER_0 },
+    { '1',                       Editor::KeyCode::NUMBER_1 },
+    { '2',                       Editor::KeyCode::NUMBER_2 },
+    { '3',                       Editor::KeyCode::NUMBER_3 },
+    { '4',                       Editor::KeyCode::NUMBER_4 },
+    { '5',                       Editor::KeyCode::NUMBER_5 },
+    { '6',                       Editor::KeyCode::NUMBER_6 },
+    { '7',                       Editor::KeyCode::NUMBER_7 },
+    { '8',                       Editor::KeyCode::NUMBER_8 },
+    { '9',                       Editor::KeyCode::NUMBER_9 },
+    { ';',                       Editor::KeyCode::SEMICOLON },
+    { 'a',                       Editor::KeyCode::LETTER_A },
+    { 'b',                       Editor::KeyCode::LETTER_B },
+    { 'c',                       Editor::KeyCode::LETTER_C },
+    { 'd',                       Editor::KeyCode::LETTER_D },
+    { 'e',                       Editor::KeyCode::LETTER_E },
+    { 'f',                       Editor::KeyCode::LETTER_F },
+    { 'g',                       Editor::KeyCode::LETTER_G },
+    { 'h',                       Editor::KeyCode::LETTER_H },
+    { 'i',                       Editor::KeyCode::LETTER_I },
+    { 'j',                       Editor::KeyCode::LETTER_J },
+    { 'k',                       Editor::KeyCode::LETTER_K },
+    { 'l',                       Editor::KeyCode::LETTER_L },
+    { 'm',                       Editor::KeyCode::LETTER_M },
+    { 'n',                       Editor::KeyCode::LETTER_N },
+    { 'o',                       Editor::KeyCode::LETTER_O },
+    { 'p',                       Editor::KeyCode::LETTER_P },
+    { 'q',                       Editor::KeyCode::LETTER_Q },
+    { 'r',                       Editor::KeyCode::LETTER_R },
+    { 's',                       Editor::KeyCode::LETTER_S },
+    { 't',                       Editor::KeyCode::LETTER_T },
+    { 'u',                       Editor::KeyCode::LETTER_U },
+    { 'v',                       Editor::KeyCode::LETTER_V },
+    { 'w',                       Editor::KeyCode::LETTER_W },
+    { 'x',                       Editor::KeyCode::LETTER_X },
+    { 'y',                       Editor::KeyCode::LETTER_Y },
+    { 'z',                       Editor::KeyCode::LETTER_Z },
+    { 27,                        Editor::KeyCode::ESCAPE },
+    { NSCarriageReturnCharacter, Editor::KeyCode::ENTER },
+    { NSDeleteCharacter,         Editor::KeyCode::BACKSPACE },
+    { NSDeleteFunctionKey,       Editor::KeyCode::DELETE },
+    { NSDownArrowFunctionKey,    Editor::KeyCode::ARROW_DOWN },
+    { NSEndFunctionKey,          Editor::KeyCode::END },
+    { NSHomeFunctionKey,         Editor::KeyCode::HOME },
+    { NSLeftArrowFunctionKey,    Editor::KeyCode::ARROW_LEFT },
+    { NSPageDownFunctionKey,     Editor::KeyCode::PAGE_DOWN },
+    { NSPageUpFunctionKey,       Editor::KeyCode::PAGE_UP },
+    { NSRightArrowFunctionKey,   Editor::KeyCode::ARROW_RIGHT },
+    { NSUpArrowFunctionKey,      Editor::KeyCode::ARROW_UP },
+  };
+  auto characters = [event charactersIgnoringModifiers];
+
+  if ([characters length] == 1) {
+    auto it = map.find([characters characterAtIndex:0]);
+
+    if (it != map.end()) {
+      return it->second;
+    }
+  }
+
+  return Editor::KeyCode::NONE;
+}
+
+static int modifiersFromEvent(NSEvent *event) {
+  auto flags = [event modifierFlags];
+  return
+    ((flags & NSShiftKeyMask) != 0 ? Editor::Modifiers::SHIFT : 0) |
+    ((flags & NSCommandKeyMask) != 0 ? Editor::Modifiers::META : 0) |
+    ((flags & NSAlternateKeyMask) != 0 ? Editor::Modifiers::ALT : 0) |
+    ((flags & NSControlKeyMask) != 0 ? Editor::Modifiers::CONTROL : 0);
+}
+
+void OSX::AppWindow::handleKeyEvent(NSEvent *event) {
+  if (_view == nullptr) {
+    return;
+  }
+
+  auto keyCode = keyCodeFromEvent(event);
+
+  if (keyCode != Editor::KeyCode::NONE) {
+    auto modifiers = modifiersFromEvent(event);
+    auto action = _shortcuts->get(keyCode, modifiers);
+
+    // Keyboard shortcuts take precedence over text insertion
+    if (action != Editor::Action::NONE) {
+      _view->triggerAction(action);
+      return;
+    }
+
+    // This isn't handled by interpretKeyEvents for some reason
+    if (keyCode == Editor::KeyCode::ENTER && modifiers == 0) {
+      _view->insertText("\n");
+      return;
+    }
+  }
+
+  [_appView interpretKeyEvents:@[event]];
+}
+
+void OSX::AppWindow::handleMouseEvent(NSEvent *event) {
+  if (_view == nullptr) {
+    return;
+  }
+
+  auto point = [event locationInWindow];
+  auto mouseEvent = new Editor::MouseEvent(point.x, _height - point.y, modifiersFromEvent(event), [event clickCount]);
+
+  switch ([event type]) {
+    case NSLeftMouseDown:
+    case NSOtherMouseDown:
+    case NSRightMouseDown: {
+      _view->handleMouseDown(mouseEvent);
+      break;
+    }
+
+    case NSMouseMoved:
+    case NSLeftMouseDragged:
+    case NSOtherMouseDragged:
+    case NSRightMouseDragged: {
+      _view->handleMouseMove(mouseEvent);
+      break;
+    }
+
+    case NSLeftMouseUp:
+    case NSOtherMouseUp:
+    case NSRightMouseUp: {
+      _view->handleMouseUp(mouseEvent);
+      break;
+    }
+  }
+
+  [_cursor set];
+}
+
 Editor::Window *OSX::Platform::createWindow() {
   auto frame = NSMakeRect(0, 0, 1024, 768);
   auto screen = [[NSScreen mainScreen] frame];
@@ -832,6 +1069,7 @@ Editor::Window *OSX::Platform::createWindow() {
 
   [window setCollectionBehavior:[window collectionBehavior] | NSWindowCollectionBehaviorFullScreenPrimary];
   [window setContentMinSize:NSMakeSize(4, 4)];
+  [window setAcceptsMouseMovedEvents:YES];
   [window setDelegate:appView];
   [window setContentView:appView];
   [window makeFirstResponder:appView];

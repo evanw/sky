@@ -36,7 +36,7 @@ export void glyphBatchVertex() {
 }
 
 export void glyphBatchFragment() {
-  vec4 mask = texture2D(texture, _coord4.xy);
+  vec4 mask = 1.0 - texture2D(texture, _coord4.xy);
   float bg = _coord4.w;
   float fg = dot(_color4.rgb, vec3(0.299, 0.587, 0.114));
   float alpha =

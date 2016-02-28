@@ -166,6 +166,9 @@ namespace Browser {
     }
 
     def createTexture(format Graphics.TextureFormat, width int, height int, pixels FixedArray) Graphics.Texture {
+      assert(width > 0)
+      assert(height > 0)
+      assert(pixels == null || pixels.byteCount == width * height * 4)
       return Texture.new(self, format, width, height, pixels?.bytesForJS)
     }
 

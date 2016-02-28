@@ -65,36 +65,14 @@ namespace Browser {
       _glyphBatch.flush
     }
 
-    over fillBox(x double, y double, width double, height double, color Graphics.RGBA) {
-      if x >= _width || y >= _height || x + width <= 0 || y + height <= 0 {
-        return
-      }
-
+    over fillRect(x double, y double, width double, height double, color Graphics.RGBA) {
       _glyphBatch.flush
       _solidBatch.fillRect(x, y, width, height, color.premultiplied)
     }
 
-    over fillRoundedBox(x double, y double, width double, height double, color Graphics.RGBA, radius double) {
-      if x >= _width || y >= _height || x + width <= 0 || y + height <= 0 {
-        return
-      }
-
-      radius = Math.min(radius, width / 2, height / 2)
-
-      var coordinates List<double> = []
-      var minX = x + radius
-      var minY = y + radius
-      var maxX = x + width - radius
-      var maxY = y + height - radius
-      var isClampedX = radius == width / 2
-      var isClampedY = radius == height / 2
-
-      _appendQuarterTurn(coordinates, minX, minY, radius, -Math.PI, -Math.PI / 2, isClampedY)
-      _appendQuarterTurn(coordinates, maxX, minY, radius, -Math.PI / 2, 0, isClampedX)
-      _appendQuarterTurn(coordinates, maxX, maxY, radius, 0, Math.PI / 2, isClampedY)
-      _appendQuarterTurn(coordinates, minX, maxY, radius, Math.PI / 2, Math.PI, isClampedX)
+    over fillRoundedRect(x double, y double, width double, height double, color Graphics.RGBA, radius double) {
       _glyphBatch.flush
-      _solidBatch.fillConvexPolygon(coordinates, color.premultiplied)
+      _solidBatch.fillRoundedRect(x, y, width, height, color.premultiplied, radius)
     }
 
     over strokePolyline(coordinates List<double>, color Graphics.RGBA, thickness double) {
@@ -103,7 +81,7 @@ namespace Browser {
       _solidBatch.strokeNonOverlappingPolyline(coordinates, color.premultiplied, thickness, .OPEN)
     }
 
-    over renderBoxShadow(
+    over renderRectShadow(
       boxX double, boxY double, boxWidth double, boxHeight double,
       clipX double, clipY double, clipWidth double, clipHeight double,
       shadowAlpha double, blurSigma double) {
@@ -146,15 +124,6 @@ namespace Browser {
 
       for codePoint = iterator.nextCodePoint; codePoint != -1; codePoint = iterator.nextCodePoint {
         x += _glyphBatch.appendGlyph(graphicsFont, codePoint, x, y, color)
-      }
-    }
-
-    def _appendQuarterTurn(coordinates List<double>, centerX double, centerY double, radius double, fromAngle double, toAngle double, skipStartPoint bool) {
-      var n = 1 + Math.ceil(radius * _pixelScale / Math.PI) as int
-      for i = skipStartPoint as int; i <= n; i++ {
-        var angle = fromAngle + (toAngle - fromAngle) * i / n
-        coordinates.append(centerX + Math.cos(angle) * radius)
-        coordinates.append(centerY + Math.sin(angle) * radius)
       }
     }
   }
