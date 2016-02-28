@@ -583,9 +583,12 @@ namespace OSX {
 
     void handleFrame();
     void handleResize();
-    void setIsActive(bool value);
+    void handleActivate(bool isActive);
     void handleKeyEvent(NSEvent *event);
+    void handleInsertText(NSString *text);
     void handleMouseEvent(NSEvent *event);
+    void handleAction(Editor::Action action);
+    void handlePaste();
 
     void initializeOpenGL() {
       assert(_context == nullptr);
@@ -599,10 +602,6 @@ namespace OSX {
       _marginFont = _glyphBatch->createFont(fontNames, _marginFontSize);
 
       handleResize();
-    }
-
-    Editor::View *view() {
-      return _view;
     }
 
     virtual Editor::SemanticRenderer *renderer() override {
@@ -821,11 +820,11 @@ static CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeSt
 }
 
 - (void)windowDidBecomeKey:(NSNotification *)notification {
-  appWindow->setIsActive(true);
+  appWindow->handleActivate(true);
 }
 
 - (void)windowDidResignKey:(NSNotification *)notification {
-  appWindow->setIsActive(false);
+  appWindow->handleActivate(false);
 }
 
 - (void)keyDown:(NSEvent *)event {
@@ -833,9 +832,7 @@ static CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeSt
 }
 
 - (void)insertText:(NSString *)text {
-  if (auto view = appWindow->view()) {
-    view->insertText(Skew::string([text UTF8String]));
-  }
+  appWindow->handleInsertText(text);
 }
 
 - (void)mouseDown:(NSEvent *)event {
@@ -878,6 +875,38 @@ static CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeSt
   appWindow->handleMouseEvent(event);
 }
 
+- (void)scrollWheel:(NSEvent *)event {
+  appWindow->handleMouseEvent(event);
+}
+
+- (void)undo:(id)sender {
+  appWindow->handleAction(Editor::Action::UNDO);
+}
+
+- (void)redo:(id)sender {
+  appWindow->handleAction(Editor::Action::REDO);
+}
+
+- (void)cut:(id)sender {
+  appWindow->handleAction(Editor::Action::CUT);
+}
+
+- (void)copy:(id)sender {
+  appWindow->handleAction(Editor::Action::COPY);
+}
+
+- (void)paste:(id)sender {
+  appWindow->handleAction(Editor::Action::PASTE);
+}
+
+- (void)selectAll:(id)sender {
+  appWindow->handleAction(Editor::Action::SELECT_ALL);
+}
+
+- (void)openIssueTracker:(id)sender {
+  [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:@"https://github.com/evanw/sky/issues"]];
+}
+
 @end
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -916,7 +945,7 @@ void OSX::AppWindow::handleResize() {
   if (_glyphBatch) _glyphBatch->resize(_width, _height, _pixelScale);
 }
 
-void OSX::AppWindow::setIsActive(bool value) {
+void OSX::AppWindow::handleActivate(bool isActive) {
 }
 
 static Editor::KeyCode keyCodeFromEvent(NSEvent *event) {
@@ -1021,19 +1050,28 @@ void OSX::AppWindow::handleKeyEvent(NSEvent *event) {
   [_appView interpretKeyEvents:@[event]];
 }
 
+void OSX::AppWindow::handleInsertText(NSString *text) {
+  if (_view != nullptr) {
+    _view->insertText([text UTF8String]);
+  }
+}
+
+static Editor::MouseEvent *mouseEventFromEvent(NSEvent *event) {
+  auto point = [event locationInWindow];
+  auto height = [[[event window] contentView] bounds].size.height;
+  return new Editor::MouseEvent(point.x, height - point.y, modifiersFromEvent(event), [event clickCount]);
+}
+
 void OSX::AppWindow::handleMouseEvent(NSEvent *event) {
   if (_view == nullptr) {
     return;
   }
 
-  auto point = [event locationInWindow];
-  auto mouseEvent = new Editor::MouseEvent(point.x, _height - point.y, modifiersFromEvent(event), [event clickCount]);
-
   switch ([event type]) {
     case NSLeftMouseDown:
     case NSOtherMouseDown:
     case NSRightMouseDown: {
-      _view->handleMouseDown(mouseEvent);
+      _view->handleMouseDown(mouseEventFromEvent(event));
       break;
     }
 
@@ -1041,19 +1079,61 @@ void OSX::AppWindow::handleMouseEvent(NSEvent *event) {
     case NSLeftMouseDragged:
     case NSOtherMouseDragged:
     case NSRightMouseDragged: {
-      _view->handleMouseMove(mouseEvent);
+      _view->handleMouseMove(mouseEventFromEvent(event));
       break;
     }
 
     case NSLeftMouseUp:
     case NSOtherMouseUp:
     case NSRightMouseUp: {
-      _view->handleMouseUp(mouseEvent);
+      _view->handleMouseUp(mouseEventFromEvent(event));
+      break;
+    }
+
+    case NSScrollWheel: {
+      _view->handleScroll(-[event scrollingDeltaX], -[event scrollingDeltaY]);
       break;
     }
   }
 
   [_cursor set];
+}
+
+void OSX::AppWindow::handleAction(Editor::Action action) {
+  if (_view == nullptr) {
+    return;
+  }
+
+  switch (action) {
+    case Editor::Action::CUT:
+    case Editor::Action::COPY: {
+      auto selection = _view->selection()->isEmpty() ? _view->selectionExpandedToLines() : _view->selection();
+      auto text = _view->textInSelection(selection);
+
+      auto clipboard = [NSPasteboard generalPasteboard];
+      [clipboard clearContents];
+      [clipboard setString:[NSString stringWithUTF8String:text.c_str()] forType:NSPasteboardTypeString];
+
+      if (action == Editor::Action::CUT) {
+        _view->changeSelection(selection, Editor::ScrollBehavior::DO_NOT_SCROLL);
+        _view->insertText("");
+      }
+      break;
+    }
+
+    case Editor::Action::PASTE: {
+      auto clipboard = [NSPasteboard generalPasteboard];
+      if (auto text = [clipboard stringForType:NSPasteboardTypeString]) {
+        _view->insertText([text UTF8String]);
+      }
+      break;
+    }
+
+    default: {
+      _view->triggerAction(action);
+      break;
+    }
+  }
 }
 
 Editor::Window *OSX::Platform::createWindow() {
@@ -1089,13 +1169,40 @@ Editor::Window *OSX::Platform::createWindow() {
 @implementation AppDelegate
 
 - (void)applicationDidFinishLaunching:(id)sender {
-  auto submenu = [[NSMenu alloc] init];
-  auto menu = [[NSMenu alloc] init];
+  auto mainMenu = [[NSMenu alloc] init];
+  auto name = [[NSProcessInfo processInfo] processName];
 
-  [[menu addItemWithTitle:@"" action:nil keyEquivalent:@""] setSubmenu:submenu];
-  [submenu addItemWithTitle:@"Close" action:@selector(performClose:) keyEquivalent:@"w"];
-  [submenu addItemWithTitle:@"Quit" action:@selector(terminate:) keyEquivalent:@"q"];
-  [[NSApplication sharedApplication] setMainMenu:menu];
+  auto appMenu = [[NSMenu alloc] init];
+  [[mainMenu addItemWithTitle:@"" action:nil keyEquivalent:@""] setSubmenu:appMenu];
+  [appMenu addItemWithTitle:[@"Hide " stringByAppendingString:name] action:@selector(hide:) keyEquivalent:@"h"];
+  [[appMenu addItemWithTitle:@"Hide Others" action:@selector(hideOtherApplications:) keyEquivalent:@"h"] setKeyEquivalentModifierMask:NSCommandKeyMask | NSAlternateKeyMask];
+  [appMenu addItemWithTitle:@"Show All" action:@selector(unhideAllApplications:) keyEquivalent:@""];
+  [appMenu addItem:[NSMenuItem separatorItem]];
+  [appMenu addItemWithTitle:[@"Quit " stringByAppendingString:name] action:@selector(terminate:) keyEquivalent:@"q"];
+
+  auto fileMenu = [[NSMenu alloc] init];
+  [fileMenu setTitle:@"File"];
+  [[mainMenu addItemWithTitle:@"" action:nil keyEquivalent:@""] setSubmenu:fileMenu];
+  [[fileMenu addItemWithTitle:@"Close Window" action:@selector(performClose:) keyEquivalent:@"w"] setKeyEquivalentModifierMask:NSCommandKeyMask | NSShiftKeyMask];
+  [fileMenu addItemWithTitle:@"Close File" action:@selector(performClose:) keyEquivalent:@"w"];
+
+  auto editMenu = [[NSMenu alloc] init];
+  [editMenu setTitle:@"Edit"];
+  [[mainMenu addItemWithTitle:@"" action:nil keyEquivalent:@""] setSubmenu:editMenu];
+  [editMenu addItemWithTitle:@"Undo" action:@selector(undo:) keyEquivalent:@"z"];
+  [[editMenu addItemWithTitle:@"Redo" action:@selector(redo:) keyEquivalent:@"z"] setKeyEquivalentModifierMask:NSCommandKeyMask | NSShiftKeyMask];
+  [editMenu addItem:[NSMenuItem separatorItem]];
+  [editMenu addItemWithTitle:@"Cut" action:@selector(cut:) keyEquivalent:@"x"];
+  [editMenu addItemWithTitle:@"Copy" action:@selector(copy:) keyEquivalent:@"c"];
+  [editMenu addItemWithTitle:@"Paste" action:@selector(paste:) keyEquivalent:@"v"];
+  [editMenu addItemWithTitle:@"Select All" action:@selector(selectAll:) keyEquivalent:@"a"];
+
+  auto helpMenu = [[NSMenu alloc] init];
+  [helpMenu setTitle:@"Help"];
+  [[mainMenu addItemWithTitle:@"" action:nil keyEquivalent:@""] setSubmenu:helpMenu];
+  [helpMenu addItemWithTitle:@"Issue Tracker" action:@selector(openIssueTracker:) keyEquivalent:@""];
+
+  [[NSApplication sharedApplication] setMainMenu:mainMenu];
 
   app = new Editor::App(new OSX::Platform());
 }
