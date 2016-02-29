@@ -1269,7 +1269,12 @@ void OSX::AppWindow::handleMouseEvent(NSEvent *event) {
     }
   }
 
-  [_cursor set];
+  // Only show the cursor if the mouse is over the window
+  if (NSPointInRect([event locationInWindow], [_appView frame])) {
+    [_cursor set];
+  } else {
+    [[NSCursor arrowCursor] set];
+  }
 }
 
 void OSX::AppWindow::handleAction(Editor::Action action) {
