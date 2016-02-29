@@ -39,7 +39,7 @@ namespace Browser {
     var _previousFont Editor.Font = .DEFAULT
     var _isPreviousFontValid = false
     var _idleCount = 0
-    var _timeOfLastEdit = 0.0
+    var _lastInvalidationTime = 0.0
     var _areCaretsVisible = true
     var _element = document.createElement("canvas")
     var _mousemove fn(dynamic) = null
@@ -56,7 +56,7 @@ namespace Browser {
       _platform = platform
       _shortcuts = shortcuts
       _translator = Editor.SemanticToPixelTranslator.new(self)
-      _timeOfLastEdit = _platform.nowInSeconds
+      _lastInvalidationTime = _platform.nowInSeconds
       _installEventHandlers
     }
 
@@ -109,7 +109,7 @@ namespace Browser {
 
     def invalidate {
       _isInvalid = true
-      _timeOfLastEdit = _platform.nowInSeconds
+      _lastInvalidationTime = _platform.nowInSeconds
     }
 
     def setCursor(cursor Editor.Cursor) {
@@ -143,7 +143,7 @@ namespace Browser {
     }
 
     def _render {
-      var areCaretsVisible = ((((_platform.nowInSeconds - _timeOfLastEdit) * 2) as int) & 1) == 0
+      var areCaretsVisible = ((((_platform.nowInSeconds - _lastInvalidationTime) * 2) as int) & 1) == 0
 
       # Skip rendering if not invalid
       if !_isInvalid && areCaretsVisible == _areCaretsVisible {

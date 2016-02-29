@@ -721,6 +721,8 @@ namespace OSX {
   struct AppWindow : Editor::Window, Editor::PixelRenderer {
     AppWindow(NSWindow *window, AppView *appView, Editor::Platform *platform) : _window(window), _appView(appView), _platform(platform) {
       _shortcuts = new Editor::ShortcutMap(platform);
+      _translator = new Editor::SemanticToPixelTranslator(this);
+      _lastInvalidationTime = platform->nowInSeconds();
 
       auto fontNames = new Skew::List<Skew::string> { "Menlo-Regular", "Monaco", "Consolas", "CourierNewPSMT" };
       _font = Graphics::Font::create(platform, fontNames, _fontSize);
@@ -743,14 +745,13 @@ namespace OSX {
       _solidBatch = new Graphics::SolidBatch(_context);
       _glyphBatch = new Graphics::GlyphBatch(_platform, _context);
       _dropShadow = new Graphics::DropShadow(_context);
+      _translator->setTheme(Editor::Theme::XCODE);
 
       handleResize();
     }
 
     virtual Editor::SemanticRenderer *renderer() override {
-      auto translator = new Editor::SemanticToPixelTranslator(this);;
-      translator->setTheme(Editor::Theme::XCODE);
-      return translator;
+      return _translator;
     }
 
     virtual void setView(Editor::View *view) override {
@@ -786,6 +787,8 @@ namespace OSX {
     }
 
     virtual void invalidate() override {
+      _isInvalid = true;
+      _lastInvalidationTime = _platform->nowInSeconds();
     }
 
     virtual void setCursor(Editor::Cursor cursor) override {
@@ -842,6 +845,7 @@ namespace OSX {
         Skew::GC::mark(_view);
         Skew::GC::mark(_platform);
         Skew::GC::mark(_shortcuts);
+        Skew::GC::mark(_translator);
         Skew::GC::mark(_context);
         Skew::GC::mark(_solidBatch);
         Skew::GC::mark(_glyphBatch);
@@ -861,12 +865,16 @@ namespace OSX {
     double _advanceWidth = 0;
     double _marginAdvanceWidth = 0;
     bool _needsToBeShown = true;
+    double _lastInvalidationTime = 0;
+    bool _areCaretsVisible = true;
+    bool _isInvalid = true;
     NSWindow *_window = nullptr;
     NSCursor *_cursor = [NSCursor arrowCursor];
     AppView *_appView = nullptr;
     Editor::View *_view = nullptr;
     Editor::Platform *_platform = nullptr;
     Editor::ShortcutMap *_shortcuts = nullptr;
+    Editor::SemanticToPixelTranslator *_translator = nullptr;
     Graphics::Context *_context = nullptr;
     Graphics::SolidBatch *_solidBatch = nullptr;
     Graphics::GlyphBatch *_glyphBatch = nullptr;
@@ -957,7 +965,6 @@ static CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeSt
 
 - (void)drawRect:(NSRect)rect {
   appWindow->handleFrame();
-  Skew::GC::collect();
 }
 
 - (void)windowDidResize:(NSNotification *)notification {
@@ -1061,6 +1068,18 @@ static CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeSt
 ////////////////////////////////////////////////////////////////////////////////
 
 void OSX::AppWindow::handleFrame() {
+  bool areCaretsVisible = ((int)((_platform->nowInSeconds() - _lastInvalidationTime) * 2) & 1) == 0;
+
+  // Skip rendering if not invalid
+  if (!_isInvalid && areCaretsVisible == _areCaretsVisible) {
+    return;
+  }
+
+  // Reset render state
+  _isInvalid = false;
+  _areCaretsVisible = areCaretsVisible;
+  _translator->setShowCarets(areCaretsVisible);
+
   [[_appView openGLContext] makeCurrentContext];
 
   if (_view) {
@@ -1076,6 +1095,8 @@ void OSX::AppWindow::handleFrame() {
     [_window makeKeyAndOrderFront:nil];
     _needsToBeShown = false;
   }
+
+  Skew::GC::collect();
 }
 
 void OSX::AppWindow::handleResize() {
