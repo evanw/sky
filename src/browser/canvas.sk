@@ -32,6 +32,7 @@ namespace Browser {
     var _fontSize = 0.0
     var _lineHeight = 0.0
     var _isInvalid = false
+    var _isActive = false
     var _fontText = ""
     var _marginFontText = ""
     var _advanceWidth = 0.0
@@ -143,7 +144,7 @@ namespace Browser {
     }
 
     def _render {
-      var areCaretsVisible = ((((_platform.nowInSeconds - _lastInvalidationTime) * 2) as int) & 1) == 0
+      var areCaretsVisible = _isActive && ((((_platform.nowInSeconds - _lastInvalidationTime) * 2) as int) & 1) == 0
 
       # Skip rendering if not invalid
       if !_isInvalid && areCaretsVisible == _areCaretsVisible {
@@ -209,14 +210,18 @@ namespace Browser {
       _updateSize
     }
 
-    def focusKeyboardInput {
-      _textarea.enabled = true
-      _textarea.focus()
-    }
+    def setIsActive(isActive bool) {
+      if !isActive {
+        _textarea.blur()
+      }
 
-    def blurKeyboardInput {
-      _textarea.blur()
-      _textarea.enabled = false
+      _textarea.enabled = isActive
+      _isActive = isActive
+      invalidate
+
+      if isActive {
+        _textarea.focus()
+      }
     }
 
     # https://bugs.chromium.org/p/chromium/issues/detail?id=588434
@@ -290,7 +295,7 @@ namespace Browser {
 
       on(_element, "mousedown", e => {
         e.preventDefault()
-        focusKeyboardInput
+        setIsActive(true)
         _view?.handleMouseDown(_mouseEventFromEvent(e))
         _changeDragHandlers(.GLOBAL)
       })
@@ -318,7 +323,7 @@ namespace Browser {
         e.preventDefault()
       })
 
-      on(_textarea, "blur", e => blurKeyboardInput)
+      on(_textarea, "blur", e => setIsActive(false))
       on(_textarea, "input", e => _handleInput)
       on(_textarea, "keydown", e => _handleKeyDown(e))
       on(_textarea, "paste", e => _handlePaste(e))

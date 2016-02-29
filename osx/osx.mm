@@ -731,7 +731,6 @@ namespace OSX {
 
     void handleFrame();
     void handleResize();
-    void handleActivate(bool isActive);
     void handleKeyEvent(NSEvent *event);
     void handleInsertText(NSString *text);
     void handleMouseEvent(NSEvent *event);
@@ -748,6 +747,11 @@ namespace OSX {
       _translator->setTheme(Editor::Theme::XCODE);
 
       handleResize();
+    }
+
+    void setIsActive(bool isActive) {
+      _isActive = isActive;
+      invalidate();
     }
 
     virtual Editor::SemanticRenderer *renderer() override {
@@ -868,6 +872,7 @@ namespace OSX {
     double _lastInvalidationTime = 0;
     bool _areCaretsVisible = true;
     bool _isInvalid = true;
+    bool _isActive = false;
     NSWindow *_window = nullptr;
     NSCursor *_cursor = [NSCursor arrowCursor];
     AppView *_appView = nullptr;
@@ -908,6 +913,59 @@ namespace OSX {
       virtual void __gc_mark() override {
       }
     #endif
+
+  private:
+    NSRect _boundsForNewWindow() {
+      // Determine frame padding
+      auto contentRect = NSMakeRect(0, 0, 256, 256);
+      auto frameRect = [NSWindow frameRectForContentRect:contentRect styleMask:_styleMask];
+      auto framePadding = NSMakeSize(
+        NSWidth(frameRect) - NSWidth(contentRect),
+        NSHeight(frameRect) - NSHeight(contentRect));
+
+      // Determine content size
+      auto screenRect = [[NSScreen mainScreen] visibleFrame];
+      auto contentLimits = [NSWindow contentRectForFrameRect:screenRect styleMask:_styleMask];
+      _newWindowBounds.size = NSMakeSize(
+        std::fmin(800, NSWidth(contentLimits)),
+        std::fmin(600, NSHeight(contentLimits)));
+
+      // Center the first window in the screen
+      if (_isFirstWindow) {
+        _newWindowBounds.origin = NSMakePoint(
+          NSMidX(contentLimits) - NSMidX(_newWindowBounds),
+          NSMidY(contentLimits) - NSMidY(_newWindowBounds));
+        _isFirstWindow = false;
+      }
+
+      // Offset subsequent windows
+      else {
+        auto offset = framePadding.height;
+        _newWindowBounds.origin.x += offset;
+        _newWindowBounds.origin.y -= offset;
+
+        // Wrap in x
+        if (NSMaxX(_newWindowBounds) > NSMaxX(contentLimits)) {
+          _newWindowBounds.origin.x = std::fmin(NSMaxX(contentLimits) - NSWidth(_newWindowBounds),
+            NSMinX(contentLimits) + std::fmod(NSMinX(_newWindowBounds) - NSMinX(contentLimits), offset));
+        }
+
+        // Wrap in y
+        if (NSMinY(_newWindowBounds) < NSMinY(contentLimits)) {
+          auto y = NSMinY(_newWindowBounds);
+          y = NSHeight(contentLimits) - y - NSHeight(_newWindowBounds) + NSMinY(contentLimits);
+          y = std::fmod(std::fmod(y, offset) + offset, offset);
+          y = NSHeight(contentLimits) - y - NSHeight(_newWindowBounds) + NSMinY(contentLimits);
+          _newWindowBounds.origin.y = std::fmax(y, NSMinY(contentLimits));
+        }
+      }
+
+      return _newWindowBounds;
+    }
+
+    bool _isFirstWindow = true;
+    NSRect _newWindowBounds = NSZeroRect;
+    int _styleMask = NSClosableWindowMask | NSTitledWindowMask | NSResizableWindowMask | NSMiniaturizableWindowMask;
   };
 }
 
@@ -955,7 +1013,6 @@ static CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeSt
   CVDisplayLinkSetCurrentCGDisplayFromOpenGLContext(displayLink,
     (CGLContextObj)[[self openGLContext] CGLContextObj],
     (CGLPixelFormatObj)[[self pixelFormat] CGLPixelFormatObj]);
-  CVDisplayLinkStart(displayLink);
   appWindow->initializeOpenGL();
 }
 
@@ -976,11 +1033,13 @@ static CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeSt
 }
 
 - (void)windowDidBecomeKey:(NSNotification *)notification {
-  appWindow->handleActivate(true);
+  appWindow->setIsActive(true);
+  CVDisplayLinkStart(displayLink);
 }
 
 - (void)windowDidResignKey:(NSNotification *)notification {
-  appWindow->handleActivate(false);
+  appWindow->setIsActive(false);
+  CVDisplayLinkStop(displayLink);
 }
 
 - (void)keyDown:(NSEvent *)event {
@@ -1059,16 +1118,12 @@ static CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeSt
   appWindow->handleAction(Editor::Action::SELECT_ALL);
 }
 
-- (void)openIssueTracker:(id)sender {
-  [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:@"https://github.com/evanw/sky/issues"]];
-}
-
 @end
 
 ////////////////////////////////////////////////////////////////////////////////
 
 void OSX::AppWindow::handleFrame() {
-  bool areCaretsVisible = ((int)((_platform->nowInSeconds() - _lastInvalidationTime) * 2) & 1) == 0;
+  bool areCaretsVisible = _isActive && ((int)((_platform->nowInSeconds() - _lastInvalidationTime) * 2) & 1) == 0;
 
   // Skip rendering if not invalid
   if (!_isInvalid && areCaretsVisible == _areCaretsVisible) {
@@ -1137,9 +1192,6 @@ void OSX::AppWindow::handleResize() {
     _marginAdvanceWidth = _marginFont->glyphProvider->advanceWidth(' ') / _pixelScale;
     _view->resizeFont(_advanceWidth, _marginAdvanceWidth, _lineHeight);
   }
-}
-
-void OSX::AppWindow::handleActivate(bool isActive) {
 }
 
 static Editor::KeyCode keyCodeFromEvent(NSEvent *event) {
@@ -1336,14 +1388,8 @@ void OSX::AppWindow::handleAction(Editor::Action action) {
 }
 
 Editor::Window *OSX::Platform::createWindow() {
-  auto frame = NSMakeRect(0, 0, 1024, 768);
-  auto screen = [[NSScreen mainScreen] frame];
-  auto bounds = NSOffsetRect(frame,
-    screen.origin.x + (screen.size.width - frame.size.width) / 2,
-    screen.origin.y + (screen.size.height - frame.size.height) / 2);
-
-  auto styleMask = NSClosableWindowMask | NSTitledWindowMask | NSResizableWindowMask | NSMiniaturizableWindowMask;
-  auto window = [[NSWindow alloc] initWithContentRect:bounds styleMask:styleMask backing:NSBackingStoreBuffered defer:NO];
+  auto bounds = _boundsForNewWindow();
+  auto window = [[NSWindow alloc] initWithContentRect:bounds styleMask:_styleMask backing:NSBackingStoreBuffered defer:NO];
   auto appView = [[AppView alloc] initWithFrame:bounds window:window platform:this];
 
   [window setCollectionBehavior:[window collectionBehavior] | NSWindowCollectionBehaviorFullScreenPrimary];
@@ -1359,13 +1405,20 @@ Editor::Window *OSX::Platform::createWindow() {
 ////////////////////////////////////////////////////////////////////////////////
 
 @interface AppDelegate : NSObject <NSApplicationDelegate> {
-@public
   Skew::Root<Editor::App> app;
 }
 
 @end
 
 @implementation AppDelegate
+
+- (void)createNewWindow:(id)sender {
+  app->createWindow();
+}
+
+- (void)openIssueTracker:(id)sender {
+  [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:@"https://github.com/evanw/sky/issues"]];
+}
 
 - (void)applicationDidFinishLaunching:(id)sender {
   auto mainMenu = [[NSMenu alloc] init];
@@ -1382,8 +1435,8 @@ Editor::Window *OSX::Platform::createWindow() {
   auto fileMenu = [[NSMenu alloc] init];
   [fileMenu setTitle:@"File"];
   [[mainMenu addItemWithTitle:@"" action:nil keyEquivalent:@""] setSubmenu:fileMenu];
-  [[fileMenu addItemWithTitle:@"Close Window" action:@selector(performClose:) keyEquivalent:@"w"] setKeyEquivalentModifierMask:NSCommandKeyMask | NSShiftKeyMask];
-  [fileMenu addItemWithTitle:@"Close File" action:@selector(performClose:) keyEquivalent:@"w"];
+  [fileMenu addItemWithTitle:@"New" action:@selector(createNewWindow:) keyEquivalent:@"n"];
+  [fileMenu addItemWithTitle:@"Close" action:@selector(performClose:) keyEquivalent:@"w"];
 
   auto editMenu = [[NSMenu alloc] init];
   [editMenu setTitle:@"Edit"];

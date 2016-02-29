@@ -62,7 +62,7 @@ namespace Graphics {
     def new(platform Editor.Platform, context Context) {
       _context = context
       _material = context.createMaterial(.POSITION_F4_COLOR_U4_COORD_U4, GLSLX_SOURCE_GLYPH_BATCH_VERTEX, GLSLX_SOURCE_GLYPH_BATCH_FRAGMENT)
-      _material.setUniformInt(GLSLX_NAME_APPLY_GAMMA_HACK, platform.userAgent.isBrowser as int)
+      _material.setUniformInt(GLSLX_NAME_APPLY_GAMMA_HACK, (TARGET == .JAVASCRIPT) as int)
     }
 
     def resize(width double, height double, pixelScale double) {

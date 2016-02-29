@@ -9,12 +9,12 @@ namespace Browser {
       _canvas = canvas
 
       on(window, "focus", e => {
-        canvas.focusKeyboardInput
+        canvas.setIsActive(true)
         canvas.avoidChromeBugOnWindowFocus
       })
 
       canvas.stretchToFitElement(document.body)
-      canvas.focusKeyboardInput
+      canvas.setIsActive(true)
 
       var tick fn() = => {
         canvas.tick

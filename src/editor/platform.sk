@@ -1,27 +1,19 @@
 namespace Editor {
   enum OperatingSystem {
-    UNKNOWN
-
-    # Known operating systems
     ANDROID
     IOS
     LINUX
     OSX
+    UNKNOWN
     WINDOWS
   }
 
   enum UserAgent {
-    UNKNOWN
-
-    # Browser user agents
     CHROME
     FIREFOX
     IE
     SAFARI
-
-    def isBrowser bool {
-      return self != UNKNOWN
-    }
+    UNKNOWN
   }
 
   interface Window {

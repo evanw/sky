@@ -1,20 +1,23 @@
 namespace Editor {
   class App {
     const _platform Platform
-    const _window Window
 
     def new(platform Platform) {
       _platform = platform
-      _window = platform.createWindow
-      _window.setTitle("Untitled - Sky")
+      createWindow
+    }
 
-      var model = Model.new("<demo>", platform)
+    def createWindow {
+      var window = _platform.createWindow
+      window.setTitle("Untitled - Sky")
+
+      var model = Model.new("Untitled", _platform)
       model.setLexer(.SKEW)
 
-      var view = View.new(platform, _window.renderer, model)
+      var view = View.new(_platform, window.renderer, model)
       view.changePadding(5, 5, 5, 5)
       view.changeMarginPadding(15, 5)
-      _window.setView(view)
+      window.setView(view)
     }
   }
 }
