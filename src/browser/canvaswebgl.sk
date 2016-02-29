@@ -29,7 +29,7 @@ namespace Browser {
 
       _context = Context.new(gl)
       _solidBatch = Graphics.SolidBatch.new(_context)
-      _glyphBatch = Graphics.GlyphBatch.new(_context)
+      _glyphBatch = Graphics.GlyphBatch.new(platform, _context)
       _dropShadow = Graphics.DropShadow.new(_context)
 
       Log.info("initialized WebGL canvas")

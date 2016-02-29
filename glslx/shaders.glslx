@@ -4,6 +4,7 @@ uniform sampler2D texture;
 uniform vec2 dropShadowOptions;
 uniform vec2 scale2;
 uniform vec4 dropShadowBox;
+uniform bool applyGammaHack;
 
 attribute vec2 position2;
 attribute vec4 color4;
@@ -44,9 +45,11 @@ export void glyphBatchFragment() {
     _coord4.z < 2.0 ? mask.y :
     mask.z;
 
-  // Attempt to correct for some of the gamma-related "bolding" that the OS adds
+  // Attempt to correct for some of the gamma-related "bolding" that the browser adds
   // to the mask values since we know the real background and foreground colors
-  alpha += ((sqrt(mix(bg * bg, fg * fg, sqrt(alpha))) - bg) / (fg - bg) - alpha) * 0.5;
+  if (applyGammaHack) {
+    alpha += ((sqrt(mix(bg * bg, fg * fg, sqrt(alpha))) - bg) / (fg - bg) - alpha) * 0.5;
+  }
 
   gl_FragColor = _color4 * alpha;
 }

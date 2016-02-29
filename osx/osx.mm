@@ -741,7 +741,7 @@ namespace OSX {
       _context = new OpenGL::Context();
 
       _solidBatch = new Graphics::SolidBatch(_context);
-      _glyphBatch = new Graphics::GlyphBatch(_context);
+      _glyphBatch = new Graphics::GlyphBatch(_platform, _context);
       _dropShadow = new Graphics::DropShadow(_context);
 
       handleResize();

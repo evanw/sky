@@ -288,7 +288,7 @@ namespace Browser {
                 case gl.FLOAT_VEC2 { assert(self is UniformVec2) }
                 case gl.FLOAT_VEC3 { assert(self is UniformVec3) }
                 case gl.FLOAT_VEC4 { assert(self is UniformVec4) }
-                case gl.INT { assert(self is UniformInt) }
+                case gl.INT, gl.BOOL { assert(self is UniformInt) }
                 case gl.SAMPLER_2D { assert(self is UniformSampler) }
                 default { assert(false) }
               }
