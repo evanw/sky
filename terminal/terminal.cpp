@@ -10,6 +10,8 @@ namespace Log {
 #import "compiled.cpp"
 #import <skew.cpp>
 #import <ncurses.h>
+#import <codecvt>
+#import <locale>
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -18,7 +20,8 @@ enum {
   SKY_COLOR_CONSTANT = 2,
   SKY_COLOR_KEYWORD = 3,
   SKY_COLOR_MARGIN = 4,
-  SKY_COLOR_STRING = 5,
+  SKY_COLOR_SELECTED = 5,
+  SKY_COLOR_STRING = 6,
 };
 
 namespace Terminal {
@@ -124,6 +127,22 @@ namespace Terminal {
     }
 
     virtual void renderRect(double x, double y, double width, double height, Editor::Color color) override {
+      if (color == Editor::Color::BACKGROUND_SELECTED) {
+        int minX = std::max((int)x, (int)_view->marginWidth());
+        int minY = std::max((int)y, 0);
+        int maxX = std::min((int)(x + width), _width);
+        int maxY = std::min((int)(y + height), _height);
+        int n = std::max(0, maxX - minX);
+        chtype buffer[n];
+
+        for (int y = minY; y < maxY; y++) {
+          mvinchnstr(y, minX, buffer, n);
+          for (int x = 0; x < n; x++) {
+            buffer[x] = (buffer[x] & ~A_COLOR) | COLOR_PAIR(SKY_COLOR_SELECTED);
+          }
+          mvaddchnstr(y, minX, buffer, n);
+        }
+      }
     }
 
     virtual void renderCaret(double x, double y, Editor::Color color) override {
@@ -161,14 +180,24 @@ namespace Terminal {
         color == Editor::Color::FOREGROUND_DEFINITION ? A_BOLD :
         0;
 
+      auto utf32 = std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t>().from_bytes(text.std_str());
       int minX = isMargin ? 0 : _view->marginWidth();
       int maxX = _width - 1; // Subtract 1 so the cursor can be seen at the end of the line
-      int start = std::max(0, std::min(text.count(), minX - (int)x));
-      int end = std::max(0, std::min(text.count(), maxX - (int)x));
+      int start = std::max(0, std::min((int)utf32.size(), minX - (int)x));
+      int end = std::max(0, std::min((int)utf32.size(), maxX - (int)x));
+      int n = std::max(0, end - start);
+      chtype buffer[n];
 
-      attron(attributes);
-      mvaddstr(y, x + start, text.slice(start, end).c_str());
-      attroff(attributes);
+      mvinchnstr(y, x + start, buffer, n);
+      for (int i = 0; i < n; i++) {
+        int color = buffer[i] & A_COLOR;
+        int c = utf32[start + i];
+        if (c == ' ') c = buffer[i] & (~A_ATTRIBUTES | A_ALTCHARSET);
+        else if (c == 0xB7) c = 126 | A_ALTCHARSET;
+        else if (c > 0xFF) c = '?';
+        buffer[i] = (PAIR_NUMBER(color) == 0 ? attributes : color | (attributes & A_BOLD)) | c;
+      }
+      mvaddchnstr(y, x + start, buffer, n);
     }
 
     virtual void renderHorizontalLine(double x1, double x2, double y, Editor::Color color) override {
@@ -257,6 +286,7 @@ int main() {
   init_pair(SKY_COLOR_COMMENT, COLOR_CYAN, -1);
   init_pair(SKY_COLOR_STRING, COLOR_GREEN, -1);
   init_pair(SKY_COLOR_CONSTANT, COLOR_MAGENTA, -1);
+  init_pair(SKY_COLOR_SELECTED, COLOR_BLACK, COLOR_YELLOW);
 
   // More setup
   raw(); // Don't automatically generate any signals
