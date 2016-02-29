@@ -64,10 +64,10 @@ namespace Graphics {
     }
 
     def hex(rgb int) RGBA {
-      return hexa(rgb, 255)
+      return hex(rgb, 255)
     }
 
-    def hexa(rgb int, alpha int) RGBA {
+    def hex(rgb int, alpha int) RGBA {
       assert(rgb >= 0 && rgb <= 0xFFFFFF)
       assert(alpha >= 0 && alpha <= 0xFF)
       return (rgb | alpha << 24) as RGBA

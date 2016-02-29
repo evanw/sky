@@ -3,7 +3,7 @@ namespace Editor.Theme {
     Color.BACKGROUND_DEFAULT:      Graphics.RGBA.hex(0xFFFFFF),
     Color.BACKGROUND_MARGIN:       Graphics.RGBA.hex(0xF7F7F7),
     Color.BACKGROUND_SELECTED:     Graphics.RGBA.hex(0xABD6FF),
-    Color.BORDER_MARGIN:           Graphics.RGBA.hex(0xE7E7E7),
+    Color.BORDER_MARGIN:           Graphics.RGBA.hex(0xBFBFBF, 0x5F),
     Color.FOREGROUND_ANNOTATION:   Graphics.RGBA.hex(0x0E0EFF),
     Color.FOREGROUND_COMMENT:      Graphics.RGBA.hex(0x007400),
     Color.FOREGROUND_CONSTANT:     Graphics.RGBA.hex(0x25464A),
