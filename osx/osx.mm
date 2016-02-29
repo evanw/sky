@@ -72,15 +72,21 @@ private:
 
 namespace Log {
   void info(const Skew::string &text) {
-    puts(text.c_str());
+    #ifndef NDEBUG
+      puts(text.c_str());
+    #endif
   }
 
   void warning(const Skew::string &text) {
-    puts(text.c_str());
+    #ifndef NDEBUG
+      puts(text.c_str());
+    #endif
   }
 
   void error(const Skew::string &text) {
-    puts(text.c_str());
+    #ifndef NDEBUG
+      puts(text.c_str());
+    #endif
   }
 }
 
@@ -548,7 +554,7 @@ namespace OpenGL {
 
 namespace OSX {
   template <typename T, void (*F)(T)>
-  struct CFDeleter {
+  struct CDeleter {
     void operator () (T ref) {
       if (ref) {
         F(ref);
@@ -557,58 +563,84 @@ namespace OSX {
   };
 
   template <typename T, typename X, void (*F)(X)>
-  using CFPtr = std::unique_ptr<typename std::remove_pointer<T>::type, CFDeleter<X, F>>;
+  using CPtr = std::unique_ptr<typename std::remove_pointer<T>::type, CDeleter<X, F>>;
 
-  using CTFontPtr = CFPtr<CTFontRef, CFTypeRef, CFRelease>;
-  using CFStringPtr = CFPtr<CFStringRef, CFTypeRef, CFRelease>;
-  using CGContextPtr = CFPtr<CGContextRef, CGContextRef, CGContextRelease>;
-  using CGColorSpacePtr = CFPtr<CGColorSpaceRef, CGColorSpaceRef, CGColorSpaceRelease>;
+  template <typename T>
+  using CFPtr = CPtr<T, CFTypeRef, CFRelease>;
+
+  using CGColorSpacePtr = CPtr<CGColorSpaceRef, CGColorSpaceRef, CGColorSpaceRelease>;
+  using CGContextPtr = CPtr<CGContextRef, CGContextRef, CGContextRelease>;
 
   struct GlyphProvider : Graphics::GlyphProvider {
-    virtual void setFont(Skew::List<Skew::string> *fontNames, double fontSize) override {
-      for (const auto &name : *fontNames) {
-        CFStringPtr cfName(CFStringCreateWithCString(kCFAllocatorDefault, name.c_str(), kCFStringEncodingUTF8));
-        _font.reset(CTFontCreateWithName(cfName.get(), fontSize, nullptr));
-        if (_font != nullptr) {
+    GlyphProvider(Skew::List<Skew::string> *fontNames) : _fontNames(fontNames) {
+    }
+
+    virtual void resize(double fontSize) override {
+      _fonts.clear();
+
+      // Find the first user-provided font name
+      for (const auto &name : *_fontNames) {
+        CFPtr<CFStringRef> holder(CFStringCreateWithCString(kCFAllocatorDefault, name.c_str(), kCFStringEncodingUTF8));
+        _fonts.emplace_back(CTFontCreateWithName(holder.get(), fontSize, nullptr));
+
+        // Did we find it?
+        if (_fonts.back() != nullptr) {
+          Log::info("selected font '" + name.std_str() + "'");
           break;
         }
+
+        // Try the next one
+        _fonts.pop_back();
+        Log::warning("failed to font font '" + name.std_str() + "'");
       }
-      if (_font == nullptr) {
-        _font.reset(CTFontCreateUIFontForLanguage(kCTFontUserFontType, fontSize, nullptr));
+
+      // Use the default fixed-pitch font as a fallback
+      if (_fonts.empty()) {
+        _fonts.emplace_back(CTFontCreateUIFontForLanguage(kCTFontUIFontUserFixedPitch, fontSize, nullptr));
       }
-      _ascent = std::round(CTFontGetAscent(_font.get()));
+
+      // Get the font fallback list
+      CFPtr<CFArrayRef> appleLanguages((__bridge_retained CFArrayRef)[[NSUserDefaults standardUserDefaults] stringArrayForKey:@"AppleLanguages"]);
+      CFPtr<CFArrayRef> defaultCascade(CTFontCopyDefaultCascadeListForLanguages(_fonts.front().get(), appleLanguages.get()));
+
+      // Create a font for each one because Core Text doesn't have a way of querying a whole cascade for a glyph
+      for (int i = 0, length = CFArrayGetCount(defaultCascade.get()); i < length; i++) {
+        auto descriptor = (CTFontDescriptorRef)CFArrayGetValueAtIndex(defaultCascade.get(), i);
+        _fonts.emplace_back(CTFontCreateWithFontDescriptor(descriptor, fontSize, nullptr));
+      }
     }
 
     virtual double advanceWidth(int codePoint) override {
-      auto glyph = _glyphForCodePoint(codePoint);
-      return CTFontGetAdvancesForGlyphs(_font.get(), kCTFontOrientationDefault, &glyph, nullptr, 1);
+      _findCodePoint(codePoint);
+      return CTFontGetAdvancesForGlyphs(_fonts[_cachedFontIndex].get(), kCTFontOrientationDefault, &_cachedGlyph, nullptr, 1);
     }
 
     virtual Graphics::Glyph *render(int codePoint, double advanceWidth) override {
-      auto glyph = _glyphForCodePoint(codePoint);
-      auto bounds = CTFontGetBoundingRectsForGlyphs(_font.get(), kCTFontOrientationDefault, &glyph, nullptr, 1);
+      _findCodePoint(codePoint);
+      const auto &font = _fonts[_cachedFontIndex];
+      auto bounds = CTFontGetBoundingRectsForGlyphs(font.get(), kCTFontOrientationDefault, &_cachedGlyph, nullptr, 1);
 
       // Make sure the context is big enough
       int minX = std::floor(bounds.origin.x) - 1;
-      int minY = std::floor(bounds.origin.y - _ascent) - 1;
+      int minY = std::floor(bounds.origin.y - _cachedFontAscent) - 1;
       int maxX = std::ceil(bounds.origin.x + bounds.size.width) + 2;
-      int maxY = std::ceil(bounds.origin.y + bounds.size.height - _ascent) + 2;
+      int maxY = std::ceil(bounds.origin.y + bounds.size.height - _cachedFontAscent) + 2;
       int width = maxX - minX;
       int height = maxY - minY;
       if (!_context || width > _width || height > _height) {
         _width = std::max(width * 2, _width);
         _height = std::max(height * 2, _height);
         _bytes.resize(_width * _height * 4);
-        _context = CGContextPtr(CGBitmapContextCreate(_bytes.data(), _width, _height, 8, _width * 4, _deviceRGB.get(), kCGImageAlphaPremultipliedLast));
+        _context.reset(CGBitmapContextCreate(_bytes.data(), _width, _height, 8, _width * 4, _deviceRGB.get(), kCGImageAlphaPremultipliedLast));
       }
 
       auto mask = new Graphics::Mask(width, height);
 
       // Render the glyph three times at different offsets
       for (int i = 0; i < 3; i++) {
-        auto position = CGPointMake(-minX + i / 3.0, -minY - _ascent);
+        auto position = CGPointMake(-minX + i / 3.0, -minY - _cachedFontAscent);
         CGContextClearRect(_context.get(), CGRectMake(0, 0, width, height));
-        CTFontDrawGlyphs(_font.get(), &glyph, &position, 1, _context.get());
+        CTFontDrawGlyphs(font.get(), &_cachedGlyph, &position, 1, _context.get());
 
         // Extract the mask (keep in mind CGContext is upside-down)
         auto from = _bytes.data() + (_height - height) * _width * 4 + 3;
@@ -625,45 +657,74 @@ namespace OSX {
 
     #ifdef SKEW_GC_MARK_AND_SWEEP
       virtual void __gc_mark() override {
+        Skew::GC::mark(_fontNames);
       }
     #endif
 
   private:
-    CGGlyph _glyphForCodePoint(int codePoint) {
-      if (_cachedCodePoint != codePoint) {
-        _cachedCodePoint = codePoint;
+    void _findCodePoint(int codePoint) {
+      if (_cachedCodePoint == codePoint) {
+        return;
+      }
 
-        // The code point must be UTF-16 encoded
-        if (codePoint < 0x10000) {
-          uint16_t codeUnit = codePoint;
-          CTFontGetGlyphsForCharacters(_font.get(), &codeUnit, &_cachedGlyph, 1);
-        } else {
-          codePoint -= 0x10000;
-          uint16_t codeUnits[2] = {
-            static_cast<uint16_t>((codePoint >> 10) + 0xD800),
-            static_cast<uint16_t>((codePoint & ((1 << 10) - 1)) + 0xDC00),
-          };
-          CTFontGetGlyphsForCharacters(_font.get(), codeUnits, &_cachedGlyph, 2);
+      _cachedCodePoint = codePoint;
+
+      uint16_t codeUnits[2] = { 0, 0 };
+      int codeUnitCount = 0;
+
+      // The code point must be UTF-16 encoded
+      if (codePoint < 0x10000) {
+        codeUnits[0] = codePoint;
+        codeUnitCount = 1;
+      } else {
+        codePoint -= 0x10000;
+        codeUnits[0] = (codePoint >> 10) + 0xD800;
+        codeUnits[1] = (codePoint & ((1 << 10) - 1)) + 0xDC00;
+        codeUnitCount = 2;
+      }
+
+      // Search the entire font cascade
+      for (int i = 0, length = _fonts.size(); i < length; i++) {
+        const auto &font = _fonts[i];
+
+        if (CTFontGetGlyphsForCharacters(font.get(), codeUnits, &_cachedGlyph, codeUnitCount)) {
+          _cachedFontIndex = i;
+          _cachedFontAscent = CTFontGetAscent(font.get());
+          return;
         }
       }
 
-      return _cachedGlyph;
+      // Give up after reaching the end
+      _cachedGlyph = 0;
+      _cachedFontIndex = 0;
+      _cachedFontAscent = 0;
+
+      Log::warning("failed to find a glyph for code unit " + std::to_string(codePoint));
     }
 
-    double _ascent = 0;
+    // Stuff for rendering
     int _width = 0;
     int _height = 0;
-    int _cachedCodePoint = -1;
-    CGGlyph _cachedGlyph = -1;
-    CTFontPtr _font = nullptr;
     CGContextPtr _context = nullptr;
     CGColorSpacePtr _deviceRGB = CGColorSpacePtr(CGColorSpaceCreateDeviceRGB());
     std::vector<uint8_t> _bytes;
+
+    // Stuff for font selection
+    int _cachedCodePoint = -1;
+    int _cachedFontIndex = -1;
+    double _cachedFontAscent = 0;
+    CGGlyph _cachedGlyph = -1;
+    std::vector<CFPtr<CTFontRef>> _fonts;
+    Skew::List<Skew::string> *_fontNames;
   };
 
   struct AppWindow : Editor::Window, Editor::PixelRenderer {
     AppWindow(NSWindow *window, AppView *appView, Editor::Platform *platform) : _window(window), _appView(appView), _platform(platform) {
       _shortcuts = new Editor::ShortcutMap(platform);
+
+      auto fontNames = new Skew::List<Skew::string> { "Menlo-Regular", "Monaco", "Consolas", "CourierNewPSMT" };
+      _font = Graphics::Font::create(platform, fontNames, _fontSize);
+      _marginFont = Graphics::Font::create(platform, fontNames, _marginFontSize);
     }
 
     void handleFrame();
@@ -680,22 +741,8 @@ namespace OSX {
       _context = new OpenGL::Context();
 
       _solidBatch = new Graphics::SolidBatch(_context);
-      _glyphBatch = new Graphics::GlyphBatch(_platform, _context);
+      _glyphBatch = new Graphics::GlyphBatch(_context);
       _dropShadow = new Graphics::DropShadow(_context);
-
-      auto fontNames = new Skew::List<Skew::string> { "Menlo", "Monaco", "Consolas", "Courier New" };
-
-      _font = _glyphBatch->createFont(fontNames, _fontSize);
-      _font->glyphProvider->setFont(fontNames, _fontSize);
-      _advanceWidth = _font->glyphProvider->advanceWidth(' ');
-
-      _marginFont = _glyphBatch->createFont(fontNames, _marginFontSize);
-      _marginFont->glyphProvider->setFont(fontNames, _marginFontSize);
-      _marginAdvanceWidth = _marginFont->glyphProvider->advanceWidth(' ');
-
-      if (_view != nullptr) {
-        _view->resizeFont(_advanceWidth, _marginAdvanceWidth, _lineHeight);
-      }
 
       handleResize();
     }
@@ -843,8 +890,8 @@ namespace OSX {
       return data.tv_sec + data.tv_usec / 1.0e6;
     }
 
-    virtual Graphics::GlyphProvider *createGlyphProvider() override {
-      return new GlyphProvider;
+    virtual Graphics::GlyphProvider *createGlyphProvider(Skew::List<Skew::string> *fontNames) override {
+      return new GlyphProvider(fontNames);
     }
 
     virtual Editor::Window *createWindow() override;
@@ -1059,6 +1106,15 @@ void OSX::AppWindow::handleResize() {
 
   if (_dropShadow != nullptr) {
     _dropShadow->resize(_width, _height);
+  }
+
+  _font->resize(_pixelScale);
+  _marginFont->resize(_pixelScale);
+
+  if (_view != nullptr) {
+    _advanceWidth = _font->glyphProvider->advanceWidth(' ') / _pixelScale;
+    _marginAdvanceWidth = _marginFont->glyphProvider->advanceWidth(' ') / _pixelScale;
+    _view->resizeFont(_advanceWidth, _marginAdvanceWidth, _lineHeight);
   }
 }
 

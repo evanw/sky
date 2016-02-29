@@ -26,7 +26,7 @@ namespace Editor {
     def operatingSystem OperatingSystem
     def userAgent UserAgent
     def nowInSeconds double
-    def createGlyphProvider Graphics.GlyphProvider
+    def createGlyphProvider(fontNames List<string>) Graphics.GlyphProvider
     def createWindow Window # This may return null when called multiple times
 
     def baseModifier Editor.Modifiers {

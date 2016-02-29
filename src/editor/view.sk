@@ -826,6 +826,10 @@ namespace Editor {
     }
 
     def _updateScrollSizeAndInvalidate {
+      if _viewWidth == 0 || _viewHeight == 0 {
+        return
+      }
+
       _marginWidth = setting(.SHOW_MARGIN) ? Math.floor(_marginPaddingLeft + _model.count.toString.count * _marginAdvanceWidth + _marginPaddingRight) : 0
 
       var scrollWidth = _marginWidth + _paddingLeft + _model.maxLineSize * _advanceWidth + _paddingRight

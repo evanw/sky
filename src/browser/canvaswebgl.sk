@@ -29,7 +29,7 @@ namespace Browser {
 
       _context = Context.new(gl)
       _solidBatch = Graphics.SolidBatch.new(_context)
-      _glyphBatch = Graphics.GlyphBatch.new(platform, _context)
+      _glyphBatch = Graphics.GlyphBatch.new(_context)
       _dropShadow = Graphics.DropShadow.new(_context)
 
       Log.info("initialized WebGL canvas")
@@ -50,12 +50,14 @@ namespace Browser {
       _solidBatch.resize(_width, _height, _pixelScale)
       _glyphBatch.resize(_width, _height, _pixelScale)
       _dropShadow.resize(_width, _height)
+      _font.resize(_pixelScale)
+      _marginFont.resize(_pixelScale)
     }
 
     over changeFont(fontSize double, marginFontSize double, lineHeight double, fontNames List<string>) {
       super(fontSize, marginFontSize, lineHeight, fontNames)
-      _font = _glyphBatch.createFont(fontNames, fontSize)
-      _marginFont = _glyphBatch.createFont(fontNames, marginFontSize)
+      _font = Graphics.Font.create(_platform, fontNames, fontSize)
+      _marginFont = Graphics.Font.create(_platform, fontNames, marginFontSize)
     }
 
     over _render {

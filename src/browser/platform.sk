@@ -91,8 +91,8 @@ namespace Browser {
       return (window.performance ? window.performance : dynamic.Date).now() / 1000
     }
 
-    def createGlyphProvider Graphics.GlyphProvider {
-      return GlyphProvider.new
+    def createGlyphProvider(fontNames List<string>) Graphics.GlyphProvider {
+      return GlyphProvider.new(fontNames)
     }
 
     def createWindow Editor.Window {
