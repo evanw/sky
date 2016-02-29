@@ -718,7 +718,7 @@ namespace OSX {
     Skew::List<Skew::string> *_fontNames;
   };
 
-  struct AppWindow : Editor::Window, Editor::PixelRenderer {
+  struct AppWindow : Editor::Window, private Editor::PixelRenderer {
     AppWindow(NSWindow *window, AppView *appView, Editor::Platform *platform) : _window(window), _appView(appView), _platform(platform) {
       _shortcuts = new Editor::ShortcutMap(platform);
       _translator = new Editor::SemanticToPixelTranslator(this);

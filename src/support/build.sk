@@ -1,7 +1,8 @@
 enum Build {
   NONE
-  BROWSER
-  NATIVE
+  OSX
+  TERMINAL
+  WWW
 }
 
 const BUILD Build = .NONE

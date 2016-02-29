@@ -114,7 +114,7 @@ namespace Browser {
     return CanvasElement2D.new(platform, shortcuts)
   }
 
-  @entry if BUILD == .BROWSER
+  @entry if BUILD == .WWW
   def main {
     Editor.App.new(Platform.new)
   }

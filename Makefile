@@ -2,29 +2,39 @@ SKEW = node_modules/.bin/skewc src/*/*.sk --message-limit=0
 GLSLX = node_modules/.bin/glslx glslx/shaders.glslx --format=skew --output=src/graphics/shaders.sk
 
 SKEW_FLAGS_JS += --output-file=www/compiled.js
-SKEW_FLAGS_JS += --define:BUILD=BROWSER
+SKEW_FLAGS_JS += --define:BUILD=WWW
 
 SKEW_FLAGS_OSX += --output-file=osx/compiled.cpp
-SKEW_FLAGS_OSX += --define:BUILD=NATIVE
+SKEW_FLAGS_OSX += --define:BUILD=OSX
+
+SKEW_FLAGS_TERMINAL += --output-file=terminal/compiled.cpp
+SKEW_FLAGS_TERMINAL += --define:BUILD=TERMINAL
 
 INFO_PLIST_DATA = '<plist version="1.0"><dict><key>NSHighResolutionCapable</key><true/></dict></plist>'
 INFO_PLIST_PATH = osx/Sky.app/Contents/Info.plist
 OSX_APP_PATH = osx/Sky.app/Contents/MacOS/Sky
 
+CLANG_FLAGS += -I skew/src/cpp
+CLANG_FLAGS += -lc++
+CLANG_FLAGS += -std=c++11
+CLANG_FLAGS += -Wall
+CLANG_FLAGS += -Wextra
+CLANG_FLAGS += -Wno-switch
+CLANG_FLAGS += -Wno-unused-parameter
+
+CLANG_FLAGS_OSX += $(CLANG_FLAGS)
 CLANG_FLAGS_OSX += -fobjc-arc
 CLANG_FLAGS_OSX += -framework Cocoa
 CLANG_FLAGS_OSX += -framework CoreVideo
 CLANG_FLAGS_OSX += -framework OpenGL
-CLANG_FLAGS_OSX += -I skew/src/cpp
-CLANG_FLAGS_OSX += -lc++
 CLANG_FLAGS_OSX += -o $(OSX_APP_PATH)
-CLANG_FLAGS_OSX += -std=c++11
-CLANG_FLAGS_OSX += -Wall
-CLANG_FLAGS_OSX += -Wextra
 CLANG_FLAGS_OSX += -Wl,-sectcreate,__TEXT,__info_plist,$(INFO_PLIST_PATH)
-CLANG_FLAGS_OSX += -Wno-switch
-CLANG_FLAGS_OSX += -Wno-unused-parameter
 CLANG_FLAGS_OSX += osx/osx.mm
+
+CLANG_FLAGS_TERMINAL += $(CLANG_FLAGS)
+CLANG_FLAGS_TERMINAL += -lncurses
+CLANG_FLAGS_TERMINAL += -o terminal/sky
+CLANG_FLAGS_TERMINAL += terminal/terminal.cpp
 
 default: debug
 
@@ -53,6 +63,10 @@ osx-release: | node_modules
 	echo $(INFO_PLIST_DATA) > $(INFO_PLIST_PATH)
 	clang $(CLANG_FLAGS_OSX) -O3 -DNDEBUG -fomit-frame-pointer
 	rm $(INFO_PLIST_PATH)
+
+terminal-debug: | node_modules
+	$(SKEW) $(SKEW_FLAGS_TERMINAL)
+	clang $(CLANG_FLAGS_TERMINAL)
 
 watch-shaders: | node_modules
 	node_modules/.bin/watch glslx 'clear && make shaders && echo done'

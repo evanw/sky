@@ -2,5 +2,7 @@
 /node_modules/
 /osx/compiled.cpp
 /osx/Sky.app/
+/terminal/compiled.cpp
+/terminal/sky
 /www/compiled.js
 /www/compiled.js.map
