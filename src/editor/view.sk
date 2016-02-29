@@ -465,7 +465,7 @@ namespace Editor {
           var line = _model[y]
           var count = line.text.count
           var startX = Math.max(y == min.y ? min.x : 0, minX)
-          var endX = Math.min(y == max.y ? max.x : count + 1, maxX)
+          var endX = Math.min(y == max.y ? max.x : count + 1, maxX + 1)
 
           if startX != endX {
             var lineY = translateY + _lineHeight * y
