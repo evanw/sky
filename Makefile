@@ -22,6 +22,10 @@ CLANG_FLAGS += -Wextra
 CLANG_FLAGS += -Wno-switch
 CLANG_FLAGS += -Wno-unused-parameter
 
+CLANG_FLAGS_RELEASE += -DNDEBUG
+CLANG_FLAGS_RELEASE += -fomit-frame-pointer
+CLANG_FLAGS_RELEASE += -O3
+
 CLANG_FLAGS_OSX += $(CLANG_FLAGS)
 CLANG_FLAGS_OSX += -fobjc-arc
 CLANG_FLAGS_OSX += -framework Cocoa
@@ -61,10 +65,14 @@ osx-release: | node_modules
 	mkdir -p $(shell dirname $(OSX_APP_PATH))
 	$(SKEW) $(SKEW_FLAGS_OSX) --release
 	echo $(INFO_PLIST_DATA) > $(INFO_PLIST_PATH)
-	clang $(CLANG_FLAGS_OSX) -O3 -DNDEBUG -fomit-frame-pointer
+	clang $(CLANG_FLAGS_OSX) $(CLANG_FLAGS_RELEASE)
 	rm $(INFO_PLIST_PATH)
 
 terminal-debug: | node_modules
+	$(SKEW) $(SKEW_FLAGS_TERMINAL)
+	clang $(CLANG_FLAGS_TERMINAL)
+
+terminal-release: | node_modules
 	$(SKEW) $(SKEW_FLAGS_TERMINAL)
 	clang $(CLANG_FLAGS_TERMINAL)
 

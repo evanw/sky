@@ -46,10 +46,36 @@ namespace Terminal {
       refresh();
     }
 
+    void writeToClipboard(std::string text) {
+      // Try writing the OS X clipboard
+      if (FILE *f = popen("pbcopy", "w")) {
+        fputs(text.c_str(), f);
+        pclose(f);
+      }
+
+      _clipboard = std::move(text);
+    }
+
+    std::string readFromClipboard() {
+      // Try reading the OS X clipboard
+      if (FILE *f = popen("pbpaste -Prefer text", "r")) {
+        char chunk[1024];
+        std::string buffer;
+        while (fgets(chunk, sizeof(chunk), f)) {
+          buffer += chunk;
+        }
+        if (!pclose(f)) {
+          _clipboard = std::move(buffer);
+        }
+      }
+
+      return _clipboard;
+    }
+
     void triggerAction(Editor::Action action) {
       if (action == Editor::Action::CUT || action == Editor::Action::COPY) {
         auto selection = _view->selection()->isEmpty() ? _view->selectionExpandedToLines() : _view->selection();
-        _clipboard = _view->textInSelection(selection).std_str();
+        writeToClipboard(_view->textInSelection(selection).std_str());
 
         if (action == Editor::Action::CUT) {
           _view->changeSelection(selection, Editor::ScrollBehavior::DO_NOT_SCROLL);
@@ -58,7 +84,7 @@ namespace Terminal {
       }
 
       else if (action == Editor::Action::PASTE) {
-        _view->insertText(_clipboard);
+        _view->insertText(readFromClipboard());
       }
 
       else {
