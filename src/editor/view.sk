@@ -236,6 +236,10 @@ namespace Editor {
       return _model
     }
 
+    def marginWidth double {
+      return _marginWidth
+    }
+
     def setting(setting ViewSetting) bool {
       assert(setting in _settings)
       return _settings[setting]

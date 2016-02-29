@@ -13,6 +13,14 @@ namespace Log {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+enum {
+  SKY_COLOR_COMMENT = 1,
+  SKY_COLOR_CONSTANT = 2,
+  SKY_COLOR_KEYWORD = 3,
+  SKY_COLOR_MARGIN = 4,
+  SKY_COLOR_STRING = 5,
+};
+
 namespace Terminal {
   struct Host : Editor::Platform, private Editor::Window, private Editor::SemanticRenderer {
     void showCarets() {
@@ -26,7 +34,7 @@ namespace Terminal {
     void handleResize() {
       _width = getmaxx(stdscr);
       _height = getmaxy(stdscr);
-      _view->resize(_width, _height);
+      _view->resize(_width - 1, _height); // Subtract 1 so the cursor can be seen at the end of the line
     }
 
     void render() {
@@ -143,7 +151,24 @@ namespace Terminal {
         return;
       }
 
-      mvaddstr(y, x, text.c_str());
+      bool isMargin = color == Editor::Color::FOREGROUND_MARGIN || color == Editor::Color::FOREGROUND_MARGIN_HIGHLIGHTED;
+      int attributes =
+        isMargin ? COLOR_PAIR(SKY_COLOR_MARGIN) :
+        color == Editor::Color::FOREGROUND_KEYWORD || color == Editor::Color::FOREGROUND_KEYWORD_CONSTANT ? COLOR_PAIR(SKY_COLOR_KEYWORD) :
+        color == Editor::Color::FOREGROUND_CONSTANT || color == Editor::Color::FOREGROUND_NUMBER ? COLOR_PAIR(SKY_COLOR_CONSTANT) :
+        color == Editor::Color::FOREGROUND_COMMENT ? COLOR_PAIR(SKY_COLOR_COMMENT) :
+        color == Editor::Color::FOREGROUND_STRING ? COLOR_PAIR(SKY_COLOR_STRING) :
+        color == Editor::Color::FOREGROUND_DEFINITION ? A_BOLD :
+        0;
+
+      int minX = isMargin ? 0 : _view->marginWidth();
+      int maxX = _width - 1; // Subtract 1 so the cursor can be seen at the end of the line
+      int start = std::max(0, std::min(text.count(), minX - (int)x));
+      int end = std::max(0, std::min(text.count(), maxX - (int)x));
+
+      attron(attributes);
+      mvaddstr(y, x + start, text.slice(start, end).c_str());
+      attroff(attributes);
     }
 
     virtual void renderHorizontalLine(double x1, double x2, double y, Editor::Color color) override {
@@ -227,6 +252,11 @@ int main() {
   // Prepare colors
   start_color();
   use_default_colors();
+  init_pair(SKY_COLOR_MARGIN, COLOR_BLUE, -1);
+  init_pair(SKY_COLOR_KEYWORD, COLOR_RED, -1);
+  init_pair(SKY_COLOR_COMMENT, COLOR_CYAN, -1);
+  init_pair(SKY_COLOR_STRING, COLOR_GREEN, -1);
+  init_pair(SKY_COLOR_CONSTANT, COLOR_MAGENTA, -1);
 
   // More setup
   raw(); // Don't automatically generate any signals
