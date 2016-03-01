@@ -41,7 +41,7 @@ namespace Terminal {
     }
 
     void render() {
-      clear();
+      erase();
       _view->render();
       refresh();
     }
