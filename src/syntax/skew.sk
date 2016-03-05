@@ -100,6 +100,7 @@ namespace Syntax.SkewLexer {
             text in _constants ? .FOREGROUND_KEYWORD_CONSTANT :
             text.count > 1 && !Editor.Lexer.hasLowerCase(text) ? .FOREGROUND_CONSTANT :
             text in _types || Editor.Lexer.isUpperCase(c) || text == "fn" && (!lexer.hasNext || lexer.peekNext == '(') ? .FOREGROUND_TYPE :
+            c == '_' ? .FOREGROUND_INSTANCE :
             .FOREGROUND_DEFAULT
           var isAfterContextualKeyword = (color == .FOREGROUND_DEFAULT || color == .FOREGROUND_TYPE) && previousIdentifier != null && previousIdentifier in _contextualKeywords
 
@@ -109,18 +110,20 @@ namespace Syntax.SkewLexer {
           }
 
           # Make definitions stand out
-          if color == .FOREGROUND_DEFAULT && (isAfterContextualKeyword || previousIdentifier != null && previousIdentifier in _definitionKeywords) {
+          if (color == .FOREGROUND_DEFAULT || color == .FOREGROUND_INSTANCE) && (isAfterContextualKeyword || previousIdentifier != null && previousIdentifier in _definitionKeywords) {
             color = .FOREGROUND_DEFINITION
           }
 
           lexer.addSpan(startOfToken, lexer.currentIndex, color)
 
-          # This may be a contextual keyword
-          if color == .FOREGROUND_DEFAULT && text in _contextualKeywords {
-          }
-
           previousIdentifier = text
           continue
+        }
+
+        # Annotation
+        else if c == '@' {
+          lexer.scanAlphaNumericString
+          lexer.addSpan(startOfToken, lexer.currentIndex, .FOREGROUND_ANNOTATION)
         }
 
         # Comment
