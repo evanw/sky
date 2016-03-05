@@ -1,34 +1,73 @@
 namespace Browser {
-  class GlyphProvider :: Graphics.GlyphProvider {
-    const _fontNames List<string>
+  class FontInstance :: UI.FontInstance {
+    const _font UI.Font
+    const _names List<string>
+    const _size double
+    const _lineHeight double
+    const _advanceWidthCache IntMap<double> = {}
+    const _context = document.createElement("canvas").getContext("2d")
     var _maskData Int32Array = null
+    var _pixelScale = 0.0
+    var _canvasText = ""
     var _canvasSize = 0
-    var _fontSize = 0.0
-    var _context = document.createElement("canvas").getContext("2d")
 
-    def resize(fontSize double) {
-      if _fontSize == fontSize {
-        return
-      }
+    def new(font UI.Font, names List<string>, size double, lineHeight double, pixelScale double) {
+      _font = font
+      _names = names
+      _size = size
+      _lineHeight = lineHeight
+      changePixelScale(pixelScale)
+    }
 
-      # Assume glyphs won't ever grow extend out more than twice the font size.
-      # Because the canvas text API is so terrible, we have no way of knowing
-      # what the actual glyph size is, so this is the best we can do.
-      _canvasSize = Math.ceil(fontSize * 2) as int
-      _context.canvas.width = _canvasSize
-      _context.canvas.height = _canvasSize
+    def font UI.Font {
+      return _font
+    }
 
-      # This must be set after resizing the canvas or it will be reset
-      _context.font = "\(fontSize)px " + ", ".join(_fontNames)
-      _maskData = Int32Array.new(_canvasSize * _canvasSize)
-      _fontSize = fontSize
+    def size double {
+      return _size
+    }
+
+    def lineHeight double {
+      return _lineHeight
+    }
+
+    def canvasText string {
+      return _canvasText
     }
 
     def advanceWidth(codePoint int) double {
-      return _context.measureText(string.fromCodePoint(codePoint).repeat(100)).width / 100
+      var value = _advanceWidthCache.get(codePoint, -1)
+
+      if value == -1 {
+        value = _context.measureText(string.fromCodePoint(codePoint).repeat(100)).width / (100 * _pixelScale)
+        _advanceWidthCache[codePoint] = value
+      }
+
+      return value
     }
 
-    def render(codePoint int, advanceWidth double) Graphics.Glyph {
+    def changePixelScale(pixelScale double) {
+      if pixelScale != _pixelScale {
+        var fontSize = size * pixelScale
+        _pixelScale = pixelScale
+        _canvasText = "\(fontSize)px \(", ".join(_names))"
+        _context.font = _canvasText
+
+        # Assume glyphs won't ever grow extend out more than twice the font size.
+        # Because the canvas text API is so terrible, we have no way of knowing
+        # what the actual glyph size is, so this is the best we can do.
+        var canvasSize = Math.ceil(fontSize * 2) as int
+        _context.canvas.width = canvasSize
+        _context.canvas.height = canvasSize
+
+        # This must be set after resizing the canvas or it will be reset
+        _context.font = "\(fontSize)px " + ", ".join(_names)
+        _maskData = Int32Array.new(canvasSize * canvasSize)
+        _canvasSize = canvasSize
+      }
+    }
+
+    def renderGlyph(codePoint int) Graphics.Glyph {
       # Round the origin coordinates because some browsers do hinting
       var size = _canvasSize
       var originX = size / 4
@@ -38,7 +77,7 @@ namespace Browser {
       # Render the glyph three times at different offsets
       for i in 0..3 {
         _context.clearRect(0, 0, size, size)
-        _context.fillText(string.fromCodePoint(codePoint), originX + i / 3.0, originY + _fontSize)
+        _context.fillText(string.fromCodePoint(codePoint), originX + i / 3.0, originY + _size * _pixelScale)
 
         var data Uint8ClampedArray = _context.getImageData(0, 0, size, size).data
         var shift = i * 8
@@ -111,7 +150,7 @@ namespace Browser {
 
       # Measure 100 successive characters in an attempt to get a better
       # measurement since some browsers never return a fractional value
-      return Graphics.Glyph.new(codePoint, mask, originX - minX, originY - minY, advanceWidth)
+      return Graphics.Glyph.new(codePoint, mask, originX - minX, originY - minY, 1 / _pixelScale, advanceWidth(codePoint))
     }
   }
 }

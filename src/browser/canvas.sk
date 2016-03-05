@@ -1,90 +1,44 @@
 namespace Browser {
-  enum DeltaMode {
-    PIXEL
-    LINE
-    PAGE
-  }
-
-  const _whichToKeyCode IntMap<Editor.KeyCode> = {
-    8:   .BACKSPACE,
-    13:  .ENTER,
-    27:  .ESCAPE,
-    33:  .PAGE_UP,
-    34:  .PAGE_DOWN,
-    35:  .END,
-    36:  .HOME,
-    37:  .ARROW_LEFT,
-    38:  .ARROW_UP,
-    39:  .ARROW_RIGHT,
-    40:  .ARROW_DOWN,
-    44:  .COMMA,
-    46:  .DELETE,
-    59:  .SEMICOLON,
-    186: .SEMICOLON,
-    188: .COMMA,
-    190: .PERIOD,
-  }
-
-  class CanvasElement :: Editor.PixelRenderer {
+  class CanvasElement :: UI.PixelRenderer {
     var _width = 0
     var _height = 0
     var _pixelScale = 0.0
-    var _fontSize = 0.0
-    var _lineHeight = 0.0
-    var _isInvalid = false
-    var _isActive = false
-    var _fontText = ""
-    var _marginFontText = ""
-    var _advanceWidth = 0.0
-    var _marginAdvanceWidth = 0.0
-    var _previousFont Editor.Font = .DEFAULT
-    var _isPreviousFontValid = false
-    var _idleCount = 0
-    var _lastInvalidationTime = 0.0
-    var _areCaretsVisible = true
+    var _isRendering = false
+    var _defaultFontSize = 0.0
     var _element = document.createElement("canvas")
     var _mousemove fn(dynamic) = null
     var _mouseup fn(dynamic) = null
-    var _view Editor.View = null
-    var _platform Editor.Platform = null
-    var _shortcuts Editor.ShortcutMap = null
-    var _translator Editor.SemanticToPixelTranslator = null
-    var _textarea = document.createElement("textarea")
-    var _previousValue = ""
+    var _window Window = null
+    var _translator UI.SemanticToPixelTranslator = null
     var _fontContext = document.createElement("canvas").getContext("2d")
+    var _fontInstances IntMap<FontInstance> = {}
 
-    def new(platform Editor.Platform, shortcuts Editor.ShortcutMap) {
-      _platform = platform
-      _shortcuts = shortcuts
-      _translator = Editor.SemanticToPixelTranslator.new(self)
-      _lastInvalidationTime = _platform.nowInSeconds
-      _installEventHandlers
+    def new(window Window) {
+      _window = window
+      _translator = UI.SemanticToPixelTranslator.new(self)
+
+      var style = _element.style
+      style.width = "100%"
+      style.height = "100%"
     }
 
-    def _renderNothing
+    def _afterResize
+    def setViewport(x double, y double, width double, height double)
     def setDefaultBackgroundColor(color Graphics.RGBA)
     def fillRect(x double, y double, width double, height double, color Graphics.RGBA)
     def fillRoundedRect(x double, y double, width double, height double, color Graphics.RGBA, radius double)
     def strokePolyline(coordinates List<double>, color Graphics.RGBA, thickness double)
-    def renderText(x double, y double, text string, font Editor.Font, color Graphics.RGBA)
+    def renderText(x double, y double, text string, font UI.Font, color Graphics.RGBA)
     def renderRectShadow(
       boxX double, boxY double, boxWidth double, boxHeight double,
       clipX double, clipY double, clipWidth double, clipHeight double,
       shadowAlpha double, blurSigma double)
 
-    def setView(view Editor.View) {
-      if _view != view {
-        _view = view
-
-        if view != null {
-          view.resize(_width, _height)
-          view.resizeFont(_advanceWidth, _marginAdvanceWidth, _lineHeight)
-          invalidate
-        }
-      }
+    def element dynamic {
+      return _element
     }
 
-    def translator Editor.SemanticToPixelTranslator {
+    def translator UI.SemanticToPixelTranslator {
       return _translator
     }
 
@@ -100,316 +54,44 @@ namespace Browser {
       return _pixelScale
     }
 
-    def fontSize double {
-      return _fontSize
+    def fontInstance(font UI.Font) UI.FontInstance {
+      return _fontInstances.get(font, null)
     }
 
-    def lineHeight double {
-      return _lineHeight
+    def advanceWidth(font UI.Font, codePoint int) double {
+      return _fontContext
     }
 
-    def invalidate {
-      _isInvalid = true
-      _lastInvalidationTime = _platform.nowInSeconds
-    }
+    def setFont(font UI.Font, names List<string>, size double, height double) {
+      _fontInstances[font] = FontInstance.new(font, names, size, height, _fontInstanceScale)
 
-    def setCursor(cursor Editor.Cursor) {
-      _element.style.cursor =
-        cursor == .TEXT ? "text" :
-        "default"
-    }
-
-    def tick {
-      _render
-    }
-
-    def changeFont(fontSize double, marginFontSize double, lineHeight double, fontNames List<string>) {
-      var fontSuffix = "px " + ",".join(fontNames)
-      _fontSize = fontSize
-      _fontText = "\(fontSize)\(fontSuffix)"
-      _marginFontText = "\(marginFontSize)\(fontSuffix)"
-      _fontContext.font = _fontText
-      _advanceWidth = _fontContext.measureText("x".repeat(100)).width / 100
-      _marginAdvanceWidth = _advanceWidth * marginFontSize / fontSize
-      _lineHeight = lineHeight
-
-      if _view != null {
-        _view.resizeFont(_advanceWidth, _marginAdvanceWidth, _lineHeight)
+      if font == .DEFAULT_FONT {
+        _defaultFontSize = size
       }
     }
 
-    def _changeValue(value string) {
-      _textarea.value = value
-      _previousValue = value
+    def beginFrame {
+      _isRendering = true
     }
 
-    def _render {
-      var areCaretsVisible = _isActive && ((((_platform.nowInSeconds - _lastInvalidationTime) * 2) as int) & 1) == 0
-
-      # Skip rendering if not invalid
-      if !_isInvalid && areCaretsVisible == _areCaretsVisible {
-        _idleCount++
-
-        # Render something at 10 fps even when idle otherwise Chrome's
-        # render loop goes idle and stutters when starting back up
-        if _idleCount == 6 {
-          _renderNothing
-          _idleCount = 0
-        }
-
-        return
-      }
-
-      # Reset render state
-      _idleCount = 0
-      _isInvalid = false
-      _isPreviousFontValid = false
-      _areCaretsVisible = areCaretsVisible
-      _translator.setShowCarets(areCaretsVisible)
-
-      # Delegate to the view
-      _view?.render
+    def endFrame {
+      _isRendering = false
     }
 
-    def _updateSize {
-      var width int = _element.clientWidth
-      var height int = _element.clientHeight
-      var pixelScale double = window.devicePixelRatio ? window.devicePixelRatio : 1
-
-      # Safari broke devicePixelRatio
-      if _platform.userAgent == .SAFARI {
-        pixelScale *= (document.width / window.innerWidth + document.height / window.innerHeight) / 2
-      }
-
+    def resize(width int, height int, pixelScale double) {
       if _width != width || _height != height || _pixelScale != pixelScale {
-        _element.width = Math.round(width * pixelScale)
-        _element.height = Math.round(height * pixelScale)
         _width = width
         _height = height
         _pixelScale = pixelScale
-        _view?.resize(width, height)
+        _element.width = Math.round(width * pixelScale)
+        _element.height = Math.round(height * pixelScale)
+        _fontInstances.each((key, instance) => instance.changePixelScale(_fontInstanceScale))
+        _afterResize
       }
     }
 
-    def stretchToFitElement(element dynamic) {
-      var style = _element.style
-      style.position = "fixed"
-      style.left = 0
-      style.top = 0
-      style.width = "100%"
-      style.height = "100%"
-
-      on(window, "resize", e => {
-        _updateSize
-        _render
-      })
-
-      element.style.overflow = "hidden"
-      element.appendChild(_element)
-      element.appendChild(_textarea)
-      _updateSize
-    }
-
-    def setIsActive(isActive bool) {
-      if !isActive {
-        _textarea.blur()
-      }
-
-      _textarea.enabled = isActive
-      _isActive = isActive
-      invalidate
-
-      if isActive {
-        _textarea.focus()
-      }
-    }
-
-    # https://bugs.chromium.org/p/chromium/issues/detail?id=588434
-    def avoidChromeBugOnWindowFocus {
-      if _platform.userAgent == .CHROME {
-        _width = 1
-        _height = 1
-        _element.width = 1
-        _element.height = 1
-        _updateSize
-        _render
-      }
-    }
-
-    def _modifiersFromEvent(event dynamic) Editor.Modifiers {
-      return
-        (event.altKey ? .ALT : 0) |
-        (event.metaKey ? .META : 0) |
-        (event.shiftKey ? .SHIFT : 0) |
-        (event.ctrlKey ? .CONTROL : 0)
-    }
-
-    def _mouseEventFromEvent(e dynamic) Editor.MouseEvent {
-      var bounds = _element.getBoundingClientRect()
-      var x double = e.pageX - bounds.left
-      var y double = e.pageY - bounds.top
-      return Editor.MouseEvent.new(x, y, _modifiersFromEvent(e), e.detail as int)
-    }
-
-    enum ChangeDragHandlers {
-      LOCAL
-      GLOBAL
-    }
-
-    def _changeDragHandlers(mode ChangeDragHandlers) {
-      var old = mode == .GLOBAL ? _element : document
-      var new = mode == .GLOBAL ? document : _element
-
-      off(old, "mousemove", _mousemove)
-      off(old, "mouseup", _mouseup)
-
-      on(new, "mousemove", _mousemove)
-      on(new, "mouseup", _mouseup)
-    }
-
-    def _handleInput {
-      # Text input in browsers really sucks. There's no API for text insertion
-      # events so the only way to do it is to shove an input field off screen
-      # somewhere, give it focus, and keep checking for inserted text. We keep
-      # clearing the input field so that adjacent inputs don't interfere with
-      # each other. Listening for key presses and decoding key codes is not a
-      # good way to do things because that doesn't account for international
-      # keyboard layouts and IMEs. This method still doesn't get dead characters
-      # but at least it's close. A textarea is used instead of an input field
-      # because we need newlines too.
-      if _textarea.value != _previousValue {
-        _view?.insertText(_textarea.value)
-        _changeValue("")
-      }
-    }
-
-    def _installEventHandlers {
-      _mousemove = e => {
-        _view?.handleMouseMove(_mouseEventFromEvent(e))
-      }
-
-      _mouseup = e => {
-        _view?.handleMouseUp(_mouseEventFromEvent(e))
-        _changeDragHandlers(.LOCAL)
-      }
-
-      on(_element, "mousedown", e => {
-        e.preventDefault()
-        setIsActive(true)
-        _view?.handleMouseDown(_mouseEventFromEvent(e))
-        _changeDragHandlers(.GLOBAL)
-      })
-
-      on(_element, "contextmenu", e => {
-        e.preventDefault()
-      })
-
-      on(_element, "wheel", e => {
-        # Pinch-to-zoom in Chrome generates scroll events with the control key
-        if e.ctrlKey {
-          return
-        }
-
-        # Scroll deltas in Firefox are too small unless we handle deltaMode
-        var deltaX = e.deltaX
-        var deltaY = e.deltaY
-        var deltaMode = e.deltaMode
-        var scale =
-          deltaMode == DeltaMode.LINE ? _lineHeight :
-          deltaMode == DeltaMode.PAGE ? _height :
-          1
-
-        _view?.handleScroll(deltaX * scale, deltaY * scale)
-        e.preventDefault()
-      })
-
-      on(_textarea, "blur", e => setIsActive(false))
-      on(_textarea, "input", e => _handleInput)
-      on(_textarea, "keydown", e => _handleKeyDown(e))
-      on(_textarea, "paste", e => _handlePaste(e))
-
-      var style = _textarea.style
-      style.position = "absolute"
-      style.right = "200%"
-      style.bottom = "200%"
-
-      _changeDragHandlers(.LOCAL)
-    }
-
-    def _keyCodeFromEvent(event dynamic) Editor.KeyCode {
-      var which = event.which as int
-
-      if which >= 'A' && which <= 'Z' {
-        return (Editor.KeyCode.LETTER_A - 'A' + which) as Editor.KeyCode
-      }
-
-      if which >= '0' && which <= '9' {
-        return (Editor.KeyCode.NUMBER_0 - '0' + which) as Editor.KeyCode
-      }
-
-      return _whichToKeyCode.get(event.which as int, .NONE)
-    }
-
-    def _handleKeyDown(event dynamic) {
-      if _view == null {
-        return
-      }
-
-      var modifiers = _modifiersFromEvent(event)
-      var action = _shortcuts.get(_keyCodeFromEvent(event), modifiers)
-      var view = _view
-
-      # Clipboard handling in the browser really, really sucks. The standard is
-      # horrible and browsers do different things. We can't use the cut and
-      # copy events because Firefox doesn't even fire cut/copy if the element
-      # with focus has no selected text. Instead, try to guess when a cut or
-      # copy event is about to happen and quickly set the selected text.
-      # Clear the selected text immediately afterwards so that it doesn't
-      # interfere with our text input detection. This hack won't work with the
-      # browser's cut/copy/paste commands triggered through the menu or through
-      # other assistive devices.
-      if action == .CUT || action == .COPY {
-        var selection = view.selection.isEmpty ? view.selectionExpandedToLines : view.selection
-        _changeValue(view.textInSelection(selection))
-        _textarea.select()
-        dynamic.setTimeout(=> _changeValue(""), 50)
-
-        if action == .CUT {
-          view.changeSelection(selection, .DO_NOT_SCROLL)
-          view.insertText("")
-        }
-      }
-
-      # Don't call preventDefault() for paste events since we want the paste to
-      # happen. That way the change will go through our regular text insertion
-      # detection.
-      else if action != .NONE && action != .PASTE {
-        event.preventDefault()
-        view.triggerAction(action)
-      }
-    }
-
-    def _handlePaste(e dynamic) {
-      var normalClipboard = e.clipboardData
-      var ieClipboard = window.clipboardData
-
-      # Using clipboardData is far faster for large amounts of text, at least
-      # Chrome. The timeline view shows that pasting 32kb of text causes four
-      # successive layouts that all together take a full second to process.
-      # The time to read the same string off the clipboard below is negligible.
-      if normalClipboard {
-        _view?.insertText(normalClipboard.getData("text/plain"))
-      }
-
-      # IE is special as always
-      else if ieClipboard {
-        _view?.insertText(ieClipboard.getData("Text"))
-      }
-
-      # Make sure that this event doesn't actually insert into the textarea
-      if normalClipboard || ieClipboard {
-        e.preventDefault()
-      }
+    def _fontInstanceScale double {
+      return 1
     }
   }
 }

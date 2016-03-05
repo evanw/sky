@@ -1,4 +1,4 @@
-namespace Editor.Theme {
+namespace UI.Theme {
   const VISUAL_STUDIO_DARK = Theme.new({
     Color.BACKGROUND_DEFAULT:            Graphics.RGBA.hex(0x1E1E1E),
     Color.BACKGROUND_DIAGNOSTIC_ERROR:   Graphics.RGBA.hex(0xFF2211),

@@ -1,4 +1,4 @@
-namespace Editor.Theme {
+namespace UI.Theme {
   const SOLARIZED = Theme.new({
     Color.BACKGROUND_DEFAULT:            Graphics.RGBA.hex(0xFDF6E3),
     Color.BACKGROUND_DIAGNOSTIC_ERROR:   Graphics.RGBA.hex(0xF1A680),

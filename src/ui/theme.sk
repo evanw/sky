@@ -1,0 +1,35 @@
+namespace UI {
+  # A theme defines a color map for the view. All color identifiers have
+  # default values either by having a theme fallback color directly or by
+  # being substituted with another identifier that has a fallback color.
+  class Theme {
+    const colors IntMap<Graphics.RGBA>
+
+    def findColor(color UI.Color) Graphics.RGBA {
+      while !(color in colors) {
+        var next = UI.Color.FALLBACK.get(color, color) as UI.Color
+        if next != color {
+          color = next
+        } else if self != FALLBACK {
+          return FALLBACK.findColor(color)
+        } else {
+          return .TRANSPARENT
+        }
+      }
+      return colors[color]
+    }
+  }
+
+  namespace Theme {
+    const FALLBACK = Theme.new({
+      UI.Color.BACKGROUND_DEFAULT:            Graphics.RGBA.hex(0xFFFFFF),
+      UI.Color.BACKGROUND_DIAGNOSTIC_ERROR:   Graphics.RGBA.hex(0xFF8877),
+      UI.Color.BACKGROUND_DIAGNOSTIC_WARNING: Graphics.RGBA.hex(0xFFEF00),
+      UI.Color.BACKGROUND_SELECTED:           Graphics.RGBA.hex(0xBFDFFF),
+      UI.Color.BORDER_MARGIN:                 Graphics.RGBA.TRANSPARENT,
+      UI.Color.FOREGROUND_DEFAULT:            Graphics.RGBA.hex(0x000000),
+      UI.Color.FOREGROUND_DIAGNOSTIC_ERROR:   Graphics.RGBA.hex(0x000000),
+      UI.Color.FOREGROUND_DIAGNOSTIC_WARNING: Graphics.RGBA.hex(0x000000),
+    })
+  }
+}

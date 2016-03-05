@@ -1,0 +1,389 @@
+namespace Browser {
+  enum DeltaMode {
+    PIXEL
+    LINE
+    PAGE
+  }
+
+  const _whichToKeyCode IntMap<UI.Key> = {
+    8:   .BACKSPACE,
+    13:  .ENTER,
+    27:  .ESCAPE,
+    33:  .PAGE_UP,
+    34:  .PAGE_DOWN,
+    35:  .END,
+    36:  .HOME,
+    37:  .ARROW_LEFT,
+    38:  .ARROW_UP,
+    39:  .ARROW_RIGHT,
+    40:  .ARROW_DOWN,
+    44:  .COMMA,
+    46:  .DELETE,
+    59:  .SEMICOLON,
+    186: .SEMICOLON,
+    188: .COMMA,
+    190: .PERIOD,
+  }
+
+  class Window : UI.Window :: UI.Platform {
+    const _operatingSystem UI.OperatingSystem
+    const _userAgent UI.UserAgent
+    const _canvas CanvasElement
+    const _element = document.createElement("div")
+    const _input = document.createElement("input")
+    const _shortcuts Editor.ShortcutMap
+    var _draggingView UI.View = null
+    var _mousemove fn(dynamic) = null
+    var _mouseup fn(dynamic) = null
+    var _window UI.Window = null
+    var _fakeClipboard = ""
+
+    def new {
+      super
+
+      var platform string = dynamic.navigator.platform
+      var userAgent string = dynamic.navigator.userAgent
+      var vendor string = dynamic.navigator.vendor
+
+      _operatingSystem =
+        # OS X encodes the architecture into the platform
+        platform == "MacIntel" || platform == "MacPPC" ? .OSX :
+
+        # MSDN sources say Win64 is used
+        platform == "Win32" || platform == "Win64" ? .WINDOWS :
+
+        # Assume the user is using Mobile Safari or Chrome and not some random
+        # browser with a strange platform (Opera apparently messes with this)
+        platform == "iPhone" || platform == "iPad" ? .IOS :
+
+        # Apparently most Android devices have a platform of "Linux" instead
+        # of "Android", so check the user agent instead. Also make sure to test
+        # for Android before Linux for this reason.
+        "Android" in userAgent ? .ANDROID :
+        "Linux" in platform ? .LINUX :
+
+        # The platform string has no specification and can be literally anything.
+        # Other examples: "BlackBerry", "Nintendo 3DS", "PlayStation 4", etc.
+        .UNKNOWN
+
+      _userAgent =
+        "Trident" in userAgent ? .IE :
+        "Chrome" in userAgent ? .CHROME :
+        "Firefox" in userAgent ? .FIREFOX :
+        "Apple" in vendor ? .SAFARI :
+        .UNKNOWN
+
+      _shortcuts = Editor.ShortcutMap.new(self)
+      _canvas = _createCanvas
+      _createInput
+      _startAnimationLoop
+      _prepareElement
+      _window = self
+    }
+
+    over platform UI.Platform {
+      return self
+    }
+
+    over setTitle(title string) {
+      document.title = title
+    }
+
+    over setTheme(theme UI.Theme) {
+      _canvas.translator.setTheme(theme)
+    }
+
+    over setCursor(cursor UI.Cursor) {
+      _element.style.cursor =
+        cursor == .TEXT ? "text" :
+        "default"
+    }
+
+    over renderer UI.SemanticRenderer {
+      return _canvas.translator
+    }
+
+    over render {
+      _canvas.beginFrame
+      _canvas.translator.renderView(root)
+      _canvas.endFrame
+    }
+
+    over setFont(font UI.Font, names List<string>, size double, height double) {
+      _canvas.setFont(font, names, size, height)
+    }
+
+    def element dynamic {
+      return _element
+    }
+
+    def stretchToFitBody {
+      var style = element.style
+      style.position = "fixed"
+      style.left = "0"
+      style.top = "0"
+      style.right = "0"
+      style.bottom = "0"
+      style.overflow = "hidden"
+      document.body.appendChild(element)
+
+      var onresize = (event dynamic) => resize(window.innerWidth, window.innerHeight)
+      var onfocus = (event dynamic) => _setHasFocus(true)
+
+      on(window, "resize", onresize)
+      on(window, "focus", onfocus)
+
+      onresize(null)
+      onfocus(null)
+    }
+
+    def resize(width int, height int) {
+      var pixelScale double = window.devicePixelRatio ? window.devicePixelRatio : 1
+      var style = element.style
+
+      # Safari broke devicePixelRatio
+      if _userAgent == .SAFARI {
+        pixelScale *= (document.width / window.innerWidth + document.height / window.innerHeight) / 2
+      }
+
+      style.width = "\(width)px"
+      style.height = "\(height)px"
+      _canvas.resize(width, height, pixelScale)
+      _handleResize(Vector.new(width, height), pixelScale)
+    }
+
+    def operatingSystem UI.OperatingSystem {
+      return _operatingSystem
+    }
+
+    def userAgent UI.UserAgent {
+      return _userAgent
+    }
+
+    @neverinline
+    def nowInSeconds double {
+      return (window.performance ? window.performance : dynamic.Date).now() / 1000
+    }
+
+    def createWindow UI.Window {
+      var window = _window
+      _window = null # The browser lacks the ability to create additional windows
+      return window
+    }
+
+    def _createCanvas CanvasElement {
+      # Attempt to use WebGL first because it's a lot faster
+      try {
+        return CanvasElementWebGL.new(self)
+      }
+
+      # Fall back to the 2D canvas API
+      return CanvasElement2D.new(self)
+    }
+
+    def _prepareElement {
+      var style = element.style
+      style.position = "relative"
+      style.overflow = "hidden"
+      _element.appendChild(_canvas.element)
+
+      _mousemove = event => {
+        dispatchEvent(_mouseEventFromEvent(.MOUSE_MOVE, event, null))
+      }
+
+      _mouseup = event => {
+        dispatchEvent(_mouseEventFromEvent(.MOUSE_UP, event, null))
+        _changeDragHandlers(.LOCAL)
+        _draggingView = null
+      }
+
+      on(_element, "mousedown", event => {
+        event.preventDefault()
+        _setHasFocus(true)
+        _draggingView = null
+        _draggingView = dispatchEvent(_mouseEventFromEvent(.MOUSE_DOWN, event, null))
+        _changeDragHandlers(.GLOBAL)
+      })
+
+      on(_element, "contextmenu", event => {
+        event.preventDefault()
+      })
+
+      on(_element, "wheel", event => {
+        # Pinch-to-zoom in Chrome generates scroll events with the control key
+        if event.ctrlKey {
+          return
+        }
+
+        # Scroll deltas in Firefox are too small unless we handle deltaMode
+        var deltaX = event.deltaX
+        var deltaY = event.deltaY
+        var deltaMode DeltaMode = event.deltaMode
+        var scale =
+          deltaMode == .PAGE ? size.y :
+          deltaMode == .LINE ? 16 :
+          1
+
+        dispatchEvent(_mouseEventFromEvent(.MOUSE_SCROLL, event, Vector.new(deltaX * scale, deltaY * scale)))
+        event.preventDefault()
+      })
+
+      _changeDragHandlers(.LOCAL)
+    }
+
+    def _mouseEventFromEvent(kind UI.EventKind, event dynamic, delta Vector) UI.MouseEvent {
+      var bounds = _element.getBoundingClientRect()
+      var locationInWindow = Vector.new(event.pageX - bounds.left, event.pageY - bounds.top)
+      var target = _draggingView ?? viewFromLocation(locationInWindow)
+      return UI.MouseEvent.new(kind, target, locationInWindow, _modifiersFromEvent(event), event.detail as int, delta)
+    }
+
+    def _setHasFocus(hasFocus bool) {
+      if hasFocus {
+        _isActive = true
+        _input.enabled = true
+        _input.focus()
+      }
+
+      else {
+        _input.blur()
+        _isActive = false
+        _input.enabled = false
+      }
+    }
+
+    def _createInput {
+      var style = _input.style
+      style.position = "absolute"
+      style.top = "0"
+      style.right = "200%"
+
+      on(_input, "blur", event => {
+        _setHasFocus(false)
+      })
+
+      on(_input, "keydown", event => {
+        var modifiers = _modifiersFromEvent(event)
+        var action = _shortcuts.get(_keyCodeFromEvent(event), modifiers)
+
+        # Ignore clipboard actions since they need access to clipboardData
+        # and that is only available inside special clipboard events. If
+        # we handled clipboard actions here, the clipboard data would be
+        # incorrect and the actual clipboard events would be prevented.
+        if action != .NONE && action != .CUT && action != .COPY && action != .PASTE {
+          _delegate?.triggerAction(action)
+          event.preventDefault()
+        }
+      })
+
+      # Use the "keypress" event instead of the "input" event to avoid a layout
+      on(_input, "keypress", event => {
+        var c int = event.which
+        dispatchEvent(UI.ClipboardEvent.new(.CLIPBOARD_PASTE, viewWithFocus, c == '\r' ? "\n" : string.fromCodePoint(c)))
+        event.preventDefault()
+      })
+
+      on(_input, "cut", event => {
+        _handleClipboardEvent(event, .CLIPBOARD_CUT)
+      })
+
+      on(_input, "copy", event => {
+        _handleClipboardEvent(event, .CLIPBOARD_COPY)
+      })
+
+      on(_input, "paste", event => {
+        _handleClipboardEvent(event, .CLIPBOARD_PASTE)
+      })
+
+      element.appendChild(_input)
+    }
+
+    def _handleClipboardEvent(event dynamic, type UI.EventKind) {
+      var normalClipboard = event.clipboardData
+      var ieClipboard = window.clipboardData
+      var text = ""
+
+      # Load clipboard data
+      if normalClipboard {
+        text = normalClipboard.getData("text/plain")
+      } else if ieClipboard {
+        text = ieClipboard.getData("Text")
+      } else {
+        text = _fakeClipboard
+      }
+
+      # Dispatch the event to the view with focus
+      var clipboardEvent = UI.ClipboardEvent.new(type, viewWithFocus, text)
+      dispatchEvent(clipboardEvent)
+
+      # Save clipboard data
+      if clipboardEvent.text != text {
+        if normalClipboard {
+          normalClipboard.setData("text/plain", clipboardEvent.text)
+        } else if ieClipboard {
+          ieClipboard.setData("Text", clipboardEvent.text)
+        } else {
+          _fakeClipboard = text
+        }
+      }
+
+      # Make sure that this event doesn't actually insert into the textarea
+      event.preventDefault()
+    }
+
+    def _startAnimationLoop {
+      var tick fn() = => {
+        _delegate?.handleFrame
+        (window.requestAnimationFrame ? window.requestAnimationFrame : dynamic.setTimeout)(tick)
+      }
+      tick()
+    }
+
+    enum ChangeDragHandlers {
+      LOCAL
+      GLOBAL
+    }
+
+    def _changeDragHandlers(mode ChangeDragHandlers) {
+      var old = mode == .GLOBAL ? _element : document
+      var new = mode == .GLOBAL ? document : _element
+
+      off(old, "mousemove", _mousemove)
+      off(old, "mouseup", _mouseup)
+
+      on(new, "mousemove", _mousemove)
+      on(new, "mouseup", _mouseup)
+    }
+  }
+
+  namespace Window {
+    def _modifiersFromEvent(event dynamic) UI.Modifiers {
+      return
+        (event.altKey ? .ALT : 0) |
+        (event.metaKey ? .META : 0) |
+        (event.shiftKey ? .SHIFT : 0) |
+        (event.ctrlKey ? .CONTROL : 0)
+    }
+
+    def _keyCodeFromEvent(event dynamic) UI.Key {
+      var which = event.which as int
+
+      if which >= 'A' && which <= 'Z' {
+        return (UI.Key.LETTER_A - 'A' + which) as UI.Key
+      }
+
+      if which >= '0' && which <= '9' {
+        return (UI.Key.NUMBER_0 - '0' + which) as UI.Key
+      }
+
+      return _whichToKeyCode.get(event.which as int, .NONE)
+    }
+  }
+
+  @entry if BUILD == .WWW
+  def main {
+    var window = Window.new
+    window.stretchToFitBody
+    Editor.App.new(window)
+  }
+}

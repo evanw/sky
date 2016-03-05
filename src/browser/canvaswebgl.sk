@@ -4,17 +4,17 @@ namespace Browser {
     var _solidBatch Graphics.SolidBatch = null
     var _glyphBatch Graphics.GlyphBatch = null
     var _dropShadow Graphics.DropShadow = null
-    var _font Graphics.Font = null
-    var _marginFont Graphics.Font = null
+    var _clearColor Graphics.RGBA = .TRANSPARENT
 
-    def new(platform Editor.Platform, shortcuts Editor.ShortcutMap) {
-      super(platform, shortcuts)
+    def new(window Window) {
+      super(window)
 
       var gl WebGLRenderingContext = null
       var options dynamic = {
         "alpha": false,
         "antialias": false,
         "depth": false,
+        "failIfMajorPerformanceCaveat": true,
         "preserveDrawingBuffer": true,
         "stencil": false,
       }
@@ -29,7 +29,7 @@ namespace Browser {
 
       _context = Context.new(gl)
       _solidBatch = Graphics.SolidBatch.new(_context)
-      _glyphBatch = Graphics.GlyphBatch.new(platform, _context)
+      _glyphBatch = Graphics.GlyphBatch.new(window.platform, _context)
       _dropShadow = Graphics.DropShadow.new(_context)
 
       Log.info("initialized WebGL canvas")
@@ -37,46 +37,61 @@ namespace Browser {
 
     over setDefaultBackgroundColor(color Graphics.RGBA) {
       _glyphBatch.setBackgroundColor(color)
+      _clearColor = color
     }
 
-    over _renderNothing {
-      _glyphBatch.flush
-      _solidBatch.fillRect(0, 0, 1, 1, .TRANSPARENT)
+    over setViewport(x double, y double, width double, height double) {
+      _context.setViewport(
+        Math.round(x * _pixelScale) as int,
+        Math.round(y * _pixelScale) as int,
+        Math.round(width * _pixelScale) as int,
+        Math.round(height * _pixelScale) as int)
+      _solidBatch.resize(width, height, _pixelScale)
+      _glyphBatch.resize(width, height, _pixelScale)
+      _dropShadow.resize(width, height)
     }
 
-    over _updateSize {
-      super
+    over _afterResize {
       _context.resize(_element.width, _element.height)
-      _solidBatch.resize(_width, _height, _pixelScale)
-      _glyphBatch.resize(_width, _height, _pixelScale)
-      _dropShadow.resize(_width, _height)
-      _font.resize(_pixelScale)
-      _marginFont.resize(_pixelScale)
+      setViewport(0, 0, _width, _height)
     }
 
-    over changeFont(fontSize double, marginFontSize double, lineHeight double, fontNames List<string>) {
-      super(fontSize, marginFontSize, lineHeight, fontNames)
-      _font = Graphics.Font.create(_platform, fontNames, fontSize)
-      _marginFont = Graphics.Font.create(_platform, fontNames, marginFontSize)
+    over beginFrame {
+      super
+      _context.clear(_clearColor)
     }
 
-    over _render {
+    over endFrame {
       super
       _solidBatch.flush
       _glyphBatch.flush
     }
 
     over fillRect(x double, y double, width double, height double, color Graphics.RGBA) {
+      assert(_isRendering)
+
+      if x >= _width || y >= _height || x + width <= 0 || y + height <= 0 {
+        return
+      }
+
       _glyphBatch.flush
       _solidBatch.fillRect(x, y, width, height, color.premultiplied)
     }
 
     over fillRoundedRect(x double, y double, width double, height double, color Graphics.RGBA, radius double) {
+      assert(_isRendering)
+
+      if x >= _width || y >= _height || x + width <= 0 || y + height <= 0 {
+        return
+      }
+
       _glyphBatch.flush
       _solidBatch.fillRoundedRect(x, y, width, height, color.premultiplied, radius)
     }
 
     over strokePolyline(coordinates List<double>, color Graphics.RGBA, thickness double) {
+      assert(_isRendering)
+
       assert(coordinates.count % 2 == 0)
       _glyphBatch.flush
       _solidBatch.strokeNonOverlappingPolyline(coordinates, color.premultiplied, thickness, .OPEN)
@@ -87,26 +102,38 @@ namespace Browser {
       clipX double, clipY double, clipWidth double, clipHeight double,
       shadowAlpha double, blurSigma double) {
 
+      assert(_isRendering)
+
+      if clipX >= _width || clipY >= _height || clipX + clipWidth <= 0 || clipY + clipHeight <= 0 {
+        return
+      }
+
       _solidBatch.flush
       _glyphBatch.flush
       _dropShadow.render(rectX, rectY, rectWidth, rectHeight, clipX, clipY, clipWidth, clipHeight, shadowAlpha, blurSigma)
     }
 
-    over renderText(x double, y double, text string, font Editor.Font, color Graphics.RGBA) {
-      if x >= _width || y >= _height || y + _fontSize <= 0 {
+    over renderText(x double, y double, text string, font UI.Font, color Graphics.RGBA) {
+      assert(_isRendering)
+
+      var fontInstance = _fontInstances.get(font, null)
+      if x >= _width || y >= _height || y + fontInstance.size <= 0 {
         return
       }
 
       var iterator = Unicode.StringIterator.INSTANCE.reset(text, 0)
-      var graphicsFont = font == .MARGIN ? _marginFont : _font
 
       _solidBatch.flush
-      y += _fontSize - graphicsFont.size
+      y += _defaultFontSize - fontInstance.size
       color = color.premultiplied
 
       for codePoint = iterator.nextCodePoint; codePoint != -1; codePoint = iterator.nextCodePoint {
-        x += _glyphBatch.appendGlyph(graphicsFont, codePoint, x, y, color)
+        x += _glyphBatch.appendGlyph(fontInstance, codePoint, x, y, color)
       }
+    }
+
+    over _fontInstanceScale double {
+      return _pixelScale
     }
   }
 }

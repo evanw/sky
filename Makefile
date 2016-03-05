@@ -14,7 +14,7 @@ INFO_PLIST_DATA = '<plist version="1.0"><dict><key>NSHighResolutionCapable</key>
 INFO_PLIST_PATH = osx/Sky.app/Contents/Info.plist
 OSX_APP_PATH = osx/Sky.app/Contents/MacOS/Sky
 
-CLANG_FLAGS += -I skew/src/cpp
+CLANG_FLAGS += -I node_modules/skew
 CLANG_FLAGS += -lc++
 CLANG_FLAGS += -std=c++11
 CLANG_FLAGS += -Wall
@@ -63,7 +63,7 @@ osx-debug: | node_modules
 
 osx-release: | node_modules
 	mkdir -p $(shell dirname $(OSX_APP_PATH))
-	$(SKEW) $(SKEW_FLAGS_OSX) --release
+	$(SKEW) $(SKEW_FLAGS_OSX) --release --inline-functions=false
 	echo $(INFO_PLIST_DATA) > $(INFO_PLIST_PATH)
 	clang $(CLANG_FLAGS_OSX) $(CLANG_FLAGS_RELEASE)
 	rm $(INFO_PLIST_PATH)

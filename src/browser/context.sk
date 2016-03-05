@@ -13,8 +13,8 @@ namespace Browser {
     var _height = 0
     var _oldBlendOperations = 0
     var _oldRenderTarget RenderTarget = null
-    var _oldViewportHeight = 0
-    var _oldViewportWidth = 0
+    var _oldViewport Rect = .EMPTY
+    var _currentViewport Rect = .EMPTY
     var _operationMap IntMap<GLenum> = null
     var _vertexBuffer WebGLBuffer = null
     var _width = 0
@@ -30,10 +30,8 @@ namespace Browser {
     def new(gl WebGLRenderingContext) {
       _gl = gl
       var canvas = _gl.canvas
-      var style = canvas.style
       canvas.width = 0
       canvas.height = 0
-      style.width = style.height = "0"
 
       canvas.addEventListener("webglcontextlost", e => {
         e.preventDefault()
@@ -44,6 +42,8 @@ namespace Browser {
         _currentClearColor = .TRANSPARENT
         _forceStateUpdate = true
         _vertexBuffer = null
+        _oldViewport = .EMPTY
+        _currentViewport = .EMPTY
         _generation++
         for handler in _contextResetHandlers {
           handler()
@@ -132,6 +132,7 @@ namespace Browser {
       assert(_gl.canvas.height == height)
       _width = width
       _height = height
+      setViewport(0, 0, width, height)
     }
 
     def clear(color Graphics.RGBA) {
@@ -148,6 +149,15 @@ namespace Browser {
 
     def setRenderTarget(renderTarget Graphics.RenderTarget) {
       _currentRenderTarget = RenderTarget.from(renderTarget)
+
+      # Automatically update the viewport after changing render targets
+      setViewport(0, 0,
+        renderTarget != null ? renderTarget.texture.width : _width,
+        renderTarget != null ? renderTarget.texture.height : _height)
+    }
+
+    def setViewport(x int, y int, width int, height int) {
+      _currentViewport = Rect.new(x, y, width, height)
     }
 
     def createMaterial(format Graphics.VertexFormat, vertexSource string, fragmentSource string) Graphics.Material {
@@ -178,9 +188,7 @@ namespace Browser {
 
     def _updateRenderTargetAndViewport {
       var renderTarget = _currentRenderTarget
-      var texture = renderTarget?.texture
-      var viewportWidth = texture != null ? texture.width : _width
-      var viewportHeight = texture != null ? texture.height : _height
+      var viewport = _currentViewport
       var gl = _gl
 
       if _forceStateUpdate || _oldRenderTarget != renderTarget {
@@ -188,10 +196,13 @@ namespace Browser {
         _oldRenderTarget = renderTarget
       }
 
-      if _forceStateUpdate || _oldViewportWidth != viewportWidth || _oldViewportHeight != viewportHeight {
-        gl.viewport(0, 0, viewportWidth, viewportHeight)
-        _oldViewportWidth = viewportWidth
-        _oldViewportHeight = viewportHeight
+      if _forceStateUpdate || !_oldViewport.equals(viewport) {
+        gl.viewport(
+          viewport.x as int,
+          (renderTarget != null ? renderTarget.texture.height : _height) - (viewport.y + viewport.height) as int,
+          viewport.width as int,
+          viewport.height as int)
+        _oldViewport = viewport
       }
     }
 

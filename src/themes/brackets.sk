@@ -1,4 +1,4 @@
-namespace Editor.Theme {
+namespace UI.Theme {
   const BRACKETS_LIGHT = Theme.new({
     Color.BACKGROUND_DEFAULT:            Graphics.RGBA.hex(0xF8F8F8),
     Color.BACKGROUND_SELECTED:           Graphics.RGBA.hex(0xABDFFA),

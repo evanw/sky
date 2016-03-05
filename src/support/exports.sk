@@ -1,5 +1,8 @@
-@export if BUILD == .OSX || BUILD == .TERMINAL
-namespace Editor {}
+@export if BUILD == .OSX || BUILD == .TERMINAL {
+  namespace Editor {}
+  namespace UI {}
+}
 
-@export if BUILD == .OSX
-namespace Graphics {}
+@export if BUILD == .OSX {
+  namespace Graphics {}
+}

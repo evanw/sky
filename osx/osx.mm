@@ -3,7 +3,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-struct FixedArray SKEW_BASE_OBJECT {
+struct FixedArray : virtual Skew::Object {
   FixedArray(int byteCount) {
     assert(byteCount >= 0);
     _data = new float[byteCount + 3 & ~3];
@@ -97,9 +97,12 @@ namespace Log {
 #import <codecvt>
 #import <locale>
 #import <sys/time.h>
+
+#define Rect RectWhyIsThisAGlobalGoshDarnIt
 #import <Cocoa/Cocoa.h>
 #import <OpenGL/OpenGL.h>
 #import <OpenGL/gl.h>
+#undef Rect
 
 @class AppView;
 
@@ -171,6 +174,8 @@ namespace OpenGL {
 
     #ifdef SKEW_GC_MARK_AND_SWEEP
       virtual void __gc_mark() override {
+        Graphics::Texture::__gc_mark();
+
         Skew::GC::mark(_context);
         Skew::GC::mark(_format);
       }
@@ -183,6 +188,8 @@ namespace OpenGL {
     int _width = 0;
     int _height = 0;
   };
+
+  ////////////////////////////////////////////////////////////////////////////////
 
   struct Material : Graphics::Material {
     Material(Graphics::Context *context, Graphics::VertexFormat *format, const char *vertexSource, const char *fragmentSource) : _context(context), _format(format) {
@@ -265,8 +272,11 @@ namespace OpenGL {
 
     #ifdef SKEW_GC_MARK_AND_SWEEP
       virtual void __gc_mark() override {
+        Graphics::Material::__gc_mark();
+
         Skew::GC::mark(_context);
         Skew::GC::mark(_format);
+
         for (const auto &it : _samplers) {
           Skew::GC::mark(it.second);
         }
@@ -311,6 +321,8 @@ namespace OpenGL {
     std::unordered_map<int, Graphics::Texture *> _samplers;
   };
 
+  ////////////////////////////////////////////////////////////////////////////////
+
   struct RenderTarget : Graphics::RenderTarget {
     RenderTarget(Graphics::Context *context, Graphics::Texture *texture) : _context(context), _texture(texture) {
       glGenFramebuffers(1, &_framebuffer);
@@ -334,6 +346,8 @@ namespace OpenGL {
 
     #ifdef SKEW_GC_MARK_AND_SWEEP
       virtual void __gc_mark() override {
+        Graphics::RenderTarget::__gc_mark();
+
         Skew::GC::mark(_context);
         Skew::GC::mark(_texture);
       }
@@ -345,7 +359,16 @@ namespace OpenGL {
     unsigned int _framebuffer = 0;
   };
 
+  ////////////////////////////////////////////////////////////////////////////////
+
   struct Context : Graphics::Context {
+    struct Viewport {
+      int x = 0;
+      int y = 0;
+      int width = 0;
+      int height = 0;
+    };
+
     ~Context() {
       glDeleteBuffers(1, &_vertexBuffer);
     }
@@ -362,6 +385,13 @@ namespace OpenGL {
     }
 
     virtual void removeContextResetHandler(Skew::FnVoid0 *callback) override {
+    }
+
+    virtual void setViewport(int x, int y, int width, int height) override {
+      _currentViewport.x = x;
+      _currentViewport.y = y;
+      _currentViewport.width = width;
+      _currentViewport.height = height;
     }
 
     virtual void clear(int color) override {
@@ -429,10 +459,16 @@ namespace OpenGL {
       assert(height >= 0);
       _width = width;
       _height = height;
+      setViewport(0, 0, width, height);
     }
 
     virtual void setRenderTarget(Graphics::RenderTarget *renderTarget) override {
       _currentRenderTarget = renderTarget;
+
+      // Automatically update the viewport after changing render targets
+      setViewport(0, 0,
+        renderTarget != nullptr ? renderTarget->texture()->width() : _width,
+        renderTarget != nullptr ? renderTarget->texture()->height() : _height);
     }
 
     virtual void setBlendState(Graphics::BlendOperation source, Graphics::BlendOperation target) override {
@@ -441,6 +477,8 @@ namespace OpenGL {
 
     #ifdef SKEW_GC_MARK_AND_SWEEP
       virtual void __gc_mark() override {
+        Graphics::Context::__gc_mark();
+
         Skew::GC::mark(_currentRenderTarget);
         Skew::GC::mark(_oldRenderTarget);
       }
@@ -449,18 +487,22 @@ namespace OpenGL {
   private:
     void _updateRenderTargetAndViewport() {
       auto renderTarget = _currentRenderTarget;
-      int viewportWidth = renderTarget != nullptr ? renderTarget->texture()->width() : _width;
-      int viewportHeight = renderTarget != nullptr ? renderTarget->texture()->height() : _height;
 
       if (_oldRenderTarget != renderTarget) {
         glBindFramebuffer(GL_FRAMEBUFFER, renderTarget != nullptr ? static_cast<RenderTarget *>(renderTarget)->framebuffer() : 0);
         _oldRenderTarget = renderTarget;
       }
 
-      if (viewportWidth != _oldViewportWidth || viewportHeight != _oldViewportHeight) {
-        glViewport(0, 0, viewportWidth, viewportHeight);
-        _oldViewportWidth = viewportWidth;
-        _oldViewportHeight = viewportHeight;
+      if (_currentViewport.x != _oldViewport.x ||
+          _currentViewport.y != _oldViewport.y ||
+          _currentViewport.width != _oldViewport.width ||
+          _currentViewport.height != _oldViewport.height) {
+        glViewport(
+          _currentViewport.x,
+          (renderTarget != nullptr ? renderTarget->texture()->height() : _height) - _currentViewport.y - _currentViewport.height,
+          _currentViewport.width,
+          _currentViewport.height);
+        _oldViewport = _currentViewport;
       }
     }
 
@@ -520,16 +562,18 @@ namespace OpenGL {
     int _height = 0;
     Graphics::RenderTarget *_currentRenderTarget = nullptr;
     Graphics::RenderTarget *_oldRenderTarget = nullptr;
-    int _oldViewportWidth = 0;
-    int _oldViewportHeight = 0;
     int _oldBlendOperations = COPY_BLEND_OPERATIONS;
     int _blendOperations = COPY_BLEND_OPERATIONS;
     int _currentClearColor = 0;
     int _attributeCount = 0;
+    Viewport _oldViewport;
+    Viewport _currentViewport;
     unsigned int _vertexBuffer = 0;
 
     static std::unordered_map<int, int> _blendOperationMap;
   };
+
+  ////////////////////////////////////////////////////////////////////////////////
 
   std::unordered_map<int, int> Context::_blendOperationMap = {
     { (int)Graphics::BlendOperation::ZERO, GL_ZERO },
@@ -571,11 +615,34 @@ namespace OSX {
   using CGColorSpacePtr = CPtr<CGColorSpaceRef, CGColorSpaceRef, CGColorSpaceRelease>;
   using CGContextPtr = CPtr<CGContextRef, CGContextRef, CGContextRelease>;
 
-  struct GlyphProvider : Graphics::GlyphProvider {
-    GlyphProvider(Skew::List<Skew::string> *fontNames) : _fontNames(fontNames) {
+  ////////////////////////////////////////////////////////////////////////////////
+
+  struct FontInstance : UI::FontInstance {
+    FontInstance(UI::Font font, Skew::List<Skew::string> *fontNames, double size, double lineHeight, double pixelScale)
+      : _font(font), _size(size), _lineHeight(lineHeight), _fontNames(fontNames) {
+      changePixelScale(pixelScale);
     }
 
-    virtual void resize(double fontSize) override {
+    virtual UI::Font font() override {
+      return _font;
+    }
+
+    virtual double size() override {
+      return _size;
+    }
+
+    virtual double lineHeight() override {
+      return _lineHeight;
+    }
+
+    void changePixelScale(double pixelScale) {
+      if (_pixelScale == pixelScale) {
+        return;
+      }
+
+      _pixelScale = pixelScale;
+      auto fontSize = _size * pixelScale;
+
       _fonts.clear();
 
       // Find the first user-provided font name
@@ -604,18 +671,22 @@ namespace OSX {
       CFPtr<CFArrayRef> defaultCascade(CTFontCopyDefaultCascadeListForLanguages(_fonts.front().get(), appleLanguages.get()));
 
       // Create a font for each one because Core Text doesn't have a way of querying a whole cascade for a glyph
-      for (int i = 0, length = CFArrayGetCount(defaultCascade.get()); i < length; i++) {
+      for (int i = 0, length = (int)CFArrayGetCount(defaultCascade.get()); i < length; i++) {
         auto descriptor = (CTFontDescriptorRef)CFArrayGetValueAtIndex(defaultCascade.get(), i);
         _fonts.emplace_back(CTFontCreateWithFontDescriptor(descriptor, fontSize, nullptr));
       }
     }
 
     virtual double advanceWidth(int codePoint) override {
+      auto it = _advanceWidths.find(codePoint);
+      if (it != _advanceWidths.end()) {
+        return it->second;
+      }
       _findCodePoint(codePoint);
-      return CTFontGetAdvancesForGlyphs(_fonts[_cachedFontIndex].get(), kCTFontOrientationDefault, &_cachedGlyph, nullptr, 1);
+      return _advanceWidths[codePoint] = CTFontGetAdvancesForGlyphs(_fonts[_cachedFontIndex].get(), kCTFontOrientationDefault, &_cachedGlyph, nullptr, 1);
     }
 
-    virtual Graphics::Glyph *render(int codePoint, double advanceWidth) override {
+    virtual Graphics::Glyph *renderGlyph(int codePoint) override {
       _findCodePoint(codePoint);
       const auto &font = _fonts[_cachedFontIndex];
       auto bounds = CTFontGetBoundingRectsForGlyphs(font.get(), kCTFontOrientationDefault, &_cachedGlyph, nullptr, 1);
@@ -652,11 +723,13 @@ namespace OSX {
         }
       }
 
-      return new Graphics::Glyph(codePoint, mask, -minX, maxY, advanceWidth);
+      return new Graphics::Glyph(codePoint, mask, -minX, maxY, 1 / _pixelScale, advanceWidth(codePoint));
     }
 
     #ifdef SKEW_GC_MARK_AND_SWEEP
       virtual void __gc_mark() override {
+        UI::FontInstance::__gc_mark();
+
         Skew::GC::mark(_fontNames);
       }
     #endif
@@ -684,7 +757,7 @@ namespace OSX {
       }
 
       // Search the entire font cascade
-      for (int i = 0, length = _fonts.size(); i < length; i++) {
+      for (int i = 0, length = (int)_fonts.size(); i < length; i++) {
         const auto &font = _fonts[i];
 
         if (CTFontGetGlyphsForCharacters(font.get(), codeUnits, &_cachedGlyph, codeUnitCount)) {
@@ -702,6 +775,12 @@ namespace OSX {
       Log::warning("failed to find a glyph for code unit " + std::to_string(codePoint));
     }
 
+    UI::Font _font = {};
+    double _size = 0;
+    double _lineHeight = 0;
+    double _pixelScale = 0;
+    std::unordered_map<int, double> _advanceWidths;
+
     // Stuff for rendering
     int _width = 0;
     int _height = 0;
@@ -718,15 +797,12 @@ namespace OSX {
     Skew::List<Skew::string> *_fontNames;
   };
 
-  struct AppWindow : Editor::Window, private Editor::PixelRenderer {
-    AppWindow(NSWindow *window, AppView *appView, Editor::Platform *platform) : _window(window), _appView(appView), _platform(platform) {
-      _shortcuts = new Editor::ShortcutMap(platform);
-      _translator = new Editor::SemanticToPixelTranslator(this);
-      _lastInvalidationTime = platform->nowInSeconds();
+  ////////////////////////////////////////////////////////////////////////////////
 
-      auto fontNames = new Skew::List<Skew::string> { "Menlo-Regular", "Monaco", "Consolas", "CourierNewPSMT" };
-      _font = Graphics::Font::create(platform, fontNames, _fontSize);
-      _marginFont = Graphics::Font::create(platform, fontNames, _marginFontSize);
+  struct AppWindow : UI::Window, private UI::PixelRenderer {
+    AppWindow(NSWindow *window, AppView *appView, UI::Platform *platform) : _window(window), _appView(appView), _platform(platform) {
+      _shortcuts = new Editor::ShortcutMap(platform);
+      _translator = new UI::SemanticToPixelTranslator(this);
     }
 
     void handleFrame();
@@ -740,34 +816,25 @@ namespace OSX {
     void initializeOpenGL() {
       assert(_context == nullptr);
       _context = new OpenGL::Context();
-
       _solidBatch = new Graphics::SolidBatch(_context);
       _glyphBatch = new Graphics::GlyphBatch(_platform, _context);
       _dropShadow = new Graphics::DropShadow(_context);
-      _translator->setTheme(Editor::Theme::XCODE);
-
       handleResize();
     }
 
     void setIsActive(bool isActive) {
-      _isActive = isActive;
-      invalidate();
     }
 
-    virtual Editor::SemanticRenderer *renderer() override {
+    virtual UI::SemanticRenderer *renderer() override {
       return _translator;
-    }
-
-    virtual void setView(Editor::View *view) override {
-      _view = view;
-      if (_view != nullptr) {
-        _view->resizeFont(_advanceWidth, _marginAdvanceWidth, _lineHeight);
-      }
-      handleResize();
     }
 
     virtual void setTitle(Skew::string title) override {
       [_window setTitle:[NSString stringWithUTF8String:title.c_str()]];
+    }
+
+    virtual void setTheme(UI::Theme *theme) override {
+      _translator->setTheme(theme);
     }
 
     virtual int width() override {
@@ -782,55 +849,90 @@ namespace OSX {
       return _pixelScale;
     }
 
-    virtual double fontSize() override {
-      return _fontSize;
+    virtual UI::Platform *platform() override {
+      return _platform;
     }
 
-    virtual double lineHeight() override {
-      return _lineHeight;
+    virtual UI::FontInstance *fontInstance(UI::Font font) override {
+      return _fontInstances[(int)font];
     }
 
-    virtual void invalidate() override {
-      _isInvalid = true;
-      _lastInvalidationTime = _platform->nowInSeconds();
-    }
-
-    virtual void setCursor(Editor::Cursor cursor) override {
+    virtual void setCursor(UI::Cursor cursor) override {
       switch (cursor) {
-        case Editor::Cursor::ARROW: _cursor = [NSCursor arrowCursor]; break;
-        case Editor::Cursor::TEXT: _cursor = [NSCursor IBeamCursor]; break;
+        case UI::Cursor::ARROW: _cursor = [NSCursor arrowCursor]; break;
+        case UI::Cursor::TEXT: _cursor = [NSCursor IBeamCursor]; break;
+        default: Log::warning("attempted to set an unsupported cursor type"); break;
+      }
+    }
+
+    virtual void setFont(UI::Font font, Skew::List<Skew::string> *names, double size, double height) override {
+      _fontInstances[(int)font] = new FontInstance(font, names, size, height, _pixelScale);
+
+      if (font == UI::Font::DEFAULT_FONT) {
+        _defaultFontSize = size;
+      }
+    }
+
+    virtual void render() override;
+
+    virtual void setViewport(double x, double y, double width, double height) override {
+      if (_context != nullptr) {
+        _context->setViewport(
+          std::round(x * _pixelScale),
+          std::round(y * _pixelScale),
+          std::round(width * _pixelScale),
+          std::round(height * _pixelScale));
+      }
+
+      if (_solidBatch != nullptr) {
+        _solidBatch->resize(width, height, _pixelScale);
+      }
+
+      if (_glyphBatch != nullptr) {
+        _glyphBatch->resize(width, height, _pixelScale);
+      }
+
+      if (_dropShadow != nullptr) {
+        _dropShadow->resize(width, height);
       }
     }
 
     virtual void setDefaultBackgroundColor(int color) override {
+      _clearColor = color;
     }
 
     virtual void fillRect(double x, double y, double width, double height, int color) override {
+      assert(_isRendering);
+
       _glyphBatch->flush();
       _solidBatch->fillRect(x, y, width, height, Graphics::RGBA::premultiplied(color));
     }
 
     virtual void fillRoundedRect(double x, double y, double width, double height, int color, double radius) override {
+      assert(_isRendering);
+
       _glyphBatch->flush();
       _solidBatch->fillRoundedRect(x, y, width, height, Graphics::RGBA::premultiplied(color), radius);
     }
 
     virtual void strokePolyline(Skew::List<double> *coordinates, int color, double thickness) override {
+      assert(_isRendering);
     }
 
-    virtual void renderText(double x, double y, Skew::string text, Editor::Font font, int color) override {
-      if (x >= _width || y >= _height || y + _fontSize <= 0) {
+    virtual void renderText(double x, double y, Skew::string text, UI::Font font, int color) override {
+      assert(_isRendering);
+
+      auto fontInstance = _fontInstances[(int)font];
+      if (fontInstance == nullptr || x >= _width || y >= _height || y + _defaultFontSize <= 0) {
         return;
       }
 
-      auto graphicsFont = font == Editor::Font::MARGIN ? _marginFont : _font;
-
       _solidBatch->flush();
-      y += _fontSize - graphicsFont->size;
+      y += _defaultFontSize - fontInstance->size();
       color = Graphics::RGBA::premultiplied(color);
 
       for (const auto &codePoint : std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t>().from_bytes(text.std_str())) {
-        x += _glyphBatch->appendGlyph(graphicsFont, codePoint, x, y, color);
+        x += _glyphBatch->appendGlyph(fontInstance, codePoint, x, y, color);
       }
     }
 
@@ -839,6 +941,8 @@ namespace OSX {
       double clipX, double clipY, double clipWidth, double clipHeight,
       double shadowAlpha, double blurSigma) override {
 
+      assert(_isRendering);
+
       _solidBatch->flush();
       _glyphBatch->flush();
       _dropShadow->render(boxX, boxY, boxWidth, boxHeight, clipX, clipY, clipWidth, clipHeight, shadowAlpha, blurSigma);
@@ -846,55 +950,57 @@ namespace OSX {
 
     #ifdef SKEW_GC_MARK_AND_SWEEP
       virtual void __gc_mark() override {
-        Skew::GC::mark(_view);
+        UI::Window::__gc_mark();
+        UI::PixelRenderer::__gc_mark();
+
         Skew::GC::mark(_platform);
+        Skew::GC::mark(_draggingView);
         Skew::GC::mark(_shortcuts);
         Skew::GC::mark(_translator);
         Skew::GC::mark(_context);
         Skew::GC::mark(_solidBatch);
         Skew::GC::mark(_glyphBatch);
-        Skew::GC::mark(_font);
-        Skew::GC::mark(_marginFont);
         Skew::GC::mark(_dropShadow);
+
+        for (const auto &it : _fontInstances) {
+          Skew::GC::mark(it.second);
+        }
       }
     #endif
 
   private:
+    UI::MouseEvent *_mouseEventFromEvent(UI::EventKind kind, NSEvent *event, Vector *delta);
+
     int _width = 0;
     int _height = 0;
+    int _clearColor = 0;
+    bool _isRendering = false;
     double _pixelScale = 0;
-    double _fontSize = 12;
-    double _marginFontSize = 10;
-    double _lineHeight = 16;
-    double _advanceWidth = 0;
-    double _marginAdvanceWidth = 0;
+    double _defaultFontSize = 0;
     bool _needsToBeShown = true;
-    double _lastInvalidationTime = 0;
-    bool _areCaretsVisible = true;
-    bool _isInvalid = true;
-    bool _isActive = false;
     NSWindow *_window = nullptr;
     NSCursor *_cursor = [NSCursor arrowCursor];
     AppView *_appView = nullptr;
-    Editor::View *_view = nullptr;
-    Editor::Platform *_platform = nullptr;
+    UI::Platform *_platform = nullptr;
+    UI::View *_draggingView = nullptr;
     Editor::ShortcutMap *_shortcuts = nullptr;
-    Editor::SemanticToPixelTranslator *_translator = nullptr;
+    UI::SemanticToPixelTranslator *_translator = nullptr;
     Graphics::Context *_context = nullptr;
     Graphics::SolidBatch *_solidBatch = nullptr;
     Graphics::GlyphBatch *_glyphBatch = nullptr;
-    Graphics::Font *_font = nullptr;
-    Graphics::Font *_marginFont = nullptr;
     Graphics::DropShadow *_dropShadow = nullptr;
+    std::unordered_map<int, FontInstance *> _fontInstances;
   };
 
-  struct Platform : Editor::Platform {
-    virtual Editor::OperatingSystem operatingSystem() override {
-      return Editor::OperatingSystem::OSX;
+  ////////////////////////////////////////////////////////////////////////////////
+
+  struct Platform : UI::Platform {
+    virtual UI::OperatingSystem operatingSystem() override {
+      return UI::OperatingSystem::OSX;
     }
 
-    virtual Editor::UserAgent userAgent() override {
-      return Editor::UserAgent::UNKNOWN;
+    virtual UI::UserAgent userAgent() override {
+      return UI::UserAgent::UNKNOWN;
     }
 
     virtual double nowInSeconds() override {
@@ -903,14 +1009,11 @@ namespace OSX {
       return data.tv_sec + data.tv_usec / 1.0e6;
     }
 
-    virtual Graphics::GlyphProvider *createGlyphProvider(Skew::List<Skew::string> *fontNames) override {
-      return new GlyphProvider(fontNames);
-    }
-
-    virtual Editor::Window *createWindow() override;
+    virtual UI::Window *createWindow() override;
 
     #ifdef SKEW_GC_MARK_AND_SWEEP
       virtual void __gc_mark() override {
+        UI::Platform::__gc_mark();
       }
     #endif
 
@@ -981,13 +1084,14 @@ namespace OSX {
 
 @implementation AppView
 
-- (id)initWithFrame:(NSRect)frame window:(NSWindow *)window platform:(Editor::Platform *)platform {
+- (id)initWithFrame:(NSRect)frame window:(NSWindow *)window platform:(UI::Platform *)platform {
   NSOpenGLPixelFormatAttribute attributes[] = { NSOpenGLPFADoubleBuffer, 0 };
   auto format = [[NSOpenGLPixelFormat alloc] initWithAttributes:attributes];
 
   if (self = [super initWithFrame:frame pixelFormat:format]) {
     [self setWantsBestResolutionOpenGLSurface:YES];
     appWindow = new OSX::AppWindow(window, self, platform);
+    appWindow->handleResize();
   }
 
   return self;
@@ -1123,28 +1227,22 @@ static CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeSt
 ////////////////////////////////////////////////////////////////////////////////
 
 void OSX::AppWindow::handleFrame() {
-  bool areCaretsVisible = _isActive && ((int)((_platform->nowInSeconds() - _lastInvalidationTime) * 2) & 1) == 0;
-
-  // Skip rendering if not invalid
-  if (!_isInvalid && areCaretsVisible == _areCaretsVisible) {
-    return;
+  if (_delegate != nullptr) {
+    _delegate->handleFrame();
   }
+}
 
-  // Reset render state
-  _isInvalid = false;
-  _areCaretsVisible = areCaretsVisible;
-  _translator->setShowCarets(areCaretsVisible);
-
+void OSX::AppWindow::render() {
+  _isRendering = true;
   [[_appView openGLContext] makeCurrentContext];
 
-  if (_view) {
-    _view->render();
-  }
-
+  _context->clear(_clearColor);
+  _translator->renderView(_root);
   _solidBatch->flush();
   _glyphBatch->flush();
 
   [[_appView openGLContext] flushBuffer];
+  _isRendering = false;
 
   if (_needsToBeShown) {
     [_window makeKeyAndOrderFront:nil];
@@ -1164,88 +1262,71 @@ void OSX::AppWindow::handleResize() {
 
   [[_appView openGLContext] makeCurrentContext];
 
-  if (_view != nullptr) {
-    _view->resize(_width, _height);
-  }
+  _handleResize(new Vector(_width, _height), _pixelScale);
 
   if (_context != nullptr) {
     _context->resize(pixelSize.width, pixelSize.height);
   }
 
-  if (_solidBatch != nullptr) {
-    _solidBatch->resize(_width, _height, _pixelScale);
-  }
+  setViewport(0, 0, _width, _height);
 
-  if (_glyphBatch != nullptr) {
-    _glyphBatch->resize(_width, _height, _pixelScale);
-  }
-
-  if (_dropShadow != nullptr) {
-    _dropShadow->resize(_width, _height);
-  }
-
-  _font->resize(_pixelScale);
-  _marginFont->resize(_pixelScale);
-
-  if (_view != nullptr) {
-    _advanceWidth = _font->glyphProvider->advanceWidth(' ') / _pixelScale;
-    _marginAdvanceWidth = _marginFont->glyphProvider->advanceWidth(' ') / _pixelScale;
-    _view->resizeFont(_advanceWidth, _marginAdvanceWidth, _lineHeight);
+  for (const auto &it : _fontInstances) {
+    it.second->changePixelScale(_pixelScale);
   }
 }
 
-static Editor::KeyCode keyCodeFromEvent(NSEvent *event) {
-  static std::unordered_map<int, Editor::KeyCode> map = {
-    { '.',                       Editor::KeyCode::PERIOD },
-    { '0',                       Editor::KeyCode::NUMBER_0 },
-    { '1',                       Editor::KeyCode::NUMBER_1 },
-    { '2',                       Editor::KeyCode::NUMBER_2 },
-    { '3',                       Editor::KeyCode::NUMBER_3 },
-    { '4',                       Editor::KeyCode::NUMBER_4 },
-    { '5',                       Editor::KeyCode::NUMBER_5 },
-    { '6',                       Editor::KeyCode::NUMBER_6 },
-    { '7',                       Editor::KeyCode::NUMBER_7 },
-    { '8',                       Editor::KeyCode::NUMBER_8 },
-    { '9',                       Editor::KeyCode::NUMBER_9 },
-    { ';',                       Editor::KeyCode::SEMICOLON },
-    { 'a',                       Editor::KeyCode::LETTER_A },
-    { 'b',                       Editor::KeyCode::LETTER_B },
-    { 'c',                       Editor::KeyCode::LETTER_C },
-    { 'd',                       Editor::KeyCode::LETTER_D },
-    { 'e',                       Editor::KeyCode::LETTER_E },
-    { 'f',                       Editor::KeyCode::LETTER_F },
-    { 'g',                       Editor::KeyCode::LETTER_G },
-    { 'h',                       Editor::KeyCode::LETTER_H },
-    { 'i',                       Editor::KeyCode::LETTER_I },
-    { 'j',                       Editor::KeyCode::LETTER_J },
-    { 'k',                       Editor::KeyCode::LETTER_K },
-    { 'l',                       Editor::KeyCode::LETTER_L },
-    { 'm',                       Editor::KeyCode::LETTER_M },
-    { 'n',                       Editor::KeyCode::LETTER_N },
-    { 'o',                       Editor::KeyCode::LETTER_O },
-    { 'p',                       Editor::KeyCode::LETTER_P },
-    { 'q',                       Editor::KeyCode::LETTER_Q },
-    { 'r',                       Editor::KeyCode::LETTER_R },
-    { 's',                       Editor::KeyCode::LETTER_S },
-    { 't',                       Editor::KeyCode::LETTER_T },
-    { 'u',                       Editor::KeyCode::LETTER_U },
-    { 'v',                       Editor::KeyCode::LETTER_V },
-    { 'w',                       Editor::KeyCode::LETTER_W },
-    { 'x',                       Editor::KeyCode::LETTER_X },
-    { 'y',                       Editor::KeyCode::LETTER_Y },
-    { 'z',                       Editor::KeyCode::LETTER_Z },
-    { 27,                        Editor::KeyCode::ESCAPE },
-    { NSCarriageReturnCharacter, Editor::KeyCode::ENTER },
-    { NSDeleteCharacter,         Editor::KeyCode::BACKSPACE },
-    { NSDeleteFunctionKey,       Editor::KeyCode::DELETE },
-    { NSDownArrowFunctionKey,    Editor::KeyCode::ARROW_DOWN },
-    { NSEndFunctionKey,          Editor::KeyCode::END },
-    { NSHomeFunctionKey,         Editor::KeyCode::HOME },
-    { NSLeftArrowFunctionKey,    Editor::KeyCode::ARROW_LEFT },
-    { NSPageDownFunctionKey,     Editor::KeyCode::PAGE_DOWN },
-    { NSPageUpFunctionKey,       Editor::KeyCode::PAGE_UP },
-    { NSRightArrowFunctionKey,   Editor::KeyCode::ARROW_RIGHT },
-    { NSUpArrowFunctionKey,      Editor::KeyCode::ARROW_UP },
+static UI::Key keyFromEvent(NSEvent *event) {
+  static std::unordered_map<int, UI::Key> map = {
+    { '.',                       UI::Key::PERIOD },
+    { '0',                       UI::Key::NUMBER_0 },
+    { '1',                       UI::Key::NUMBER_1 },
+    { '2',                       UI::Key::NUMBER_2 },
+    { '3',                       UI::Key::NUMBER_3 },
+    { '4',                       UI::Key::NUMBER_4 },
+    { '5',                       UI::Key::NUMBER_5 },
+    { '6',                       UI::Key::NUMBER_6 },
+    { '7',                       UI::Key::NUMBER_7 },
+    { '8',                       UI::Key::NUMBER_8 },
+    { '9',                       UI::Key::NUMBER_9 },
+    { ';',                       UI::Key::SEMICOLON },
+    { 'a',                       UI::Key::LETTER_A },
+    { 'b',                       UI::Key::LETTER_B },
+    { 'c',                       UI::Key::LETTER_C },
+    { 'd',                       UI::Key::LETTER_D },
+    { 'e',                       UI::Key::LETTER_E },
+    { 'f',                       UI::Key::LETTER_F },
+    { 'g',                       UI::Key::LETTER_G },
+    { 'h',                       UI::Key::LETTER_H },
+    { 'i',                       UI::Key::LETTER_I },
+    { 'j',                       UI::Key::LETTER_J },
+    { 'k',                       UI::Key::LETTER_K },
+    { 'l',                       UI::Key::LETTER_L },
+    { 'm',                       UI::Key::LETTER_M },
+    { 'n',                       UI::Key::LETTER_N },
+    { 'o',                       UI::Key::LETTER_O },
+    { 'p',                       UI::Key::LETTER_P },
+    { 'q',                       UI::Key::LETTER_Q },
+    { 'r',                       UI::Key::LETTER_R },
+    { 's',                       UI::Key::LETTER_S },
+    { 't',                       UI::Key::LETTER_T },
+    { 'u',                       UI::Key::LETTER_U },
+    { 'v',                       UI::Key::LETTER_V },
+    { 'w',                       UI::Key::LETTER_W },
+    { 'x',                       UI::Key::LETTER_X },
+    { 'y',                       UI::Key::LETTER_Y },
+    { 'z',                       UI::Key::LETTER_Z },
+    { 27,                        UI::Key::ESCAPE },
+    { NSCarriageReturnCharacter, UI::Key::ENTER },
+    { NSDeleteCharacter,         UI::Key::BACKSPACE },
+    { NSDeleteFunctionKey,       UI::Key::DELETE },
+    { NSDownArrowFunctionKey,    UI::Key::ARROW_DOWN },
+    { NSEndFunctionKey,          UI::Key::END },
+    { NSHomeFunctionKey,         UI::Key::HOME },
+    { NSLeftArrowFunctionKey,    UI::Key::ARROW_LEFT },
+    { NSPageDownFunctionKey,     UI::Key::PAGE_DOWN },
+    { NSPageUpFunctionKey,       UI::Key::PAGE_UP },
+    { NSRightArrowFunctionKey,   UI::Key::ARROW_RIGHT },
+    { NSUpArrowFunctionKey,      UI::Key::ARROW_UP },
   };
   auto characters = [event charactersIgnoringModifiers];
 
@@ -1257,38 +1338,34 @@ static Editor::KeyCode keyCodeFromEvent(NSEvent *event) {
     }
   }
 
-  return Editor::KeyCode::NONE;
+  return UI::Key::NONE;
 }
 
 static int modifiersFromEvent(NSEvent *event) {
   auto flags = [event modifierFlags];
   return
-    ((flags & NSShiftKeyMask) != 0 ? Editor::Modifiers::SHIFT : 0) |
-    ((flags & NSCommandKeyMask) != 0 ? Editor::Modifiers::META : 0) |
-    ((flags & NSAlternateKeyMask) != 0 ? Editor::Modifiers::ALT : 0) |
-    ((flags & NSControlKeyMask) != 0 ? Editor::Modifiers::CONTROL : 0);
+    ((flags & NSShiftKeyMask) != 0 ? UI::Modifiers::SHIFT : 0) |
+    ((flags & NSCommandKeyMask) != 0 ? UI::Modifiers::META : 0) |
+    ((flags & NSAlternateKeyMask) != 0 ? UI::Modifiers::ALT : 0) |
+    ((flags & NSControlKeyMask) != 0 ? UI::Modifiers::CONTROL : 0);
 }
 
 void OSX::AppWindow::handleKeyEvent(NSEvent *event) {
-  if (_view == nullptr) {
-    return;
-  }
+  auto key = keyFromEvent(event);
 
-  auto keyCode = keyCodeFromEvent(event);
-
-  if (keyCode != Editor::KeyCode::NONE) {
+  if (key != UI::Key::NONE) {
     auto modifiers = modifiersFromEvent(event);
-    auto action = _shortcuts->get(keyCode, modifiers);
+    auto action = _shortcuts->get(key, modifiers);
 
     // Keyboard shortcuts take precedence over text insertion
     if (action != Editor::Action::NONE) {
-      _view->triggerAction(action);
+      handleAction(action);
       return;
     }
 
     // This isn't handled by interpretKeyEvents for some reason
-    if (keyCode == Editor::KeyCode::ENTER && modifiers == 0) {
-      _view->insertText("\n");
+    if (key == UI::Key::ENTER && modifiers == 0) {
+      handleInsertText(@"\n");
       return;
     }
   }
@@ -1297,27 +1374,25 @@ void OSX::AppWindow::handleKeyEvent(NSEvent *event) {
 }
 
 void OSX::AppWindow::handleInsertText(NSString *text) {
-  if (_view != nullptr) {
-    _view->insertText([text UTF8String]);
-  }
+  dispatchEvent(new UI::ClipboardEvent(UI::EventKind::CLIPBOARD_PASTE, viewWithFocus(), [text UTF8String]));
 }
 
-static Editor::MouseEvent *mouseEventFromEvent(NSEvent *event) {
+UI::MouseEvent *OSX::AppWindow::_mouseEventFromEvent(UI::EventKind kind, NSEvent *event, Vector *delta) {
   auto point = [event locationInWindow];
   auto height = [[[event window] contentView] bounds].size.height;
-  return new Editor::MouseEvent(point.x, height - point.y, modifiersFromEvent(event), [event clickCount]);
+  auto viewLocation = new Vector(point.x, height - point.y);
+  auto target = _draggingView != nullptr ? _draggingView : viewFromLocation(viewLocation);
+  int clickCount = kind == UI::EventKind::MOUSE_DOWN ? (int)[event clickCount] : 0;
+  return new UI::MouseEvent(kind, target, viewLocation, modifiersFromEvent(event), clickCount, delta);
 }
 
 void OSX::AppWindow::handleMouseEvent(NSEvent *event) {
-  if (_view == nullptr) {
-    return;
-  }
-
   switch ([event type]) {
     case NSLeftMouseDown:
     case NSOtherMouseDown:
     case NSRightMouseDown: {
-      _view->handleMouseDown(mouseEventFromEvent(event));
+      _draggingView = nullptr;
+      _draggingView = dispatchEvent(_mouseEventFromEvent(UI::EventKind::MOUSE_DOWN, event, nullptr));
       break;
     }
 
@@ -1325,19 +1400,20 @@ void OSX::AppWindow::handleMouseEvent(NSEvent *event) {
     case NSLeftMouseDragged:
     case NSOtherMouseDragged:
     case NSRightMouseDragged: {
-      _view->handleMouseMove(mouseEventFromEvent(event));
+      dispatchEvent(_mouseEventFromEvent(UI::EventKind::MOUSE_MOVE, event, nullptr));
       break;
     }
 
     case NSLeftMouseUp:
     case NSOtherMouseUp:
     case NSRightMouseUp: {
-      _view->handleMouseUp(mouseEventFromEvent(event));
+      dispatchEvent(_mouseEventFromEvent(UI::EventKind::MOUSE_UP, event, nullptr));
+      _draggingView = nullptr;
       break;
     }
 
     case NSScrollWheel: {
-      _view->handleScroll(-[event scrollingDeltaX], -[event scrollingDeltaY]);
+      dispatchEvent(_mouseEventFromEvent(UI::EventKind::MOUSE_SCROLL, event, new Vector(-[event scrollingDeltaX], -[event scrollingDeltaY])));
       break;
     }
   }
@@ -1351,43 +1427,45 @@ void OSX::AppWindow::handleMouseEvent(NSEvent *event) {
 }
 
 void OSX::AppWindow::handleAction(Editor::Action action) {
-  if (_view == nullptr) {
-    return;
-  }
-
   switch (action) {
     case Editor::Action::CUT:
-    case Editor::Action::COPY: {
-      auto selection = _view->selection()->isEmpty() ? _view->selectionExpandedToLines() : _view->selection();
-      auto text = _view->textInSelection(selection);
-
-      auto clipboard = [NSPasteboard generalPasteboard];
-      [clipboard clearContents];
-      [clipboard setString:[NSString stringWithUTF8String:text.c_str()] forType:NSPasteboardTypeString];
-
-      if (action == Editor::Action::CUT) {
-        _view->changeSelection(selection, Editor::ScrollBehavior::DO_NOT_SCROLL);
-        _view->insertText("");
-      }
-      break;
-    }
-
+    case Editor::Action::COPY:
     case Editor::Action::PASTE: {
       auto clipboard = [NSPasteboard generalPasteboard];
-      if (auto text = [clipboard stringForType:NSPasteboardTypeString]) {
-        _view->insertText([text UTF8String]);
+      Skew::string text;
+
+      // Load text from clipboard
+      if (auto data = [clipboard stringForType:NSPasteboardTypeString]) {
+        text = [data UTF8String];
+      }
+
+      // Send event
+      auto kind =
+        action == Editor::Action::CUT ? UI::EventKind::CLIPBOARD_CUT :
+        action == Editor::Action::COPY ? UI::EventKind::CLIPBOARD_COPY :
+        UI::EventKind::CLIPBOARD_PASTE;
+      auto event = new UI::ClipboardEvent(kind, viewWithFocus(), text);
+      dispatchEvent(event);
+
+      // Save text to clipboard
+      if (event->text != text) {
+        auto clipboard = [NSPasteboard generalPasteboard];
+        [clipboard clearContents];
+        [clipboard setString:[NSString stringWithUTF8String:text.c_str()] forType:NSPasteboardTypeString];
       }
       break;
     }
 
     default: {
-      _view->triggerAction(action);
+      if (_delegate != nullptr) {
+        _delegate->triggerAction(action);
+      }
       break;
     }
   }
 }
 
-Editor::Window *OSX::Platform::createWindow() {
+UI::Window *OSX::Platform::createWindow() {
   auto bounds = _boundsForNewWindow();
   auto window = [[NSWindow alloc] initWithContentRect:bounds styleMask:_styleMask backing:NSBackingStoreBuffered defer:NO];
   auto appView = [[AppView alloc] initWithFrame:bounds window:window platform:this];

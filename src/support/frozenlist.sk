@@ -1,0 +1,37 @@
+# An immutable wrapper for a List<T> that is safe to share without fear of
+# accidental mutation. Never cast from a FrozenList<T> to a List<T>.
+type FrozenList<T> : List<T> {
+  def thaw List<T> {
+    return (self as List<T>).clone
+  }
+
+  def first T {
+    return (self as List<T>).first
+  }
+
+  def last T {
+    return (self as List<T>).last
+  }
+
+  def isEmpty bool {
+    return (self as List<T>).isEmpty
+  }
+
+  def count int {
+    return (self as List<T>).count
+  }
+
+  def in(value T) bool {
+    return value in (self as List<T>)
+  }
+
+  def [](index int) T {
+    return (self as List<T>)[index]
+  }
+}
+
+class List {
+  def freeze FrozenList<T> {
+    return clone as FrozenList<T>
+  }
+}

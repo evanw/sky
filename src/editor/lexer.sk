@@ -2,7 +2,7 @@ namespace Editor {
   class Span {
     const start int
     const end int
-    const color Color
+    const color UI.Color
   }
 
   class LexerState {
@@ -136,11 +136,11 @@ namespace Editor {
       _startOfState = startingIndex
     }
 
-    def addSpan(start int, end int, color Color) {
+    def addSpan(start int, end int, color UI.Color) {
       _spans.append(Span.new(start, end, color))
     }
 
-    def changePreviousSpanColor(color Color) {
+    def changePreviousSpanColor(color UI.Color) {
       var previous = _spans.last
       _spans.last = Span.new(previous.start, previous.end, color)
     }

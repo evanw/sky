@@ -26,28 +26,25 @@ namespace Syntax.SkewLexer {
     "while": 0,
   }
 
-  const _definitionKeywords = {
-    "catch": 0,
-    "const": 0,
-    "for": 0,
-    "var": 0,
-  }
-
   const _constants = {
     "false": 0,
     "null": 0,
     "true": 0,
   }
 
-  const _contextualKeywords = {
+  const _definitionKeywords = {
+    "catch": 0,
     "class": 0,
+    "const": 0,
     "def": 0,
     "enum": 0,
     "flags": 0,
+    "for": 0,
     "interface": 0,
     "namespace": 0,
     "over": 0,
     "type": 0,
+    "var": 0,
   }
 
   const _types = {
@@ -95,22 +92,19 @@ namespace Syntax.SkewLexer {
         # Identifier or keyword
         if Editor.Lexer.isAlpha(c) {
           var text = string.fromCodeUnit(c) + lexer.scanAlphaNumericString
-          var color Editor.Color =
+          var color UI.Color =
             text in _keywords ? .FOREGROUND_KEYWORD :
             text in _constants ? .FOREGROUND_KEYWORD_CONSTANT :
             text.count > 1 && !Editor.Lexer.hasLowerCase(text) ? .FOREGROUND_CONSTANT :
             text in _types || Editor.Lexer.isUpperCase(c) || text == "fn" && (!lexer.hasNext || lexer.peekNext == '(') ? .FOREGROUND_TYPE :
             c == '_' ? .FOREGROUND_INSTANCE :
             .FOREGROUND_DEFAULT
-          var isAfterContextualKeyword = (color == .FOREGROUND_DEFAULT || color == .FOREGROUND_TYPE) && previousIdentifier != null && previousIdentifier in _contextualKeywords
-
-          # This may be after a contextual keyword
-          if isAfterContextualKeyword {
-            lexer.changePreviousSpanColor(.FOREGROUND_KEYWORD)
-          }
+          var isAfterDefinitionKeyword = (color == .FOREGROUND_DEFAULT || color == .FOREGROUND_TYPE || color == .FOREGROUND_INSTANCE) &&
+            previousIdentifier != null && previousIdentifier in _definitionKeywords
 
           # Make definitions stand out
-          if (color == .FOREGROUND_DEFAULT || color == .FOREGROUND_INSTANCE) && (isAfterContextualKeyword || previousIdentifier != null && previousIdentifier in _definitionKeywords) {
+          if isAfterDefinitionKeyword {
+            lexer.changePreviousSpanColor(.FOREGROUND_KEYWORD)
             color = .FOREGROUND_DEFINITION
           }
 
@@ -153,7 +147,7 @@ namespace Syntax.SkewLexer {
     }
 
     var endState = lexer.currentState
-    var color Editor.Color =
+    var color UI.Color =
       endState == _stringState ? .FOREGROUND_STRING :
       endState == _characterState ? .FOREGROUND_NUMBER :
       .FOREGROUND_DEFAULT
@@ -164,7 +158,7 @@ namespace Syntax.SkewLexer {
     }
 
     # This may be after a contextual keyword
-    else if previousIdentifier != null && previousIdentifier in _contextualKeywords {
+    else if previousIdentifier != null && previousIdentifier in _definitionKeywords {
       lexer.changePreviousSpanColor(.FOREGROUND_KEYWORD)
     }
   }

@@ -25,25 +25,68 @@ enum {
 };
 
 namespace Terminal {
-  struct Host : Editor::Platform, private Editor::Window, private Editor::SemanticRenderer {
-    void showCarets() {
-      _areCaretsVisible = true;
+  struct FontInstance : UI::FontInstance {
+    FontInstance(UI::Font font) : _font(font) {
     }
 
-    void toggleCarets() {
-      _areCaretsVisible = !_areCaretsVisible;
+    virtual UI::Font font() override {
+      return _font;
+    }
+
+    virtual double size() override {
+      return 1;
+    }
+
+    virtual double lineHeight() override {
+      return 1;
+    }
+
+    virtual double advanceWidth(int codePoint) override {
+      return 1;
+    }
+
+    virtual Graphics::Glyph *renderGlyph(int codePoint) override {
+      return nullptr;
+    }
+
+    #ifdef SKEW_GC_MARK_AND_SWEEP
+      virtual void __gc_mark() override {
+        UI::FontInstance::__gc_mark();
+      }
+    #endif
+
+  private:
+    UI::Font _font = {};
+  };
+
+  struct Host : UI::Platform, UI::Window, private UI::SemanticRenderer {
+    struct ClipRect {
+      int minX;
+      int minY;
+      int maxX;
+      int maxY;
+    };
+
+    void handleFrame() {
+      if (_delegate != nullptr) {
+        _delegate->handleFrame();
+      }
     }
 
     void handleResize() {
       _width = getmaxx(stdscr);
       _height = getmaxy(stdscr);
-      _view->resize(_width - 1, _height); // Subtract 1 so the cursor can be seen at the end of the line
+      _handleResize(new Vector(_width, _height), 1);
     }
 
     void render() {
       erase();
-      _view->render();
+      assert(_clipRectStack.empty());
+      _clipRectStack.push_back(ClipRect{0, 0, _width, _height});
+      _root->render();
+      _clipRectStack.pop_back();
       refresh();
+      Skew::GC::collect();
     }
 
     void writeToClipboard(std::string text) {
@@ -73,35 +116,42 @@ namespace Terminal {
     }
 
     void triggerAction(Editor::Action action) {
-      if (action == Editor::Action::CUT || action == Editor::Action::COPY) {
-        auto selection = _view->selection()->isEmpty() ? _view->selectionExpandedToLines() : _view->selection();
-        writeToClipboard(_view->textInSelection(selection).std_str());
-
-        if (action == Editor::Action::CUT) {
-          _view->changeSelection(selection, Editor::ScrollBehavior::DO_NOT_SCROLL);
-          _view->insertText("");
+      switch (action) {
+        case Editor::Action::CUT:
+        case Editor::Action::COPY:
+        case Editor::Action::PASTE: {
+          auto text = readFromClipboard();
+          auto kind =
+            action == Editor::Action::CUT ? UI::EventKind::CLIPBOARD_CUT :
+            action == Editor::Action::COPY ? UI::EventKind::CLIPBOARD_COPY :
+            UI::EventKind::CLIPBOARD_PASTE;
+          auto event = new UI::ClipboardEvent(kind, viewWithFocus(), text);
+          dispatchEvent(event);
+          if (event->text != text) {
+            writeToClipboard(event->text.std_str());
+          }
+          break;
         }
-      }
 
-      else if (action == Editor::Action::PASTE) {
-        _view->insertText(readFromClipboard());
-      }
-
-      else {
-        _view->triggerAction(action);
+        default: {
+          if (_delegate != nullptr) {
+            _delegate->triggerAction(action);
+          }
+          break;
+        }
       }
     }
 
     void insertASCII(char c) {
-      _view->insertText(std::string(1, c));
+      dispatchEvent(new UI::ClipboardEvent(UI::EventKind::CLIPBOARD_PASTE, viewWithFocus(), std::string(1, c)));
     }
 
-    virtual Editor::OperatingSystem operatingSystem() override {
-      return Editor::OperatingSystem::UNKNOWN;
+    virtual UI::OperatingSystem operatingSystem() override {
+      return UI::OperatingSystem::UNKNOWN;
     }
 
-    virtual Editor::UserAgent userAgent() override {
-      return Editor::UserAgent::UNKNOWN;
+    virtual UI::UserAgent userAgent() override {
+      return UI::UserAgent::UNKNOWN;
     }
 
     virtual double nowInSeconds() override {
@@ -110,107 +160,137 @@ namespace Terminal {
       return data.tv_sec + data.tv_usec / 1.0e6;
     }
 
-    virtual Graphics::GlyphProvider *createGlyphProvider(Skew::List<Skew::string> *fontNames) override {
-      return nullptr;
-    }
-
-    virtual Editor::Window *createWindow() override {
+    virtual UI::Window *createWindow() override {
       return this;
     }
 
-    virtual Editor::SemanticRenderer *renderer() override {
+    virtual UI::SemanticRenderer *renderer() override {
       return this;
     }
 
-    virtual void setView(Editor::View *view) override {
-      _view = view;
-      _view->resizeFont(1, 1, 1);
-      _view->setScrollbarThickness(1);
-      _view->changePadding(0, 0, 0, 0);
-      _view->changeMarginPadding(1, 1);
-      _view->triggerAction(Editor::Action::SELECT_ALL);
-      _view->insertText(
-        "Shortcuts:\n"
-        "\n"
-        "Ctrl+Q: Quit\n"
-        "Ctrl+X: Cut\n"
-        "Ctrl+C: Copy\n"
-        "Ctrl+V: Paste\n"
-        "Ctrl+A: Select All\n"
-        "Ctrl+Z: Undo\n"
-        "Ctrl+Y: Redo\n");
-      _view->triggerAction(Editor::Action::MOVE_UP_DOCUMENT);
-      handleResize();
+    virtual UI::Platform *platform() override {
+      return this;
+    }
+
+    virtual UI::FontInstance *fontInstance(UI::Font font) override {
+      auto it = _fontInstances.find((int)font);
+      if (it != _fontInstances.end()) {
+        return it->second;
+      }
+      return _fontInstances[(int)font] = new FontInstance(font);
+    }
+
+    virtual void setFont(UI::Font font, Skew::List<Skew::string> *names, double size, double height) override {
     }
 
     virtual void setTitle(Skew::string title) override {
     }
 
-    virtual void invalidate() override {
+    virtual void setTheme(UI::Theme *theme) override {
     }
 
-    virtual void setCursor(Editor::Cursor cursor) override {
+    virtual void setCursor(UI::Cursor cursor) override {
     }
 
-    virtual void renderRect(double x, double y, double width, double height, Editor::Color color) override {
-      if (color == Editor::Color::BACKGROUND_SELECTED) {
-        int minX = std::max((int)x, (int)_view->marginWidth());
-        int minY = std::max((int)y, 0);
-        int maxX = std::min((int)(x + width), _width);
-        int maxY = std::min((int)(y + height), _height);
+    virtual void renderView(UI::View *view) override {
+      assert(!_clipRectStack.empty());
+      auto clip = _clipRectStack.back();
+      auto bounds = view->bounds();
+
+      _clipRectStack.push_back(ClipRect{
+        clip.minX + std::max((int)bounds->x, 0),
+        clip.minY + std::max((int)bounds->y, 0),
+        clip.minX + std::min((int)(bounds->x + bounds->width), clip.maxX - clip.minX),
+        clip.minY + std::min((int)(bounds->y + bounds->height), clip.maxY - clip.minY),
+      });
+      view->render();
+      _clipRectStack.pop_back();
+    }
+
+    virtual void renderRect(double x, double y, double width, double height, UI::Color color) override {
+      assert(x == (int)x);
+      assert(y == (int)y);
+      assert(width == (int)width);
+      assert(height == (int)height);
+
+      auto clip = _clipRectStack.back();
+      x += clip.minX;
+      y += clip.minY;
+
+      if (color == UI::Color::BACKGROUND_SELECTED || color == UI::Color::BACKGROUND_MARGIN) {
+        int minX = std::max(clip.minX, (int)x);
+        int minY = std::max(clip.minY, (int)y);
+        int maxX = std::min(clip.maxX, (int)(x + width));
+        int maxY = std::min(clip.maxY, (int)(y + height));
         int n = std::max(0, maxX - minX);
         chtype buffer[n];
 
-        for (int y = minY; y < maxY; y++) {
-          mvinchnstr(y, minX, buffer, n);
+        if (color == UI::Color::BACKGROUND_MARGIN) {
           for (int x = 0; x < n; x++) {
-            buffer[x] = (buffer[x] & ~A_COLOR) | COLOR_PAIR(SKY_COLOR_SELECTED);
+            buffer[x] = ' ';
           }
+        }
+
+        for (int y = minY; y < maxY; y++) {
+          if (color == UI::Color::BACKGROUND_SELECTED) {
+            mvinchnstr(y, minX, buffer, n);
+
+            for (int x = 0; x < n; x++) {
+              buffer[x] = (buffer[x] & ~A_COLOR) | COLOR_PAIR(SKY_COLOR_SELECTED);
+            }
+          }
+
           mvaddchnstr(y, minX, buffer, n);
         }
       }
     }
 
-    virtual void renderCaret(double x, double y, Editor::Color color) override {
+    virtual void renderCaret(double x, double y, UI::Color color) override {
       assert(x == (int)x);
       assert(y == (int)y);
 
-      if (!_areCaretsVisible || x < 0 || y < 0 || x >= _width || y >= _height) {
+      auto clip = _clipRectStack.back();
+      x += clip.minX;
+      y += clip.minY;
+
+      if (x < clip.minX || y < clip.minY || x >= clip.maxX || y >= clip.maxY) {
         return;
       }
 
       mvaddch(y, x, mvinch(y, x) | A_UNDERLINE);
     }
 
-    virtual void renderSquiggle(double x, double y, double width, double height, Editor::Color color) override {
+    virtual void renderSquiggle(double x, double y, double width, double height, UI::Color color) override {
     }
 
     virtual void renderRightwardShadow(double x, double y, double width, double height) override {
     }
 
-    virtual void renderText(double x, double y, Skew::string text, Editor::Font font, Editor::Color color, int alpha) override {
+    virtual void renderText(double x, double y, Skew::string text, UI::Font font, UI::Color color, int alpha) override {
       assert(x == (int)x);
       assert(y == (int)y);
 
-      if (y < 0 || y >= _height) {
+      auto clip = _clipRectStack.back();
+      x += clip.minX;
+      y += clip.minY;
+
+      if (y < clip.minY || y >= clip.maxY) {
         return;
       }
 
-      bool isMargin = color == Editor::Color::FOREGROUND_MARGIN || color == Editor::Color::FOREGROUND_MARGIN_HIGHLIGHTED;
+      bool isMargin = color == UI::Color::FOREGROUND_MARGIN || color == UI::Color::FOREGROUND_MARGIN_HIGHLIGHTED;
       int attributes =
         isMargin ? COLOR_PAIR(SKY_COLOR_MARGIN) :
-        color == Editor::Color::FOREGROUND_KEYWORD || color == Editor::Color::FOREGROUND_KEYWORD_CONSTANT ? COLOR_PAIR(SKY_COLOR_KEYWORD) :
-        color == Editor::Color::FOREGROUND_CONSTANT || color == Editor::Color::FOREGROUND_NUMBER ? COLOR_PAIR(SKY_COLOR_CONSTANT) :
-        color == Editor::Color::FOREGROUND_COMMENT ? COLOR_PAIR(SKY_COLOR_COMMENT) :
-        color == Editor::Color::FOREGROUND_STRING ? COLOR_PAIR(SKY_COLOR_STRING) :
-        color == Editor::Color::FOREGROUND_DEFINITION ? A_BOLD :
+        color == UI::Color::FOREGROUND_KEYWORD || color == UI::Color::FOREGROUND_KEYWORD_CONSTANT ? COLOR_PAIR(SKY_COLOR_KEYWORD) :
+        color == UI::Color::FOREGROUND_CONSTANT || color == UI::Color::FOREGROUND_NUMBER ? COLOR_PAIR(SKY_COLOR_CONSTANT) :
+        color == UI::Color::FOREGROUND_COMMENT ? COLOR_PAIR(SKY_COLOR_COMMENT) :
+        color == UI::Color::FOREGROUND_STRING ? COLOR_PAIR(SKY_COLOR_STRING) :
+        color == UI::Color::FOREGROUND_DEFINITION ? A_BOLD :
         0;
 
       auto utf32 = std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t>().from_bytes(text.std_str());
-      int minX = isMargin ? 0 : _view->marginWidth();
-      int maxX = _width - 1; // Subtract 1 so the cursor can be seen at the end of the line
-      int start = std::max(0, std::min((int)utf32.size(), minX - (int)x));
-      int end = std::max(0, std::min((int)utf32.size(), maxX - (int)x));
+      int start = std::max(0, std::min((int)utf32.size(), clip.minX - (int)x));
+      int end = std::max(0, std::min((int)utf32.size(), clip.maxX - (int)x));
       int n = std::max(0, end - start);
       chtype buffer[n];
 
@@ -226,28 +306,34 @@ namespace Terminal {
       mvaddchnstr(y, x + start, buffer, n);
     }
 
-    virtual void renderHorizontalLine(double x1, double x2, double y, Editor::Color color) override {
+    virtual void renderHorizontalLine(double x1, double x2, double y, UI::Color color) override {
     }
 
-    virtual void renderVerticalLine(double x, double y1, double y2, Editor::Color color) override {
+    virtual void renderVerticalLine(double x, double y1, double y2, UI::Color color) override {
     }
 
-    virtual void renderScrollbarThumb(double x, double y, double width, double height, Editor::Color color) override {
+    virtual void renderScrollbarThumb(double x, double y, double width, double height, UI::Color color) override {
     }
 
     #ifdef SKEW_GC_MARK_AND_SWEEP
       virtual void __gc_mark() override {
-        Skew::GC::mark(_view);
+        UI::Platform::__gc_mark();
+        UI::Window::__gc_mark();
+        UI::SemanticRenderer::__gc_mark();
+
+        for (const auto &it : _fontInstances) {
+          Skew::GC::mark(it.second);
+        }
       }
     #endif
 
   private:
     int _width = 0;
     int _height = 0;
-    bool _areCaretsVisible = true;
     std::string _clipboard;
     std::vector<short> _buffer;
-    Editor::View *_view = nullptr;
+    std::vector<ClipRect> _clipRectStack;
+    std::unordered_map<int, FontInstance *> _fontInstances;
   };
 }
 
@@ -318,31 +404,27 @@ int main() {
   raw(); // Don't automatically generate any signals
   noecho(); // Don't auto-print typed characters
   curs_set(0); // Hide the cursor since we have our own carets
-  timeout(50); // Don't let getch() block too long, need to blink the carets
+  timeout(10); // Don't let getch() block too long
 
-  int blinkToggle = 0;
+  bool isInvalid = false;
   auto host = new Terminal::Host;
   Skew::Root<Editor::App> app(new Editor::App(host));
 
+  host->handleResize();
   host->render();
 
   while (true) {
     int c = getch();
 
-    // Handle getch() timeout for blinking carets
+    // Handle getch() timeout
     if (c == -1) {
-      if (++blinkToggle == 10) {
-        host->toggleCarets();
-        blinkToggle = 0;
+      if (isInvalid) {
+        host->render();
+        isInvalid = false;
       } else {
-        continue;
+        host->handleFrame();
       }
-    }
-
-    // Reset blinking any time anything happens
-    else {
-      host->showCarets();
-      blinkToggle = 0;
+      continue;
     }
 
     // Handle escape sequences
@@ -370,8 +452,8 @@ int main() {
       host->insertASCII(c);
     }
 
-    host->render();
-    Skew::GC::collect();
+    // Only render after an idle delay in case there's a lot of input
+    isInvalid = true;
   }
 
   return 0;

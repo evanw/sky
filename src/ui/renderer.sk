@@ -1,29 +1,39 @@
-namespace Editor {
+namespace UI {
   enum Cursor {
     ARROW
     TEXT
   }
 
-  # The margin font is different so the renderer can use a different font if
-  # it makes sense. Margin numbers usually use a smaller font than the content.
   enum Font {
-    DEFAULT
-    MARGIN
+    DEFAULT_FONT
+    MARGIN_FONT
+    UI_FONT
+  }
+
+  interface FontInstance {
+    def font Font
+    def size double
+    def lineHeight double
+    def advanceWidth(codePoint int) double # This assumes a 1:1 mapping between glyphs and code points
+    def renderGlyph(codePoint int) Graphics.Glyph # This may return null
   }
 
   # This rendering interface is super simple so that it'll work for both a pixel-
   # based interface and a terminal-based interface.
   interface SemanticRenderer {
-    def invalidate
-    def setCursor(cursor Cursor)
-    def renderRect(x double, y double, width double, height double, color Color)
+    # Getters
+    def fontInstance(font Font) FontInstance
+
+    # Commands
     def renderCaret(x double, y double, color Color)
-    def renderSquiggle(x double, y double, width double, height double, color Color)
-    def renderRightwardShadow(x double, y double, width double, height double)
-    def renderText(x double, y double, text string, font Font, color Color, alpha int)
     def renderHorizontalLine(x1 double, x2 double, y double, color Color)
-    def renderVerticalLine(x double, y1 double, y2 double, color Color)
+    def renderRect(x double, y double, width double, height double, color Color)
+    def renderRightwardShadow(x double, y double, width double, height double)
     def renderScrollbarThumb(x double, y double, width double, height double, color Color)
+    def renderSquiggle(x double, y double, width double, height double, color Color)
+    def renderText(x double, y double, text string, font Font, color Color, alpha int)
+    def renderVerticalLine(x double, y1 double, y2 double, color Color)
+    def renderView(view View)
   }
 
   # This rendering interface contains the minimal requirements for pixel-based
@@ -34,12 +44,10 @@ namespace Editor {
     def width int
     def height int
     def pixelScale double
-    def fontSize double
-    def lineHeight double
+    def fontInstance(font Font) FontInstance
 
     # Commands
-    def invalidate
-    def setCursor(cursor Cursor)
+    def setViewport(x double, y double, width double, height double)
     def setDefaultBackgroundColor(color Graphics.RGBA)
     def fillRect(x double, y double, width double, height double, color Graphics.RGBA)
     def fillRoundedRect(x double, y double, width double, height double, color Graphics.RGBA, radius double)
@@ -55,24 +63,30 @@ namespace Editor {
   class SemanticToPixelTranslator :: SemanticRenderer {
     const _renderer PixelRenderer
     var _theme Theme = .FALLBACK
-    var _showCarets = true
+    var _viewport Rect = .EMPTY
+
+    def fontInstance(font Font) FontInstance {
+      return _renderer.fontInstance(font)
+    }
+
+    def renderView(view View) {
+      var bounds = view.bounds
+      var oldViewport = _viewport
+      var left = oldViewport.left + Math.max(bounds.left, 0)
+      var top = oldViewport.top + Math.max(bounds.top, 0)
+      var right = oldViewport.left + Math.min(bounds.right, oldViewport.width)
+      var bottom = oldViewport.top + Math.min(bounds.bottom, oldViewport.height)
+      var newViewport = view == view.window.root ? view.bounds : Rect.new(left, top, right - left, bottom - top)
+
+      _renderer.setViewport(newViewport.x, newViewport.y, newViewport.width, newViewport.height)
+      _viewport = newViewport
+      view.render
+      _viewport = oldViewport
+    }
 
     def setTheme(theme Theme) {
       _theme = theme
       _renderer.setDefaultBackgroundColor(theme.findColor(.BACKGROUND_DEFAULT))
-      invalidate
-    }
-
-    def setShowCarets(value bool) {
-      _showCarets = value
-    }
-
-    def invalidate {
-      _renderer.invalidate
-    }
-
-    def setCursor(cursor Cursor) {
-      _renderer.setCursor(cursor)
     }
 
     def renderRect(x double, y double, width double, height double, color Color) {
@@ -80,9 +94,7 @@ namespace Editor {
     }
 
     def renderCaret(x double, y double, color Color) {
-      if _showCarets {
-        _renderer.fillRect(x, y, 1, _renderer.lineHeight, _theme.findColor(color))
-      }
+      _renderer.fillRect(x, y, 1, _renderer.fontInstance(.DEFAULT_FONT).lineHeight, _theme.findColor(color))
     }
 
     def renderSquiggle(x double, y double, width double, height double, color Color) {

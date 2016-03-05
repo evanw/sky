@@ -4,42 +4,13 @@ namespace Graphics {
     const mask Mask
     const originX int
     const originY int
+    const maskScale double
     const advanceWidth double
-  }
-
-  interface GlyphProvider {
-    def resize(fontSize double)
-    def advanceWidth(codePoint int) double
-    def render(codePoint int, advanceWidth double) Graphics.Glyph
   }
 
   class GlyphMetadata {
     const glyph Glyph
     var coords TextureCoords
-  }
-
-  class Font {
-    const id int
-    const size double
-    const glyphProvider GlyphProvider
-    var _currentPixelScale = 0.0
-
-    # Make sure to use a font size appropriate for the current DPI
-    def resize(pixelScale double) {
-      if _currentPixelScale != pixelScale {
-        Log.info("resizing font from \(size * _currentPixelScale) to \(size * pixelScale)")
-        _currentPixelScale = pixelScale
-        glyphProvider.resize(size * pixelScale)
-      }
-    }
-  }
-
-  namespace Font {
-    var _nextFontID = 0
-
-    def create(platform Editor.Platform, fontNames List<string>, fontSize double) Font {
-      return Font.new(++_nextFontID, fontSize, platform.createGlyphProvider(fontNames))
-    }
   }
 
   # A high-level wrapper for appending glyphs into a single texture. Owns
@@ -56,10 +27,10 @@ namespace Graphics {
     var _packerHeight = 512
     var _width = 0.0
     var _height = 0.0
-    var _inversePixelScale = 0.0
+    var _pixelScale = 0.0
     var _backgroundLuminanceByte = 0
 
-    def new(platform Editor.Platform, context Context) {
+    def new(platform UI.Platform, context Context) {
       _context = context
       _material = context.createMaterial(.POSITION_F4_COLOR_U4_COORD_U4, GLSLX_SOURCE_GLYPH_BATCH_VERTEX, GLSLX_SOURCE_GLYPH_BATCH_FRAGMENT)
       _material.setUniformInt(GLSLX_NAME_APPLY_GAMMA_HACK, (TARGET == .JAVASCRIPT) as int)
@@ -71,8 +42,8 @@ namespace Graphics {
       _material.setUniformVec2(GLSLX_NAME_SCALE2, 2 / width, -2 / height)
 
       # Clear the cache on a DPI change
-      if _inversePixelScale != 1 / pixelScale {
-        _inversePixelScale = 1 / pixelScale
+      if pixelScale != _pixelScale {
+        _pixelScale = pixelScale
         _metadata = {}
         _packer = MaskPacker.new(_packerWidth, _packerHeight, 1)
       }
@@ -82,20 +53,19 @@ namespace Graphics {
       _backgroundLuminanceByte = color.luminance
     }
 
-    def appendGlyph(font Font, codePoint int, x double, y double, color RGBA) double {
-      var key = codePoint | font.id << 21 # All unicode code points are < 0x110000
+    def appendGlyph(fontInstance UI.FontInstance, codePoint int, x double, y double, color RGBA) double {
+      var key = codePoint | fontInstance.font << 21 # All unicode code points are < 0x110000
       var metadata = _metadata.get(key, null)
-      var inversePixelScale = _inversePixelScale
 
       if metadata == null {
         # Culling before rendering
-        var advanceWidth = font.glyphProvider.advanceWidth(codePoint)
-        if x >= _width || y >= _height || x + advanceWidth <= 0 || y + font.size <= 0 {
-          return advanceWidth * inversePixelScale
+        var advanceWidth = fontInstance.advanceWidth(codePoint)
+        if x >= _width || y >= _height || x + advanceWidth <= 0 || y + fontInstance.size <= 0 {
+          return advanceWidth
         }
 
         # Render uncached glyphs once and pack them together
-        var glyph = font.glyphProvider.render(codePoint, advanceWidth)
+        var glyph = fontInstance.renderGlyph(codePoint)
         var coords = _packer.append(glyph.mask)
         metadata = GlyphMetadata.new(glyph, coords)
         _metadata[key] = metadata
@@ -109,8 +79,8 @@ namespace Graphics {
       }
 
       # Culling
-      else if x >= _width || y >= _height || x + metadata.glyph.advanceWidth <= 0 || y + font.size <= 0 {
-        return metadata.glyph.advanceWidth * inversePixelScale
+      else if x >= _width || y >= _height || x + metadata.glyph.advanceWidth <= 0 || y + fontInstance.size <= 0 {
+        return metadata.glyph.advanceWidth
       }
 
       # Append a single textured quad
@@ -119,12 +89,13 @@ namespace Graphics {
       var buffer = _buffer
       var backgroundLuminanceByte = _backgroundLuminanceByte
       var mask = glyph.mask
+      var maskScale = glyph.maskScale
       var shift = x - Math.floor(x)
       var shiftByte = (shift * 255) as int
-      var minX = x - glyph.originX * inversePixelScale - shift
-      var minY = y - glyph.originY * inversePixelScale
-      var maxX = minX + mask.width * inversePixelScale
-      var maxY = minY + mask.height * inversePixelScale
+      var minX = x - glyph.originX * maskScale - shift
+      var minY = y - glyph.originY * maskScale
+      var maxX = minX + mask.width * maskScale
+      var maxY = minY + mask.height * maskScale
       var minU = coords.minU
       var minV = coords.minV
       var maxU = coords.maxU
@@ -140,7 +111,7 @@ namespace Graphics {
       buffer.appendVertex(maxX, maxY, maxU, maxV, color, shiftByte, backgroundLuminanceByte, 0, 0)
       buffer.appendVertex(minX, maxY, minU, maxV, color, shiftByte, backgroundLuminanceByte, 0, 0)
 
-      return glyph.advanceWidth * inversePixelScale
+      return glyph.advanceWidth
     }
 
     def flush {

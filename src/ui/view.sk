@@ -1,0 +1,127 @@
+namespace UI {
+  enum LayoutKind {
+    MIN
+    STRETCH
+    MAX
+  }
+
+  class AxisLayout {
+    const kind LayoutKind
+    const min double
+    const max double
+
+    def lower(size double) double {
+      return kind == .MAX ? size + min : min
+    }
+
+    def upper(size double) double {
+      return kind == .MIN ? max : size + max
+    }
+  }
+
+  namespace AxisLayout {
+    const STRETCH = AxisLayout.new(.STRETCH, 0, 0)
+  }
+
+  class View {
+    const _window Window
+    var _parent View = null
+    var _bounds Rect = .EMPTY
+    var _children FrozenList<View> = List<View>.new.freeze
+    var _layoutX AxisLayout = .STRETCH
+    var _layoutY AxisLayout = .STRETCH
+
+    def window Window {
+      return _window
+    }
+
+    def parent View {
+      return _parent
+    }
+
+    def children FrozenList<View> {
+      return _children
+    }
+
+    def bounds Rect {
+      return _bounds
+    }
+
+    def layoutX AxisLayout {
+      return _layoutX
+    }
+
+    def layoutY AxisLayout {
+      return _layoutY
+    }
+
+    def setLayout(kindX LayoutKind, minX double, maxX double, kindY LayoutKind, minY double, maxY double) {
+      _layoutX = AxisLayout.new(kindX, minX, maxX)
+      _layoutY = AxisLayout.new(kindY, minY, maxY)
+      updateBounds
+    }
+
+    def handleEvent(event Event) {
+    }
+
+    def handleSizeChange {
+    }
+
+    def render {
+      for i in 0..children.count {
+        window.renderer.renderView(children[i])
+      }
+    }
+
+    def updateBounds {
+      var parentSize = parent != null ? parent.bounds.size : self == window.root ? window.size : Vector.ZERO
+      var minX = layoutX.lower(parentSize.x)
+      var minY = layoutY.lower(parentSize.y)
+      var maxX = layoutX.upper(parentSize.x)
+      var maxY = layoutY.upper(parentSize.y)
+      var newBounds = Rect.new(minX, minY, maxX - minX, maxY - minY)
+      var oldBounds = bounds
+      _bounds = newBounds
+
+      if oldBounds.width != newBounds.width || oldBounds.height != newBounds.height {
+        for i in 0..children.count {
+          children[i].updateBounds
+        }
+        handleSizeChange
+      }
+    }
+
+    def isParentOf(view View) bool {
+      while view != null {
+        view = view.parent
+        if view == self {
+          return true
+        }
+      }
+      return false
+    }
+
+    def appendTo(parent View) {
+      assert(self != parent)
+      assert(self != window.root)
+      assert(parent.window == window)
+      assert(!isParentOf(parent))
+      removeFromParent
+      var children = parent.children.thaw
+      children.append(self)
+      parent._children = children.freeze
+      _parent = parent
+      updateBounds
+    }
+
+    def removeFromParent {
+      if parent != null {
+        assert(self in parent.children)
+        var children = parent.children.thaw
+        children.removeOne(self)
+        parent._children = children.freeze
+        _parent = null
+      }
+    }
+  }
+}

@@ -1,4 +1,4 @@
-namespace Editor.Theme {
+namespace UI.Theme {
   const XCODE = Theme.new({
     Color.BACKGROUND_DEFAULT:      Graphics.RGBA.hex(0xFFFFFF),
     Color.BACKGROUND_MARGIN:       Graphics.RGBA.hex(0xF7F7F7),

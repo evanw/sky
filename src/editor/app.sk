@@ -1,8 +1,8 @@
 namespace Editor {
   class App {
-    const _platform Platform
+    const _platform UI.Platform
 
-    def new(platform Platform) {
+    def new(platform UI.Platform) {
       _platform = platform
       createWindow
     }
@@ -10,14 +10,45 @@ namespace Editor {
     def createWindow {
       var window = _platform.createWindow
       window.setTitle("Untitled - Sky")
+      window.setTheme(.XCODE)
+      window.setFont(.DEFAULT_FONT, MONOSPACE_FONTS, 12, 16)
+      window.setFont(.MARGIN_FONT, MONOSPACE_FONTS, 10, 14)
+      window.setFont(.UI_FONT, SANS_SERIF_FONTS, 12, 16)
 
       var model = Model.new("Untitled", _platform)
       model.setLexer(.SKEW)
 
-      var view = View.new(_platform, window.renderer, model)
-      view.changePadding(5, 5, 5, 5)
-      view.changeMarginPadding(15, 5)
-      window.setView(view)
+      var view = View.new(window, model)
+      if BUILD != .TERMINAL {
+        view.changePadding(5, 5, 5, 5)
+        view.changeMarginPadding(15, 5)
+      } else {
+        view.setScrollbarThickness(1)
+        view.changePadding(0, 0, 1, 0) # Leave one character of padding on the right so the caret can be seen at the end of the line
+        view.changeMarginPadding(1, 1)
+      }
+      view.appendTo(window.root)
+
+      window.setDelegate(view)
+      window.focusView(view)
     }
+  }
+
+  namespace App {
+    const MONOSPACE_FONTS = [
+      "Menlo-Regular",
+      "Monaco",
+      "Consolas",
+      "Courier New",
+      "monospace",
+    ]
+
+    const SANS_SERIF_FONTS = [
+      "San Francisco",
+      "Lucida Grande",
+      "Segoe UI",
+      "Arial",
+      "sans-serif",
+    ]
   }
 }

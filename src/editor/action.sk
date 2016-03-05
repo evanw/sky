@@ -76,84 +76,19 @@ namespace Editor {
     }
   }
 
-  flags Modifiers {
-    ALT
-    META
-    SHIFT
-    CONTROL
-  }
-
   class Shortcut {
     const action Action
-    const modifiers Modifiers
-  }
-
-  enum KeyCode {
-    NONE
-
-    LETTER_A
-    LETTER_B
-    LETTER_C
-    LETTER_D
-    LETTER_E
-    LETTER_F
-    LETTER_G
-    LETTER_H
-    LETTER_I
-    LETTER_J
-    LETTER_K
-    LETTER_L
-    LETTER_M
-    LETTER_N
-    LETTER_O
-    LETTER_P
-    LETTER_Q
-    LETTER_R
-    LETTER_S
-    LETTER_T
-    LETTER_U
-    LETTER_V
-    LETTER_W
-    LETTER_X
-    LETTER_Y
-    LETTER_Z
-
-    NUMBER_0
-    NUMBER_1
-    NUMBER_2
-    NUMBER_3
-    NUMBER_4
-    NUMBER_5
-    NUMBER_6
-    NUMBER_7
-    NUMBER_8
-    NUMBER_9
-
-    ARROW_DOWN
-    ARROW_LEFT
-    ARROW_RIGHT
-    ARROW_UP
-    BACKSPACE
-    COMMA
-    DELETE
-    END
-    ENTER
-    ESCAPE
-    HOME
-    PAGE_DOWN
-    PAGE_UP
-    PERIOD
-    SEMICOLON
+    const modifiers UI.Modifiers
   }
 
   class ShortcutMap {
     const _map IntMap<List<Shortcut>> = {}
 
-    def new(platform Platform) {
+    def new(platform UI.Platform) {
       _load(self, platform)
     }
 
-    def set(keyCode KeyCode, modifiers Modifiers, action Action) {
+    def set(keyCode UI.Key, modifiers UI.Modifiers, action Action) {
       var shortcuts = _map.get(keyCode, null)
       if shortcuts == null {
         shortcuts = []
@@ -162,7 +97,7 @@ namespace Editor {
       shortcuts.append(Shortcut.new(action, modifiers))
     }
 
-    def get(keyCode KeyCode, modifiers Modifiers) Action {
+    def get(keyCode UI.Key, modifiers UI.Modifiers) Action {
       var shortcuts = _map.get(keyCode, null)
       if shortcuts != null {
         for shortcut in shortcuts {
@@ -176,7 +111,7 @@ namespace Editor {
   }
 
   namespace ShortcutMap {
-    def _load(map ShortcutMap, platform Platform) {
+    def _load(map ShortcutMap, platform UI.Platform) {
       var base = platform.baseModifier
       var isOSX = platform.operatingSystem == .OSX
 
@@ -231,12 +166,12 @@ namespace Editor {
       }
     }
 
-    def _setDoubleShortcuts(map ShortcutMap, a KeyCode, b KeyCode, modifiers Modifiers, actionA Action, actionB Action) {
+    def _setDoubleShortcuts(map ShortcutMap, a UI.Key, b UI.Key, modifiers UI.Modifiers, actionA Action, actionB Action) {
       map.set(a, modifiers, actionA)
       map.set(b, modifiers, actionB)
     }
 
-    def _setMoveAndSelectShortcuts(map ShortcutMap, a KeyCode, b KeyCode, modifiers Modifiers, moveA Action, moveB Action, selectA Action, selectB Action) {
+    def _setMoveAndSelectShortcuts(map ShortcutMap, a UI.Key, b UI.Key, modifiers UI.Modifiers, moveA Action, moveB Action, selectA Action, selectB Action) {
       _setDoubleShortcuts(map, a, b, modifiers, moveA, moveB)
       _setDoubleShortcuts(map, a, b, modifiers | .SHIFT, selectA, selectB)
     }

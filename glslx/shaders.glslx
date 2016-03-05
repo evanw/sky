@@ -71,11 +71,21 @@ float boxShadow(vec2 lower, vec2 upper, vec2 point, float sigma) {
   return (integral.z - integral.x) * (integral.w - integral.y);
 }
 
+// A per-pixel "random" number between 0 and 1
+float random() {
+  return fract(sin(dot(vec2(12.9898, 78.233), gl_FragCoord.xy)) * 43758.5453);
+}
+
 export void dropShadowVertex() {
   _position2 = position2;
   gl_Position = vec4(position2.xy * scale2 - sign(scale2), 0, 1);
 }
 
 export void dropShadowFragment() {
-  gl_FragColor = vec4(0, 0, 0, dropShadowOptions.x * boxShadow(dropShadowBox.xy, dropShadowBox.zw, _position2.xy, dropShadowOptions.y));
+  float alpha = dropShadowOptions.x * boxShadow(dropShadowBox.xy, dropShadowBox.zw, _position2.xy, dropShadowOptions.y);
+
+  // Dither the alpha to break up color bands
+  alpha += (random() - 0.5) / 128.0;
+
+  gl_FragColor = vec4(0, 0, 0, alpha);
 }

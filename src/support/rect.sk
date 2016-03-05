@@ -1,0 +1,54 @@
+class Rect {
+  const x double
+  const y double
+  const width double
+  const height double
+
+  def left double {
+    return x
+  }
+
+  def top double {
+    return y
+  }
+
+  def right double {
+    return x + width
+  }
+
+  def bottom double {
+    return y + height
+  }
+
+  def topLeft Vector {
+    return Vector.new(top, left)
+  }
+
+  def topRight Vector {
+    return Vector.new(top, right)
+  }
+
+  def bottomLeft Vector {
+    return Vector.new(bottom, left)
+  }
+
+  def bottomRight Vector {
+    return Vector.new(bottom, right)
+  }
+
+  def size Vector {
+    return Vector.new(width, height)
+  }
+
+  def contains(v Vector) bool {
+    return left <= v.x && v.x < right && top <= v.y && v.y < bottom
+  }
+
+  def equals(r Rect) bool {
+    return x == r.x && y == r.y && width == r.width && height == r.height
+  }
+}
+
+namespace Rect {
+  const EMPTY = new(0, 0, 0, 0)
+}

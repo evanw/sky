@@ -26,14 +26,15 @@ namespace Graphics {
     def addContextResetHandler(callback fn())
     def clear(color RGBA)
     def createMaterial(format VertexFormat, vertexSource string, fragmentSource string) Material
+    def createRenderTarget(texture Texture) RenderTarget
     def createTexture(format TextureFormat, width int, height int) Texture { return createTexture(format, width, height, null) }
     def createTexture(format TextureFormat, width int, height int, pixels FixedArray) Texture
-    def createRenderTarget(texture Texture) RenderTarget
     def draw(primitive Primitive, material Material, vertices FixedArray)
     def height int
     def removeContextResetHandler(callback fn())
     def resize(width int, height int)
     def setRenderTarget(renderTarget RenderTarget)
+    def setViewport(x int, y int, width int, height int)
     def width int
 
     def setBlendState(source BlendOperation, target BlendOperation)

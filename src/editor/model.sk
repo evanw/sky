@@ -15,7 +15,7 @@ namespace Editor {
   # The model is separate from the view so one model can have multiple views.
   class Model {
     var _name string
-    var _platform Platform
+    var _platform UI.Platform
     var _lexer Lexer = null
     var _observers List<ModelObserver> = []
     var _commits List<Commit> = []

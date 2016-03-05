@@ -1,8 +1,7 @@
-namespace Editor.Theme {
+namespace UI.Theme {
   const ATOM = Theme.new({
     Color.BACKGROUND_DEFAULT:            Graphics.RGBA.hex(0x282C34),
     Color.BACKGROUND_SELECTED:           Graphics.RGBA.hex(0x3E4451),
-    Color.FOREGROUND_ANNOTATION:         Graphics.RGBA.hex(0xC678DD),
     Color.FOREGROUND_COMMENT:            Graphics.RGBA.hex(0x5C6370),
     Color.FOREGROUND_CONSTANT:           Graphics.RGBA.hex(0xD19A66),
     Color.FOREGROUND_DEFAULT:            Graphics.RGBA.hex(0xABB2BF),

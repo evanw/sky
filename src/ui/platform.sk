@@ -1,4 +1,4 @@
-namespace Editor {
+namespace UI {
   enum OperatingSystem {
     ANDROID
     IOS
@@ -16,20 +16,13 @@ namespace Editor {
     UNKNOWN
   }
 
-  interface Window {
-    def renderer SemanticRenderer
-    def setView(view Editor.View)
-    def setTitle(title string)
-  }
-
   interface Platform {
     def operatingSystem OperatingSystem
     def userAgent UserAgent
     def nowInSeconds double
-    def createGlyphProvider(fontNames List<string>) Graphics.GlyphProvider
     def createWindow Window # This may return null when called multiple times
 
-    def baseModifier Editor.Modifiers {
+    def baseModifier Modifiers {
       return operatingSystem == .OSX ? .META : .CONTROL
     }
   }

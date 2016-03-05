@@ -36,13 +36,6 @@ namespace Editor {
     SHOW_MARGIN
   }
 
-  class MouseEvent {
-    const x double
-    const y double
-    const modifiers Modifiers
-    const clickCount int
-  }
-
   enum MouseMode {
     NONE
     SELECTING_CHARACTERS
@@ -145,7 +138,7 @@ namespace Editor {
       }
     }
 
-    def render(renderer SemanticRenderer) {
+    def render(renderer UI.SemanticRenderer) {
       if isNeeded {
         renderer.renderScrollbarThumb(
           _isX ? _x + _mappedOffset : _x,
@@ -156,24 +149,24 @@ namespace Editor {
       }
     }
 
-    def containsPoint(event MouseEvent) bool {
-      var x = event.x - _x
-      var y = event.y - _y
+    def containsPoint(viewLocation Vector) bool {
+      var x = viewLocation.x - _x
+      var y = viewLocation.y - _y
       return isNeeded && x >= 0 && y >= 0 && x < _width && y < _height
     }
 
-    def startDragging(event MouseEvent) bool {
-      if containsPoint(event) {
+    def startDragging(viewLocation Vector, modifiers UI.Modifiers) bool {
+      if containsPoint(viewLocation) {
         var pageSize = _viewSize * (_positionSize - _mappedSize) / (_scrollSize - _viewSize)
-        _draggingOffset = .ALT in event.modifiers ? _mappedSize / 2 : (_isX ? event.x - _x : event.y - _y) - _mappedOffset
+        _draggingOffset = .ALT in modifiers ? _mappedSize / 2 : (_isX ? viewLocation.x - _x : viewLocation.y - _y) - _mappedOffset
         _draggingOffset += pageSize * (_draggingOffset < 0 ? 1 : _draggingOffset >= _mappedSize ? -1 : 0)
         return true
       }
       return false
     }
 
-    def continueDragging(event MouseEvent) bool {
-      return setScrollOffset(((_isX ? event.x - _x : event.y - _y) - _draggingOffset) * (_scrollSize - _viewSize) / (_positionSize - _mappedSize))
+    def continueDragging(viewLocation Vector) bool {
+      return setScrollOffset(((_isX ? viewLocation.x - _x : viewLocation.y - _y) - _draggingOffset) * (_scrollSize - _viewSize) / (_positionSize - _mappedSize))
     }
 
     def _computeMapped {
@@ -188,15 +181,17 @@ namespace Editor {
   # editor, however, since fractional values should only occur when the view
   # is given fractional inputs. Terminal-based editors can just use integers
   # and everything will still work.
-  class View :: ModelObserver {
-    const _platform Platform
-    const _renderer SemanticRenderer
+  class View : UI.View :: ModelObserver, UI.WindowDelegate {
     var _model Model
     var _selection = Selection.new([.EMPTY])
+    var _isInvalid = true
+    var _areCaretsVisible = true
+    var _caretBlinkStartTime = 0.0
+    var _idleCount = 0
 
     # Mouse handling
     var _previousSelection Selection = null
-    var _previousMouseEvent MouseEvent = null
+    var _previousViewLocation Vector = null
     var _mergeBehavior SelectionMerge = .NONE
     var _draggingScrollbar Scrollbar = null
     var _mouseMode MouseMode = .NONE
@@ -215,7 +210,7 @@ namespace Editor {
     var _paddingBottom = 0.0
     var _lineHeight = 1.0
     var _advanceWidth = 1.0
-    var _marginAdvanceWidth = 0.0
+    var _marginAdvanceWidth = 1.0
     var _marginWidth = 0.0
     var _marginPaddingLeft = 0.0
     var _marginPaddingRight = 0.0
@@ -226,10 +221,18 @@ namespace Editor {
       ViewSetting.SHOW_MARGIN: true,
     }
 
-    def new(platform Platform, renderer SemanticRenderer, model Model) {
-      _platform = platform
-      _renderer = renderer
+    def new(window UI.Window, model Model) {
+      super(window)
       setModel(model)
+
+      _advanceWidth = window.renderer.fontInstance(.DEFAULT_FONT).advanceWidth(' ')
+      _marginAdvanceWidth = window.renderer.fontInstance(.MARGIN_FONT).advanceWidth(' ')
+      _lineHeight = window.renderer.fontInstance(.DEFAULT_FONT).lineHeight
+
+      _scrollbarX.setMinimumSize(_lineHeight * 3)
+      _scrollbarY.setMinimumSize(_lineHeight * 3)
+      _updateScrollSizeAndInvalidate(.NORMAL)
+      _invalidate(.RESET_CARET_BLINK_TIME)
     }
 
     def model Model {
@@ -247,7 +250,7 @@ namespace Editor {
 
     def changeSetting(setting ViewSetting, value bool) {
       _settings[setting] = value
-      _updateScrollSizeAndInvalidate
+      _updateScrollSizeAndInvalidate(.NORMAL)
     }
 
     def changePadding(left double, top double, right double, bottom double) {
@@ -255,82 +258,121 @@ namespace Editor {
       _paddingTop = top
       _paddingRight = right
       _paddingBottom = bottom
-      _updateScrollSizeAndInvalidate
+      _updateScrollSizeAndInvalidate(.NORMAL)
     }
 
     def changeMarginPadding(left double, right double) {
       _marginPaddingLeft = left
       _marginPaddingRight = right
-      _updateScrollSizeAndInvalidate
-    }
-
-    def resizeFont(width double, marginWidth double, height double) {
-      _advanceWidth = width
-      _marginAdvanceWidth = marginWidth
-      _lineHeight = height
-      _scrollbarX.setMinimumSize(height * 3)
-      _scrollbarY.setMinimumSize(height * 3)
-      _updateScrollSizeAndInvalidate
+      _updateScrollSizeAndInvalidate(.NORMAL)
     }
 
     def setScrollbarThickness(thickness double) {
       _scrollbarThickness = thickness
-      _updateScrollSizeAndInvalidate
+      _updateScrollSizeAndInvalidate(.NORMAL)
     }
 
-    def resize(newWidth double, newHeight double) {
-      _viewWidth = newWidth
-      _viewHeight = newHeight
-      _updateScrollSizeAndInvalidate
+    over updateBounds {
+      super
+      _viewWidth = bounds.width
+      _viewHeight = bounds.height
+      _updateScrollSizeAndInvalidate(.NORMAL)
     }
 
-    def handleScroll(deltaX double, deltaY double) {
+    def _handleScroll(deltaX double, deltaY double) {
       var updatedX = _scrollbarX.setScrollOffset(_scrollbarX.scrollOffset + deltaX)
       var updatedY = _scrollbarY.setScrollOffset(_scrollbarY.scrollOffset + deltaY)
 
       if updatedX || updatedY {
-        _renderer.invalidate
-        if _previousMouseEvent != null {
-          handleMouseMove(_previousMouseEvent)
+        _invalidate(.NORMAL)
+
+        if _previousViewLocation != null {
+          handleMouseMove(_previousViewLocation)
         }
       }
     }
 
-    def handleMouseDown(event MouseEvent) {
-      handleMouseMove(event)
-      if _scrollbarX.startDragging(event) {
-        _draggingScrollbar = _scrollbarX
-      } else if _scrollbarY.startDragging(event) {
-        _draggingScrollbar = _scrollbarY
-      } else {
-        _draggingScrollbar = null
-        _mergeBehavior = _platform.baseModifier in event.modifiers ? .UNION : .SHIFT in event.modifiers ? .EXTEND : .NONE
-        _previousSelection = _selection
-        _mouseMode = event.x < _marginWidth ? .SELECTING_LINES : .ALT in event.modifiers ? .SELECTING_BOX : .SELECTING_CHARACTERS
-        _mouseStep = ((event.clickCount + 2) % 3) as StepX
-        _draggingMarker = _markerFromEvent(event, _mouseMode)
-        _draggingRegion = _regionFromEvent(event, _mouseMode, _mouseStep)
+    over handleEvent(event UI.Event) {
+      switch event.type {
+        case .MOUSE_DOWN {
+          var viewLocation = event.mouseEvent.locationInView(self)
+          handleMouseMove(viewLocation)
+
+          if _scrollbarX.startDragging(viewLocation, event.mouseEvent.modifiers) {
+            _draggingScrollbar = _scrollbarX
+          }
+
+          else if _scrollbarY.startDragging(viewLocation, event.mouseEvent.modifiers) {
+            _draggingScrollbar = _scrollbarY
+          }
+
+          else {
+            _draggingScrollbar = null
+            _mergeBehavior =
+              window.platform.baseModifier in event.mouseEvent.modifiers ? .UNION :
+              .SHIFT in event.mouseEvent.modifiers ? .EXTEND :
+              .NONE
+            _previousSelection = _selection
+            _mouseMode =
+              event.mouseEvent.locationInWindow.x < _marginWidth ? .SELECTING_LINES :
+              .ALT in event.mouseEvent.modifiers ? .SELECTING_BOX :
+              .SELECTING_CHARACTERS
+            _mouseStep = ((event.mouseEvent.clickCount + 2) % 3) as StepX
+            _draggingMarker = _markerFromViewLocation(viewLocation, _mouseMode)
+            _draggingRegion = _regionFromViewLocation(viewLocation, _mouseMode, _mouseStep)
+          }
+
+          handleMouseMove(viewLocation)
+          event.accept
+        }
+
+        case .MOUSE_MOVE {
+          handleMouseMove(event.mouseEvent.locationInView(self))
+        }
+
+        case .MOUSE_UP {
+          handleMouseMove(event.mouseEvent.locationInView(self))
+          _draggingScrollbar = null
+          _mouseMode = .NONE
+        }
+
+        case .MOUSE_SCROLL {
+          _handleScroll(event.mouseEvent.delta.x, event.mouseEvent.delta.y)
+        }
+
+        case .CLIPBOARD_CUT, .CLIPBOARD_COPY {
+          var selection = _selection.isEmpty ? selectionExpandedToLines : _selection
+          event.clipboardEvent.text = textInSelection(selection)
+
+          if event.type == .CLIPBOARD_CUT {
+            changeSelection(selection, .DO_NOT_SCROLL)
+            insertText("")
+          }
+        }
+
+        case .CLIPBOARD_PASTE {
+          insertText(event.clipboardEvent.text)
+        }
       }
-      handleMouseMove(event)
     }
 
-    def handleMouseMove(event MouseEvent) {
+    def handleMouseMove(viewLocation Vector) {
       if _draggingScrollbar != null {
-        if _draggingScrollbar.continueDragging(event) {
-          _renderer.invalidate
+        if _draggingScrollbar.continueDragging(viewLocation) {
+          _invalidate(.NORMAL)
         }
-        _renderer.setCursor(.ARROW)
+        window.setCursor(.ARROW)
       }
 
       else if _mouseMode != .NONE {
         var regions = _mergeBehavior != .NONE ? _previousSelection.regions.clone : List<Region>.new
-        var marker = _markerFromEvent(event, _mouseMode)
+        var marker = _markerFromViewLocation(viewLocation, _mouseMode)
 
         switch _mouseMode {
           case .SELECTING_CHARACTERS {
             regions.append(_mergeBehavior == .EXTEND
               ? Region.span(regions.takeLast, Region.new(marker))
-              : Region.span(_draggingRegion, _regionFromEvent(event, _mouseMode, _mouseStep)))
+              : Region.span(_draggingRegion, _regionFromViewLocation(viewLocation, _mouseMode, _mouseStep)))
           }
 
           case .SELECTING_LINES {
@@ -354,10 +396,10 @@ namespace Editor {
             # Add clamped regions inside the selection box
             for y = minY; y <= maxY; y++ {
               var count = _model[y].text.count
-              var start = Math.clamp(minX, 0, count)
-              var end = Math.clamp(maxX, 0, count)
-              regions.append(Region.new(Marker.new(start, y), Marker.new(end, y)))
-              if start < end {
+              var start = Marker.new(Math.clamp(minX, 0, count), y)
+              var end = Marker.new(Math.clamp(maxX, 0, count), y)
+              regions.append(_draggingMarker.x == minX ? Region.new(start, end) : Region.new(end, start))
+              if start.x != end.x {
                 hasArea = true
               }
             }
@@ -376,20 +418,14 @@ namespace Editor {
         }
 
         changeSelection(Selection.new(regions), .SCROLL_INTO_VIEW)
-        _renderer.setCursor(.TEXT)
+        window.setCursor(.TEXT)
       }
 
       else {
-        _renderer.setCursor(_scrollbarX.containsPoint(event) || _scrollbarY.containsPoint(event) ? .ARROW : .TEXT)
+        window.setCursor(_scrollbarX.containsPoint(viewLocation) || _scrollbarY.containsPoint(viewLocation) ? .ARROW : .TEXT)
       }
 
-      _previousMouseEvent = event
-    }
-
-    def handleMouseUp(event MouseEvent) {
-      handleMouseMove(event)
-      _draggingScrollbar = null
-      _mouseMode = .NONE
+      _previousViewLocation = viewLocation
     }
 
     def selection Selection {
@@ -417,7 +453,7 @@ namespace Editor {
     def changeSelection(selection Selection, scroll ScrollBehavior) {
       _selection = selection
       _scrollSelectionIntoView(selection, scroll)
-      _renderer.invalidate
+      _invalidate(.RESET_CARET_BLINK_TIME)
     }
 
     def textInSelection(selection Selection) string {
@@ -439,11 +475,12 @@ namespace Editor {
         }
         _model = model
         model.addObserver(self)
-        _updateScrollSizeAndInvalidate
+        _updateScrollSizeAndInvalidate(.RESET_CARET_BLINK_TIME)
       }
     }
 
-    def render {
+    over render {
+      var renderer = window.renderer
       var translateX = _paddingLeft - _scrollbarX.scrollOffset + _marginWidth
       var translateY = _paddingTop - _scrollbarY.scrollOffset
       var minX = _leftCharacter
@@ -456,7 +493,7 @@ namespace Editor {
       _model.styleLinesIfNeeded(minY, maxY)
 
       # Clear the background
-      _renderer.renderRect(0, 0, _viewWidth, _viewHeight, .BACKGROUND_DEFAULT)
+      renderer.renderRect(0, 0, _viewWidth, _viewHeight, .BACKGROUND_DEFAULT)
 
       # Render selections
       for region in regions {
@@ -473,7 +510,7 @@ namespace Editor {
 
           if startX != endX {
             var lineY = translateY + _lineHeight * y
-            _renderer.renderRect(translateX + _advanceWidth * startX, lineY, _advanceWidth * (endX - startX), _lineHeight, .BACKGROUND_SELECTED)
+            renderer.renderRect(translateX + _advanceWidth * startX, lineY, _advanceWidth * (endX - startX), _lineHeight, .BACKGROUND_SELECTED)
 
             # Render whitespace characters
             var limit = Math.min(endX, count)
@@ -485,7 +522,7 @@ namespace Editor {
                 spaceText += SPACE_CHARACTER
               } else {
                 if spaceText != "" {
-                  _renderer.renderText(translateX + _advanceWidth * spaceStart, lineY, spaceText, .DEFAULT, .FOREGROUND_DEFAULT, 63)
+                  renderer.renderText(translateX + _advanceWidth * spaceStart, lineY, spaceText, .DEFAULT_FONT, .FOREGROUND_DEFAULT, 0x3F)
                   spaceText = ""
                 }
                 spaceStart = x + 1
@@ -504,7 +541,7 @@ namespace Editor {
 
         # Rendering unstyled text is simple
         if spans == null {
-          _renderer.renderText(translateX, offsetY, line.text, .DEFAULT, .FOREGROUND_DEFAULT, 255)
+          renderer.renderText(translateX, offsetY, line.text, .DEFAULT_FONT, .FOREGROUND_DEFAULT, 0xFF)
         }
 
         # Render text styled by spans
@@ -522,17 +559,17 @@ namespace Editor {
 
             # Render default-styled text between each span
             if previous < start {
-              _renderer.renderText(translateX + _advanceWidth * previous, offsetY, line.text.slice(previous, start), .DEFAULT, .FOREGROUND_DEFAULT, 255)
+              renderer.renderText(translateX + _advanceWidth * previous, offsetY, line.text.slice(previous, start), .DEFAULT_FONT, .FOREGROUND_DEFAULT, 0xFF)
             }
 
             # Render the styled span text
-            _renderer.renderText(translateX + _advanceWidth * start, offsetY, line.text.slice(start, end), .DEFAULT, span.color, 255)
+            renderer.renderText(translateX + _advanceWidth * start, offsetY, line.text.slice(start, end), .DEFAULT_FONT, span.color, 0xFF)
             previous = end
           }
 
           # Render one last run of unstyled text after the last span
           if previous < limit && limit >= minX && previous <= maxX {
-            _renderer.renderText(translateX + _advanceWidth * previous, offsetY, line.text.slice(previous, limit), .DEFAULT, .FOREGROUND_DEFAULT, 255)
+            renderer.renderText(translateX + _advanceWidth * previous, offsetY, line.text.slice(previous, Math.min(limit, maxX)), .DEFAULT_FONT, .FOREGROUND_DEFAULT, 0xFF)
           }
         }
 
@@ -545,7 +582,7 @@ namespace Editor {
 
             # Render a squiggle under the text if visible
             if start >= previousEnd && end >= minX && start <= maxX {
-              _renderer.renderSquiggle(translateX + _advanceWidth * start,
+              renderer.renderSquiggle(translateX + _advanceWidth * start,
                 offsetY, _advanceWidth * (end - start), _lineHeight,
                 diagnostic.kind == .ERROR ? .BACKGROUND_DIAGNOSTIC_ERROR : .BACKGROUND_DIAGNOSTIC_WARNING)
               previousEnd = end
@@ -559,7 +596,9 @@ namespace Editor {
       for region in regions {
         var marker = region.end
         if minY <= marker.y && marker.y <= maxY {
-          _renderer.renderCaret(translateX + _advanceWidth * marker.x, translateY + _lineHeight * marker.y, .FOREGROUND_CARET)
+          if _areCaretsVisible {
+            renderer.renderCaret(translateX + _advanceWidth * marker.x, translateY + _lineHeight * marker.y, .FOREGROUND_CARET)
+          }
           shouldHighlightLineInMargin[marker.y] = true
         }
       }
@@ -568,11 +607,11 @@ namespace Editor {
       if _marginWidth != 0 {
         # Render the shadow first so it doesn't show up over the margin
         if _scrollbarX.scrollOffset != 0 {
-          _renderer.renderRightwardShadow(_marginWidth, 0, 20, _viewHeight)
+          renderer.renderRightwardShadow(_marginWidth, 0, 20, _viewHeight)
         }
 
         # Clear the background behind the line number margin
-        _renderer.renderRect(0, 0, _marginWidth, _viewHeight, .BACKGROUND_MARGIN)
+        renderer.renderRect(0, 0, _marginWidth, _viewHeight, .BACKGROUND_MARGIN)
 
         # Render line numbers
         var rightAlignWidth = _model.count.toString.count
@@ -581,29 +620,31 @@ namespace Editor {
           var offsetY = translateY + y * _lineHeight
           var isHighlighted = y in shouldHighlightLineInMargin
           if isHighlighted {
-            _renderer.renderRect(0, offsetY, _marginWidth, _lineHeight, .BACKGROUND_MARGIN_HIGHLIGHTED)
+            renderer.renderRect(0, offsetY, _marginWidth, _lineHeight, .BACKGROUND_MARGIN_HIGHLIGHTED)
           }
-          _renderer.renderText(_marginPaddingLeft + _marginAdvanceWidth * (rightAlignWidth - text.count),
-            offsetY, text, .MARGIN, isHighlighted ? .FOREGROUND_MARGIN_HIGHLIGHTED : .FOREGROUND_MARGIN, 255)
+          renderer.renderText(_marginPaddingLeft + _marginAdvanceWidth * (rightAlignWidth - text.count),
+            offsetY, text, .MARGIN_FONT, isHighlighted ? .FOREGROUND_MARGIN_HIGHLIGHTED : .FOREGROUND_MARGIN, 0xFF)
         }
 
         # Render the border on top so the margin highlight doesn't obscure it
-        _renderer.renderVerticalLine(_marginWidth, 0, _viewHeight, .BORDER_MARGIN)
+        renderer.renderVerticalLine(_marginWidth, 0, _viewHeight, .BORDER_MARGIN)
       }
 
       # Render lines for errors and warnings under the scrollbars
       for i = 0; i < _model.count; i++ {
         var line = _model[i]
         if line.diagnostics != null {
-          _renderer.renderHorizontalLine(_viewWidth - _scrollbarThickness, _viewWidth,
+          renderer.renderHorizontalLine(_viewWidth - _scrollbarThickness, _viewWidth,
             _scrollbarY.mappedPosition(_paddingTop + _lineHeight * (i + 0.5)),
             line.hasErrors ? .BACKGROUND_DIAGNOSTIC_ERROR : .BACKGROUND_DIAGNOSTIC_WARNING)
         }
       }
 
       # Render the scrollbars
-      _scrollbarX.render(_renderer)
-      _scrollbarY.render(_renderer)
+      _scrollbarX.render(renderer)
+      _scrollbarY.render(renderer)
+
+      _isInvalid = false
     }
 
     def insertText(text string) {
@@ -616,6 +657,39 @@ namespace Editor {
       }
       _model.applyChanges(changes)
       _scrollTo(_selection.max)
+    }
+
+    enum InvalidateMode {
+      NORMAL
+      RESET_CARET_BLINK_TIME
+    }
+
+    def _invalidate(mode InvalidateMode) {
+      _isInvalid = true
+
+      if mode == .RESET_CARET_BLINK_TIME {
+        _caretBlinkStartTime = window.platform.nowInSeconds
+      }
+    }
+
+    def handleFrame {
+      var areCaretsVisible = window.isActive && ((((window.platform.nowInSeconds - _caretBlinkStartTime) * 2) as int) & 1) == 0
+
+      # Skip rendering if not invalid
+      if !_isInvalid && areCaretsVisible == _areCaretsVisible {
+        _idleCount++
+
+        # Render something at 10 fps even when idle otherwise Chrome's
+        # render loop goes idle and stutters when starting back up
+        if window.platform.userAgent == .CHROME && _idleCount == 6 {
+          _idleCount = 0
+        } else {
+          return
+        }
+      }
+
+      _areCaretsVisible = areCaretsVisible
+      window.render
     }
 
     def triggerAction(action Action) {
@@ -637,9 +711,9 @@ namespace Editor {
         case .INSERT_LINE_BELOW { _insertLineY(.NEXT) }
 
         case .SCROLL_DOWN_DOCUMENT { _scrollTo(selectionContainingEverything.max) }
-        case .SCROLL_DOWN_LINE { handleScroll(0, _lineHeight) }
+        case .SCROLL_DOWN_LINE { _handleScroll(0, _lineHeight) }
         case .SCROLL_UP_DOCUMENT { _scrollTo(.ZERO) }
-        case .SCROLL_UP_LINE { handleScroll(0, -_lineHeight) }
+        case .SCROLL_UP_LINE { _handleScroll(0, -_lineHeight) }
 
         case .MOVE_DOWN_DOCUMENT,   .SELECT_DOWN_DOCUMENT,   .DELETE_DOWN_DOCUMENT   { _triggerActionY(motion, .NEXT, .DOCUMENT) }
         case .MOVE_DOWN_LINE,       .SELECT_DOWN_LINE,       .DELETE_DOWN_LINE       { _triggerActionY(motion, .NEXT, .LINE) }
@@ -657,11 +731,11 @@ namespace Editor {
     }
 
     def handleLexerChange(model Model) {
-      _renderer.invalidate
+      _invalidate(.NORMAL)
     }
 
     def handleDiagnosticChange(model Model) {
-      _renderer.invalidate
+      _invalidate(.NORMAL)
     }
 
     def handleToggleCommit(mode Model, commit Commit, direction CommitDirection) {
@@ -671,24 +745,17 @@ namespace Editor {
         regions.append(Region.new(direction == .UNDO ? change.region.min : max, max))
       }
       changeSelection(Selection.new(regions), .SCROLL_INTO_VIEW)
-      _updateScrollSizeAndInvalidate
+      _updateScrollSizeAndInvalidate(.RESET_CARET_BLINK_TIME)
     }
 
-    def _markerFromEvent(event MouseEvent, mode MouseMode) Marker {
-      var x = Math.round((event.x + _scrollbarX.scrollOffset - _paddingLeft - _marginWidth) / _advanceWidth) as int
-      var y = Math.floor((event.y + _scrollbarY.scrollOffset - _paddingTop) / _lineHeight) as int
-
-      if mode == .SELECTING_BOX {
-        return Marker.new(x, y)
-      }
-
-      var clampedY = Math.clamp(y, 0, _model.count - 1)
-      var clampedX = Math.clamp(x, 0, _model[clampedY].text.count)
-      return Marker.new(clampedX, clampedY)
+    def _markerFromViewLocation(viewLocation Vector, mode MouseMode) Marker {
+      var x = Math.round((viewLocation.x + _scrollbarX.scrollOffset - _paddingLeft - _marginWidth) / _advanceWidth) as int
+      var clampedY = Math.clamp(Math.floor((viewLocation.y + _scrollbarY.scrollOffset - _paddingTop) / _lineHeight) as int, 0, _model.count - 1)
+      return Marker.new(mode == .SELECTING_BOX ? x : Math.clamp(x, 0, _model[clampedY].text.count), clampedY)
     }
 
-    def _regionFromEvent(event MouseEvent, mode MouseMode, step StepX) Region {
-      var marker = _markerFromEvent(event, mode)
+    def _regionFromViewLocation(viewLocation Vector, mode MouseMode, step StepX) Region {
+      var marker = _markerFromViewLocation(viewLocation, mode)
       var x = marker.x
       var y = marker.y
       var line = _model[y]
@@ -829,7 +896,7 @@ namespace Editor {
       }
     }
 
-    def _updateScrollSizeAndInvalidate {
+    def _updateScrollSizeAndInvalidate(mode InvalidateMode) {
       if _viewWidth == 0 || _viewHeight == 0 {
         return
       }
@@ -843,7 +910,7 @@ namespace Editor {
       _scrollbarY.resize(_viewHeight, scrollHeight)
       _scrollbarX.setPosition(_marginWidth, _viewHeight - _scrollbarThickness, _viewWidth - (_scrollbarY.isNeeded ? _scrollbarThickness : 0), _viewHeight)
       _scrollbarY.setPosition(_viewWidth - _scrollbarThickness, 0, _viewWidth, _viewHeight - (_scrollbarX.isNeeded ? _scrollbarThickness : 0))
-      _renderer.invalidate
+      _invalidate(mode)
     }
 
     def _leftCharacter int {
@@ -901,7 +968,7 @@ namespace Editor {
           var marker = regions.first.min
           _scrollbarX.setScrollOffset(marker.x * _advanceWidth - (_viewWidth - _paddingLeft - _paddingRight - _marginWidth) / 2)
           _scrollbarY.setScrollOffset(marker.y * _lineHeight - (_viewHeight - _lineHeight - _paddingTop - _paddingBottom) / 2)
-          _renderer.invalidate
+          _invalidate(.RESET_CARET_BLINK_TIME)
         }
       }
     }
@@ -923,7 +990,7 @@ namespace Editor {
       }
 
       if _scrollbarX.setScrollOffset(offsetX) {
-        _renderer.invalidate
+        _invalidate(.RESET_CARET_BLINK_TIME)
       }
     }
 
@@ -940,7 +1007,7 @@ namespace Editor {
       }
 
       if _scrollbarY.setScrollOffset(offsetY) {
-        _renderer.invalidate
+        _invalidate(.RESET_CARET_BLINK_TIME)
       }
     }
   }

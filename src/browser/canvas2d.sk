@@ -2,9 +2,12 @@ namespace Browser {
   class CanvasElement2D : CanvasElement {
     var _context dynamic
     var _cachedStyles IntMap<string> = {}
+    var _hasViewport = false
+    var _previousFont UI.Font = .DEFAULT_FONT
+    var _isPreviousFontValid = false
 
-    def new(platform Editor.Platform, shortcuts Editor.ShortcutMap) {
-      super(platform, shortcuts)
+    def new(window Window) {
+      super(window)
       _context = _element.getContext("2d")
 
       Log.info("initialized 2D canvas")
@@ -14,17 +17,42 @@ namespace Browser {
       _element.style.background = _colorToStyle(color)
     }
 
-    over _renderNothing {
-      _context.fillStyle = "rgba(0,0,0,0.001)"
-      _context.fillRect(0, 0, 1, 1)
+    over setViewport(x double, y double, width double, height double) {
+      if _hasViewport {
+        _context.restore()
+      }
+
+      _context.save()
+      _context.translate(x, y)
+      _context.beginPath()
+      _context.rect(0, 0, width, height)
+      _context.clip()
+      _hasViewport = true
     }
 
-    over _updateSize {
-      super
+    over _afterResize {
       _context.scale(_pixelScale, _pixelScale)
     }
 
+    over beginFrame {
+      super
+
+      _isPreviousFontValid = false
+      _context.clearRect(0, 0, _width, _height)
+    }
+
+    over endFrame {
+      super
+
+      if _hasViewport {
+        _context.restore()
+        _hasViewport = false
+      }
+    }
+
     over fillRect(x double, y double, width double, height double, color Graphics.RGBA) {
+      assert(_isRendering)
+
       if x >= _width || y >= _height || x + width <= 0 || y + height <= 0 {
         return
       }
@@ -34,6 +62,8 @@ namespace Browser {
     }
 
     over fillRoundedRect(x double, y double, width double, height double, color Graphics.RGBA, radius double) {
+      assert(_isRendering)
+
       if x >= _width || y >= _height || x + width <= 0 || y + height <= 0 {
         return
       }
@@ -57,6 +87,8 @@ namespace Browser {
     }
 
     over strokePolyline(coordinates List<double>, color Graphics.RGBA, thickness double) {
+      assert(_isRendering)
+
       assert(coordinates.count % 2 == 0)
 
       var context = _context
@@ -76,6 +108,8 @@ namespace Browser {
       clipX double, clipY double, clipWidth double, clipHeight double,
       shadowAlpha double, blurSigma double) {
 
+      assert(_isRendering)
+
       if clipX >= _width || clipY >= _height || clipX + clipWidth <= 0 || clipY + clipHeight <= 0 {
         return
       }
@@ -86,16 +120,19 @@ namespace Browser {
       context.rect(clipX, clipY, clipWidth, clipHeight)
       context.clip()
       context.shadowColor = "rgba(0,0,0,\(shadowAlpha))"
-      context.shadowOffsetX = offset
-      context.shadowOffsetY = offset
-      context.shadowBlur = blurSigma * 3
+      context.shadowOffsetX = offset * _pixelScale
+      context.shadowOffsetY = offset * _pixelScale
+      context.shadowBlur = blurSigma * 3 * _pixelScale
       context.fillStyle = "#000"
       context.fillRect(rectX - offset, rectY - offset, rectWidth, rectHeight)
       context.restore()
     }
 
-    over renderText(x double, y double, text string, font Editor.Font, color Graphics.RGBA) {
-      if x >= _width || y >= _height || y + _fontSize <= 0 {
+    over renderText(x double, y double, text string, font UI.Font, color Graphics.RGBA) {
+      assert(_isRendering)
+
+      var fontInstance = _fontInstances.get(font, null)
+      if fontInstance == null || x >= _width || y >= _height || y + _defaultFontSize <= 0 {
         return
       }
 
@@ -103,11 +140,11 @@ namespace Browser {
       if !_isPreviousFontValid || font != _previousFont {
         _previousFont = font
         _isPreviousFontValid = true
-        _context.font = font == .MARGIN ? _marginFontText : _fontText
+        _context.font = fontInstance.canvasText
       }
 
       _context.fillStyle = _colorToStyle(color)
-      _context.fillText(text, x, y + _fontSize)
+      _context.fillText(text, x, y + _defaultFontSize)
     }
 
     def _colorToStyle(color Graphics.RGBA) string {

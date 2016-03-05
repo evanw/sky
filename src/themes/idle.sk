@@ -1,4 +1,4 @@
-namespace Editor.Theme {
+namespace UI.Theme {
   const IDLE = Theme.new({
     Color.BACKGROUND_DEFAULT:          Graphics.RGBA.hex(0xFFFFFF),
     Color.BACKGROUND_SELECTED:         Graphics.RGBA.hex(0xBEBEBE),

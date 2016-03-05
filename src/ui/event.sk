@@ -1,0 +1,157 @@
+namespace UI {
+  flags Modifiers {
+    ALT
+    META
+    SHIFT
+    CONTROL
+  }
+
+  enum Key {
+    NONE
+
+    LETTER_A
+    LETTER_B
+    LETTER_C
+    LETTER_D
+    LETTER_E
+    LETTER_F
+    LETTER_G
+    LETTER_H
+    LETTER_I
+    LETTER_J
+    LETTER_K
+    LETTER_L
+    LETTER_M
+    LETTER_N
+    LETTER_O
+    LETTER_P
+    LETTER_Q
+    LETTER_R
+    LETTER_S
+    LETTER_T
+    LETTER_U
+    LETTER_V
+    LETTER_W
+    LETTER_X
+    LETTER_Y
+    LETTER_Z
+
+    NUMBER_0
+    NUMBER_1
+    NUMBER_2
+    NUMBER_3
+    NUMBER_4
+    NUMBER_5
+    NUMBER_6
+    NUMBER_7
+    NUMBER_8
+    NUMBER_9
+
+    ARROW_DOWN
+    ARROW_LEFT
+    ARROW_RIGHT
+    ARROW_UP
+    BACKSPACE
+    COMMA
+    DELETE
+    END
+    ENTER
+    ESCAPE
+    HOME
+    PAGE_DOWN
+    PAGE_UP
+    PERIOD
+    SEMICOLON
+  }
+
+  enum EventKind {
+    MOUSE_DOWN
+    MOUSE_MOVE
+    MOUSE_UP
+    MOUSE_SCROLL
+
+    KEY_DOWN
+    KEY_UP
+
+    FOCUS_ENTER
+    FOCUS_LEAVE
+
+    CLIPBOARD_CUT
+    CLIPBOARD_COPY
+    CLIPBOARD_PASTE
+
+    def isMouseEvent bool {
+      return self >= MOUSE_DOWN && self <= MOUSE_SCROLL
+    }
+
+    def isKeyEvent bool {
+      return self >= KEY_DOWN && self <= KEY_UP
+    }
+
+    def isFocusEvent bool {
+      return self >= FOCUS_ENTER && self <= FOCUS_LEAVE
+    }
+
+    def isClipboardEvent bool {
+      return self >= CLIPBOARD_CUT && self <= CLIPBOARD_PASTE
+    }
+  }
+
+  class Event {
+    const type EventKind
+    const target View
+    var _wasAccepted = false
+
+    def wasAccepted bool {
+      return _wasAccepted
+    }
+
+    def accept {
+      _wasAccepted = true
+    }
+
+    def mouseEvent MouseEvent {
+      assert(type.isMouseEvent && self is MouseEvent)
+      return self as MouseEvent
+    }
+
+    def keyEvent KeyEvent {
+      assert(type.isKeyEvent && self is KeyEvent)
+      return self as KeyEvent
+    }
+
+    def clipboardEvent ClipboardEvent {
+      assert(type.isClipboardEvent && self is ClipboardEvent)
+      return self as ClipboardEvent
+    }
+  }
+
+  class MouseEvent : Event {
+    const locationInWindow Vector
+    const modifiers Modifiers
+    const clickCount int
+    const delta Vector
+
+    def locationInView(view View) Vector {
+      var x = locationInWindow.x
+      var y = locationInWindow.y
+
+      while view != null {
+        x -= view.bounds.x
+        y -= view.bounds.y
+        view = view.parent
+      }
+
+      return Vector.new(x, y)
+    }
+  }
+
+  class KeyEvent : Event {
+    const key Key
+    const modifiers Modifiers
+  }
+
+  class ClipboardEvent : Event {
+    var text string
+  }
+}

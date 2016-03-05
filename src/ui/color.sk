@@ -1,4 +1,4 @@
-namespace Editor {
+namespace UI {
   # Colors in the theme are identified semantically using these identifiers.
   # Most identifiers have a fallback identifier that will be substituted if
   # the theme doesn't override that identifier's color.
@@ -40,7 +40,7 @@ namespace Editor {
     const FALLBACK IntMap<int> = {
       BACKGROUND_MARGIN:             BACKGROUND_DEFAULT,
       BACKGROUND_MARGIN_HIGHLIGHTED: BACKGROUND_MARGIN,
-      FOREGROUND_ANNOTATION:         FOREGROUND_DEFAULT,
+      FOREGROUND_ANNOTATION:         FOREGROUND_KEYWORD,
       FOREGROUND_CARET:              FOREGROUND_DEFAULT,
       FOREGROUND_COMMENT:            FOREGROUND_DEFAULT,
       FOREGROUND_CONSTANT:           FOREGROUND_DEFAULT,
@@ -55,39 +55,5 @@ namespace Editor {
       FOREGROUND_STRING:             FOREGROUND_DEFAULT,
       FOREGROUND_TYPE:               FOREGROUND_DEFAULT,
     }
-  }
-
-  # A theme defines a color map for the view. All color identifiers have
-  # default values either by having a theme fallback color directly or by
-  # being substituted with another identifier that has a fallback color.
-  class Theme {
-    const colors IntMap<Graphics.RGBA>
-
-    def findColor(color Color) Graphics.RGBA {
-      while !(color in colors) {
-        var next = Color.FALLBACK.get(color, color) as Color
-        if next != color {
-          color = next
-        } else if self != FALLBACK {
-          return FALLBACK.findColor(color)
-        } else {
-          return .TRANSPARENT
-        }
-      }
-      return colors[color]
-    }
-  }
-
-  namespace Theme {
-    const FALLBACK = Theme.new({
-      Color.BACKGROUND_DEFAULT:            Graphics.RGBA.hex(0xFFFFFF),
-      Color.BACKGROUND_DIAGNOSTIC_ERROR:   Graphics.RGBA.hex(0xFF8877),
-      Color.BACKGROUND_DIAGNOSTIC_WARNING: Graphics.RGBA.hex(0xFFEF00),
-      Color.BACKGROUND_SELECTED:           Graphics.RGBA.hex(0x7F7F7F),
-      Color.BORDER_MARGIN:                 Graphics.RGBA.TRANSPARENT,
-      Color.FOREGROUND_DEFAULT:            Graphics.RGBA.hex(0x000000),
-      Color.FOREGROUND_DIAGNOSTIC_ERROR:   Graphics.RGBA.hex(0x000000),
-      Color.FOREGROUND_DIAGNOSTIC_WARNING: Graphics.RGBA.hex(0x000000),
-    })
   }
 }

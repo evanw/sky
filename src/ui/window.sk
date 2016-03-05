@@ -1,0 +1,106 @@
+namespace UI {
+  interface WindowDelegate {
+    def handleFrame
+    def triggerAction(action Editor.Action)
+  }
+
+  class Window {
+    const _root View = null
+    var _viewWithFocus View = null
+    var _size Vector = .ZERO
+    var _pixelScale = 0.0
+    var _isInvalid = false
+    var _isActive = true
+    var _delegate WindowDelegate = null
+
+    def new {
+      _root = View.new(self)
+      _viewWithFocus = _root
+    }
+
+    def platform Platform
+    def renderer SemanticRenderer
+    def setTitle(text string)
+    def setTheme(theme Theme)
+    def setCursor(cursor Cursor)
+    def setFont(font Font, names List<string>, size double, height double)
+    def render
+
+    def root View {
+      return _root
+    }
+
+    def viewWithFocus View {
+      return _viewWithFocus
+    }
+
+    def isActive bool {
+      return _isActive
+    }
+
+    def size Vector {
+      return _size
+    }
+
+    def pixelScale double {
+      return _pixelScale
+    }
+
+    def invalidate {
+      _isInvalid = true
+    }
+
+    def setDelegate(delegate WindowDelegate) {
+      _delegate = delegate
+    }
+
+    def focusView(view View) {
+      assert(view != null)
+      var old = _viewWithFocus
+      if old != view {
+        _viewWithFocus = view
+        dispatchEvent(Event.new(.FOCUS_LEAVE, old))
+        assert(_viewWithFocus == view)
+        dispatchEvent(Event.new(.FOCUS_ENTER, view))
+      }
+    }
+
+    def viewFromLocation(locationInWindow Vector) View {
+      var visit fn(View, Vector) View = (view, location) => {
+        for i = view.children.count - 1; i >= 0; i-- {
+          var child = view.children[i]
+          if child.bounds.contains(location) {
+            return visit(child, location - child.bounds.topLeft)
+          }
+        }
+        return view
+      }
+      return visit(root, locationInWindow)
+    }
+
+    def dispatchEvent(event Event) View {
+      var target = event.target
+      while target != null {
+        target.handleEvent(event)
+        if event.wasAccepted {
+          break
+        }
+        target = target.parent
+      }
+      return target
+    }
+
+    def _handleResize(size Vector, pixelScale double) {
+      assert(size.x >= 0)
+      assert(size.y >= 0)
+      assert(pixelScale > 0)
+
+      if !_size.equals(size) || _pixelScale != pixelScale {
+        _size = size
+        _pixelScale = pixelScale
+        _root.updateBounds
+        invalidate
+      }
+    }
+  }
+}
