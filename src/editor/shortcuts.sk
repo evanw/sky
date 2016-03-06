@@ -50,6 +50,8 @@ namespace Editor {
       map.set(.ENTER, base | .SHIFT, .INSERT_LINE_ABOVE)
       map.set(.ENTER, base, .INSERT_LINE_BELOW)
       map.set(.ESCAPE, 0, .SELECT_FIRST_REGION)
+      map.set(.TAB, .SHIFT, .INSERT_TAB_BACKWARD)
+      map.set(.TAB, 0, .INSERT_TAB_FORWARD)
 
       # These are from OS X spellcheck
       map.set(.SEMICOLON, base, .SELECT_NEXT_DIAGNOSTIC)

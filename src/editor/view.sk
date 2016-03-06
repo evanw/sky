@@ -423,9 +423,11 @@ namespace Editor {
             var spaceStart = startX
             var spaceText = ""
             for x = startX; x <= endX; x++ {
-              var isSpace = x < limit ? line.text[x] == ' ' : false
-              if isSpace {
+              var c = x < limit ? line.text[x] : 0
+              if c == ' ' {
                 spaceText += SPACE_CHARACTER
+              } else if c == '\t' {
+                spaceText += TAB_CHARACTER
               } else {
                 if spaceText != "" {
                   renderer.renderText(translateX + _advanceWidth * spaceStart, lineY, spaceText, .DEFAULT_FONT, .FOREGROUND_DEFAULT, 0x3F)
@@ -623,6 +625,7 @@ namespace Editor {
         case .INSERT_CURSOR_BELOW { _insertCursorY(.NEXT) }
         case .INSERT_LINE_ABOVE { _insertLineY(.PREVIOUS) }
         case .INSERT_LINE_BELOW { _insertLineY(.NEXT) }
+        case .INSERT_TAB_BACKWARD, .INSERT_TAB_FORWARD { insertText("\t") }
 
         case .SCROLL_DOWN_DOCUMENT { _scrollTo(selectionContainingEverything.max) }
         case .SCROLL_DOWN_LINE { _handleScroll(0, _lineHeight) }
@@ -920,5 +923,6 @@ namespace Editor {
 
   namespace View {
     const SPACE_CHARACTER = string.fromCodePoint(0xB7)
+    const TAB_CHARACTER = BUILD == .TERMINAL ? ">" : string.fromCodePoint(0x2192)
   }
 }

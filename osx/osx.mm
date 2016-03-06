@@ -1224,6 +1224,14 @@ static CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeSt
   appWindow->handleAction(Editor::Action::SELECT_ALL);
 }
 
+- (void)insertBacktab:(id)sender {
+  appWindow->handleAction(Editor::Action::INSERT_TAB_BACKWARD);
+}
+
+- (void)insertTab:(id)sender {
+  appWindow->handleAction(Editor::Action::INSERT_TAB_FORWARD);
+}
+
 @end
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -7,6 +7,7 @@ namespace Browser {
 
   const _whichToKeyCode IntMap<UI.Key> = {
     8:   .BACKSPACE,
+    9:   .TAB,
     13:  .ENTER,
     27:  .ESCAPE,
     33:  .PAGE_UP,

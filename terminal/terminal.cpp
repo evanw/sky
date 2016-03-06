@@ -450,6 +450,11 @@ int main() {
       handleControlCharacter(host, c + 'A' - 1);
     }
 
+    // Special-case tab
+    else if (c == '\t') {
+      host->triggerAction(Editor::Action::INSERT_TAB_FORWARD);
+    }
+
     // Special-case backspace
     else if (c == 127) {
       host->triggerAction(Editor::Action::DELETE_LEFT_CHARACTER);

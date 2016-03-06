@@ -62,6 +62,7 @@ namespace UI {
     PAGE_UP
     PERIOD
     SEMICOLON
+    TAB
   }
 
   enum EventKind {
