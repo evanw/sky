@@ -452,6 +452,14 @@ int main() {
       host->insertASCII(c);
     }
 
+    // Was the terminal resized?
+    else if (c == KEY_RESIZE) {
+      host->handleResize();
+      resizeterm(host->size()->y, host->size()->x);
+      host->render();
+      continue;
+    }
+
     // Only render after an idle delay in case there's a lot of input
     isInvalid = true;
   }
