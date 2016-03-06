@@ -333,7 +333,7 @@ namespace Browser {
 
     def _startAnimationLoop {
       var tick fn() = => {
-        _delegate?.handleFrame
+        _delegate?.triggerFrame
         (window.requestAnimationFrame ? window.requestAnimationFrame : dynamic.setTimeout)(tick)
       }
       tick()

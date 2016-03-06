@@ -805,7 +805,7 @@ namespace OSX {
       _translator = new UI::SemanticToPixelTranslator(this);
     }
 
-    void handleFrame();
+    void triggerFrame();
     void handleResize();
     void handleKeyEvent(NSEvent *event);
     void handleInsertText(NSString *text);
@@ -876,24 +876,26 @@ namespace OSX {
     virtual void render() override;
 
     virtual void setViewport(double x, double y, double width, double height) override {
+      if (_solidBatch != nullptr) {
+        _solidBatch->flush();
+        _solidBatch->resize(width, height, _pixelScale);
+      }
+
+      if (_glyphBatch != nullptr) {
+        _glyphBatch->flush();
+        _glyphBatch->resize(width, height, _pixelScale);
+      }
+
+      if (_dropShadow != nullptr) {
+        _dropShadow->resize(width, height);
+      }
+
       if (_context != nullptr) {
         _context->setViewport(
           std::round(x * _pixelScale),
           std::round(y * _pixelScale),
           std::round(width * _pixelScale),
           std::round(height * _pixelScale));
-      }
-
-      if (_solidBatch != nullptr) {
-        _solidBatch->resize(width, height, _pixelScale);
-      }
-
-      if (_glyphBatch != nullptr) {
-        _glyphBatch->resize(width, height, _pixelScale);
-      }
-
-      if (_dropShadow != nullptr) {
-        _dropShadow->resize(width, height);
       }
     }
 
@@ -1125,7 +1127,7 @@ static CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeSt
 }
 
 - (void)drawRect:(NSRect)rect {
-  appWindow->handleFrame();
+  appWindow->triggerFrame();
 }
 
 - (void)windowDidResize:(NSNotification *)notification {
@@ -1226,9 +1228,9 @@ static CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeSt
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void OSX::AppWindow::handleFrame() {
+void OSX::AppWindow::triggerFrame() {
   if (_delegate != nullptr) {
-    _delegate->handleFrame();
+    _delegate->triggerFrame();
   }
 }
 

@@ -1,0 +1,88 @@
+namespace Editor {
+  interface WindowObserver {
+    def handleAction(action Action)
+    def handleFrame
+  }
+
+  class WindowController :: UI.WindowDelegate {
+    const _window UI.Window
+    const _observers List<WindowObserver> = []
+    var _isInvalid = true
+
+    def new(platform UI.Platform) {
+      var window = platform.createWindow
+      window.setTitle("Untitled - Sky")
+      window.setTheme(.XCODE)
+      window.setFont(.DEFAULT_FONT, MONOSPACE_FONTS, 12, 16)
+      window.setFont(.MARGIN_FONT, MONOSPACE_FONTS, 10, 14)
+      window.setFont(.UI_FONT, SANS_SERIF_FONTS, 12, 16)
+      _window = window
+
+      var model = Model.new("Untitled", platform)
+      model.setLexer(.SKEW)
+
+      var view = View.new(self, model)
+      if BUILD != .TERMINAL {
+        view.changePadding(5, 5, 5, 5)
+        view.changeMarginPadding(15, 5)
+      } else {
+        view.setScrollbarThickness(1)
+        view.changePadding(0, 0, 1, 0) # Leave one character of padding on the right so the caret can be seen at the end of the line
+        view.changeMarginPadding(1, 1)
+      }
+      view.appendTo(window.root)
+
+      window.setDelegate(self)
+      window.focusView(view)
+    }
+
+    def window UI.Window {
+      return _window
+    }
+
+    def addObserver(observer WindowObserver) {
+      _observers.appendOne(observer)
+    }
+
+    def removeObserver(observer WindowObserver) {
+      _observers.removeOne(observer)
+    }
+
+    def triggerFrame {
+      for observer in _observers {
+        observer.handleFrame
+      }
+      if _isInvalid {
+        _window.render
+      }
+    }
+
+    def triggerAction(action Action) {
+      for observer in _observers {
+        observer.handleAction(action)
+      }
+    }
+
+    def invalidate {
+      _isInvalid = true
+    }
+  }
+
+  namespace WindowController {
+    const MONOSPACE_FONTS = [
+      "Menlo-Regular",
+      "Monaco",
+      "Consolas",
+      "Courier New",
+      "monospace",
+    ]
+
+    const SANS_SERIF_FONTS = [
+      "San Francisco",
+      "Lucida Grande",
+      "Segoe UI",
+      "Arial",
+      "sans-serif",
+    ]
+  }
+}

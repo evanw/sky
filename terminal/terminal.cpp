@@ -65,9 +65,9 @@ namespace Terminal {
       int maxY;
     };
 
-    void handleFrame() {
+    void triggerFrame() {
       if (_delegate != nullptr) {
-        _delegate->handleFrame();
+        _delegate->triggerFrame();
       }
     }
 
@@ -430,7 +430,7 @@ int main() {
         host->render();
         isInvalid = false;
       } else {
-        host->handleFrame();
+        host->triggerFrame();
       }
       continue;
     }

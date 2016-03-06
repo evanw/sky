@@ -181,11 +181,11 @@ namespace Editor {
   # editor, however, since fractional values should only occur when the view
   # is given fractional inputs. Terminal-based editors can just use integers
   # and everything will still work.
-  class View : UI.View :: ModelObserver, UI.WindowDelegate {
+  class View : UI.View :: ModelObserver, WindowObserver {
+    const _controller WindowController
     var _model Model
     var _selection = Selection.new([.EMPTY])
-    var _isInvalid = true
-    var _areCaretsVisible = true
+    var _areCaretsVisible = false
     var _caretBlinkStartTime = 0.0
     var _idleCount = 0
 
@@ -221,13 +221,16 @@ namespace Editor {
       ViewSetting.SHOW_MARGIN: true,
     }
 
-    def new(window UI.Window, model Model) {
-      super(window)
+    def new(controller WindowController, model Model) {
+      super(controller.window)
+      _controller = controller
+      controller.addObserver(self)
       setModel(model)
 
-      _advanceWidth = window.renderer.fontInstance(.DEFAULT_FONT).advanceWidth(' ')
-      _marginAdvanceWidth = window.renderer.fontInstance(.MARGIN_FONT).advanceWidth(' ')
-      _lineHeight = window.renderer.fontInstance(.DEFAULT_FONT).lineHeight
+      var renderer = window.renderer
+      _advanceWidth = renderer.fontInstance(.DEFAULT_FONT).advanceWidth(' ')
+      _marginAdvanceWidth = renderer.fontInstance(.MARGIN_FONT).advanceWidth(' ')
+      _lineHeight = renderer.fontInstance(.DEFAULT_FONT).lineHeight
 
       _scrollbarX.setMinimumSize(_lineHeight * 3)
       _scrollbarY.setMinimumSize(_lineHeight * 3)
@@ -297,6 +300,7 @@ namespace Editor {
         case .MOUSE_DOWN {
           var viewLocation = event.mouseEvent.locationInView(self)
           handleMouseMove(viewLocation)
+          window.focusView(self)
 
           if _scrollbarX.startDragging(viewLocation, event.mouseEvent.modifiers) {
             _draggingScrollbar = _scrollbarX
@@ -338,6 +342,17 @@ namespace Editor {
 
         case .MOUSE_SCROLL {
           _handleScroll(event.mouseEvent.delta.x, event.mouseEvent.delta.y)
+        }
+
+        case .FOCUS_ENTER {
+          _invalidate(.RESET_CARET_BLINK_TIME)
+        }
+
+        case .FOCUS_LEAVE {
+          if _areCaretsVisible {
+            _invalidate(.NORMAL)
+            _areCaretsVisible = false
+          }
         }
 
         case .CLIPBOARD_CUT, .CLIPBOARD_COPY {
@@ -643,8 +658,6 @@ namespace Editor {
       # Render the scrollbars
       _scrollbarX.render(renderer)
       _scrollbarY.render(renderer)
-
-      _isInvalid = false
     }
 
     def insertText(text string) {
@@ -665,7 +678,7 @@ namespace Editor {
     }
 
     def _invalidate(mode InvalidateMode) {
-      _isInvalid = true
+      window.invalidate
 
       if mode == .RESET_CARET_BLINK_TIME {
         _caretBlinkStartTime = window.platform.nowInSeconds
@@ -673,10 +686,14 @@ namespace Editor {
     }
 
     def handleFrame {
+      if window.viewWithFocus != self {
+        return
+      }
+
       var areCaretsVisible = window.isActive && ((((window.platform.nowInSeconds - _caretBlinkStartTime) * 2) as int) & 1) == 0
 
       # Skip rendering if not invalid
-      if !_isInvalid && areCaretsVisible == _areCaretsVisible {
+      if areCaretsVisible == _areCaretsVisible {
         _idleCount++
 
         # Render something at 10 fps even when idle otherwise Chrome's
@@ -688,11 +705,16 @@ namespace Editor {
         }
       }
 
+      # Carets changed or we're rendering to prevent an idle render loop
       _areCaretsVisible = areCaretsVisible
-      window.render
+      window.invalidate
     }
 
-    def triggerAction(action Action) {
+    def handleAction(action Action) {
+      if window.viewWithFocus != self {
+        return
+      }
+
       var motion MotionAction = action.isMoveMotion ? .CHANGE_SELECTION : action.isSelectMotion ? .EXTEND_SELECTION : .DELETE_SELECTION
 
       switch action {

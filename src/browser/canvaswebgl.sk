@@ -41,11 +41,15 @@ namespace Browser {
     }
 
     over setViewport(x double, y double, width double, height double) {
+      _solidBatch.flush
+      _glyphBatch.flush
+
       _context.setViewport(
         Math.round(x * _pixelScale) as int,
         Math.round(y * _pixelScale) as int,
         Math.round(width * _pixelScale) as int,
         Math.round(height * _pixelScale) as int)
+
       _solidBatch.resize(width, height, _pixelScale)
       _glyphBatch.resize(width, height, _pixelScale)
       _dropShadow.resize(width, height)

@@ -1,7 +1,7 @@
 namespace UI {
   interface WindowDelegate {
-    def handleFrame
     def triggerAction(action Editor.Action)
+    def triggerFrame
   }
 
   class Window {
