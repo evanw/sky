@@ -10,7 +10,8 @@ namespace Editor {
 
     SELECT_ALL
     SELECT_FIRST_REGION
-    SELECT_LINE
+    SELECT_EXPAND_TO_LINE
+    SELECT_BREAK_INTO_LINES
     SELECT_NEXT_DIAGNOSTIC
     SELECT_PREVIOUS_DIAGNOSTIC
 
@@ -73,107 +74,6 @@ namespace Editor {
 
     def isDeleteMotion bool {
       return self >= DELETE_DOWN_DOCUMENT && self <= DELETE_UP_PAGE
-    }
-  }
-
-  class Shortcut {
-    const action Action
-    const modifiers UI.Modifiers
-  }
-
-  class ShortcutMap {
-    const _map IntMap<List<Shortcut>> = {}
-
-    def new(platform UI.Platform) {
-      _load(self, platform)
-    }
-
-    def set(keyCode UI.Key, modifiers UI.Modifiers, action Action) {
-      var shortcuts = _map.get(keyCode, null)
-      if shortcuts == null {
-        shortcuts = []
-        _map[keyCode] = shortcuts
-      }
-      shortcuts.append(Shortcut.new(action, modifiers))
-    }
-
-    def get(keyCode UI.Key, modifiers UI.Modifiers) Action {
-      var shortcuts = _map.get(keyCode, null)
-      if shortcuts != null {
-        for shortcut in shortcuts {
-          if shortcut.modifiers == modifiers {
-            return shortcut.action
-          }
-        }
-      }
-      return .NONE
-    }
-  }
-
-  namespace ShortcutMap {
-    def _load(map ShortcutMap, platform UI.Platform) {
-      var base = platform.baseModifier
-      var isOSX = platform.operatingSystem == .OSX
-
-      map.set(.LETTER_A, base, .SELECT_ALL)
-      map.set(.LETTER_C, base, .COPY)
-      map.set(.LETTER_L, .ALT, .SELECT_LINE)
-      map.set(.LETTER_V, base, .PASTE)
-      map.set(.LETTER_X, base, .CUT)
-      map.set(.LETTER_Y, base, .REDO)
-      map.set(.LETTER_Z, base | .SHIFT, .REDO)
-      map.set(.LETTER_Z, base, .UNDO)
-      map.set(.ENTER, base | .SHIFT, .INSERT_LINE_ABOVE)
-      map.set(.ENTER, base, .INSERT_LINE_BELOW)
-      map.set(.ESCAPE, 0, .SELECT_FIRST_REGION)
-
-      # These are from OS X spellcheck
-      map.set(.SEMICOLON, base, .SELECT_NEXT_DIAGNOSTIC)
-      map.set(.SEMICOLON, base | .SHIFT, .SELECT_PREVIOUS_DIAGNOSTIC)
-
-      # These shortcuts are from Eclipse
-      map.set(.COMMA, .ALT, .SELECT_PREVIOUS_DIAGNOSTIC)
-      map.set(.PERIOD, .ALT, .SELECT_NEXT_DIAGNOSTIC)
-
-      _setMoveAndSelectShortcuts(map, .ARROW_LEFT, .ARROW_RIGHT, 0, .MOVE_LEFT_CHARACTER, .MOVE_RIGHT_CHARACTER, .SELECT_LEFT_CHARACTER, .SELECT_RIGHT_CHARACTER)
-      _setMoveAndSelectShortcuts(map, .ARROW_LEFT, .ARROW_RIGHT, isOSX ? .ALT : .CONTROL, .MOVE_LEFT_WORD, .MOVE_RIGHT_WORD, .SELECT_LEFT_WORD, .SELECT_RIGHT_WORD)
-      _setMoveAndSelectShortcuts(map, .PAGE_UP, .PAGE_DOWN, 0, .MOVE_UP_PAGE, .MOVE_DOWN_PAGE, .SELECT_UP_PAGE, .SELECT_DOWN_PAGE)
-      _setMoveAndSelectShortcuts(map, .ARROW_UP, .ARROW_DOWN, 0, .MOVE_UP_LINE, .MOVE_DOWN_LINE, .SELECT_UP_LINE, .SELECT_DOWN_LINE)
-      _setDoubleShortcuts(map, .BACKSPACE, .DELETE, 0, .DELETE_LEFT_CHARACTER, .DELETE_RIGHT_CHARACTER)
-      _setDoubleShortcuts(map, .BACKSPACE, .DELETE, .SHIFT, .DELETE_LEFT_CHARACTER, .DELETE_RIGHT_CHARACTER)
-      _setDoubleShortcuts(map, .BACKSPACE, .DELETE, isOSX ? .ALT : .CONTROL, .DELETE_LEFT_WORD, .DELETE_RIGHT_WORD)
-      _setDoubleShortcuts(map, .ARROW_UP, .ARROW_DOWN, base | .ALT, .INSERT_CURSOR_ABOVE, .INSERT_CURSOR_BELOW)
-
-      if isOSX {
-        _setDoubleShortcuts(map, .HOME, .END, 0, .SCROLL_UP_DOCUMENT, .SCROLL_DOWN_DOCUMENT)
-        _setMoveAndSelectShortcuts(map, .ARROW_LEFT, .ARROW_RIGHT, .META, .MOVE_LEFT_LINE, .MOVE_RIGHT_LINE, .SELECT_LEFT_LINE, .SELECT_RIGHT_LINE)
-        _setMoveAndSelectShortcuts(map, .ARROW_UP, .ARROW_DOWN, .ALT, .MOVE_LEFT_LINE, .MOVE_RIGHT_LINE, .SELECT_LEFT_LINE, .SELECT_RIGHT_LINE)
-        _setMoveAndSelectShortcuts(map, .ARROW_UP, .ARROW_DOWN, .META, .MOVE_UP_DOCUMENT, .MOVE_DOWN_DOCUMENT, .SELECT_UP_DOCUMENT, .SELECT_DOWN_DOCUMENT)
-        _setDoubleShortcuts(map, .BACKSPACE, .DELETE, .META, .DELETE_LEFT_LINE, .DELETE_RIGHT_LINE)
-
-        # Emacs shortcuts (these also work in all OS X text fields)
-        map.set(.LETTER_K, .CONTROL, .DELETE_RIGHT_LINE)
-        map.set(.LETTER_H, .CONTROL, .DELETE_LEFT_CHARACTER)
-        map.set(.LETTER_D, .CONTROL, .DELETE_RIGHT_CHARACTER)
-        _setMoveAndSelectShortcuts(map, .LETTER_A, .LETTER_E, .CONTROL, .MOVE_LEFT_LINE, .MOVE_RIGHT_LINE, .SELECT_LEFT_LINE, .SELECT_RIGHT_LINE)
-        _setMoveAndSelectShortcuts(map, .LETTER_P, .LETTER_N, .CONTROL, .MOVE_UP_LINE, .MOVE_DOWN_LINE, .SELECT_UP_LINE, .SELECT_DOWN_LINE)
-      }
-
-      else {
-        _setMoveAndSelectShortcuts(map, .HOME, .END, 0, .MOVE_LEFT_LINE, .MOVE_RIGHT_LINE, .SELECT_LEFT_LINE, .SELECT_RIGHT_LINE)
-        _setMoveAndSelectShortcuts(map, .HOME, .END, .CONTROL, .MOVE_UP_DOCUMENT, .MOVE_DOWN_DOCUMENT, .SELECT_UP_DOCUMENT, .SELECT_DOWN_DOCUMENT)
-        _setDoubleShortcuts(map, .ARROW_UP, .ARROW_DOWN, .CONTROL, .SCROLL_UP_LINE, .SCROLL_DOWN_LINE)
-      }
-    }
-
-    def _setDoubleShortcuts(map ShortcutMap, a UI.Key, b UI.Key, modifiers UI.Modifiers, actionA Action, actionB Action) {
-      map.set(a, modifiers, actionA)
-      map.set(b, modifiers, actionB)
-    }
-
-    def _setMoveAndSelectShortcuts(map ShortcutMap, a UI.Key, b UI.Key, modifiers UI.Modifiers, moveA Action, moveB Action, selectA Action, selectB Action) {
-      _setDoubleShortcuts(map, a, b, modifiers, moveA, moveB)
-      _setDoubleShortcuts(map, a, b, modifiers | .SHIFT, selectA, selectB)
     }
   }
 }

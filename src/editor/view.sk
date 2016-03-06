@@ -465,6 +465,23 @@ namespace Editor {
       return Selection.new(newRegions)
     }
 
+    def selectionBrokenIntoLines Selection {
+      var newRegions List<Region> = []
+
+      for region in _selection.regions {
+        var min = region.min
+        var max = region.max
+
+        for y in min.y..(min.y != max.y && max.x == 0 ? max.y : max.y + 1) {
+          newRegions.append(Region.new(
+            Marker.new(y == min.y ? min.x : 0, y),
+            Marker.new(y == max.y ? max.x : _model[y].text.count, y)))
+        }
+      }
+
+      return Selection.new(newRegions)
+    }
+
     def changeSelection(selection Selection, scroll ScrollBehavior) {
       _selection = selection
       _scrollSelectionIntoView(selection, scroll)
@@ -722,7 +739,8 @@ namespace Editor {
         case .REDO { _model.redo }
 
         case .SELECT_ALL { changeSelection(selectionContainingEverything, .DO_NOT_SCROLL) }
-        case .SELECT_LINE { changeSelection(selectionExpandedToLines, .DO_NOT_SCROLL) }
+        case .SELECT_EXPAND_TO_LINE { changeSelection(selectionExpandedToLines, .DO_NOT_SCROLL) }
+        case .SELECT_BREAK_INTO_LINES { changeSelection(selectionBrokenIntoLines, .DO_NOT_SCROLL) }
         case .SELECT_FIRST_REGION { _selectFirstRegion }
         case .SELECT_NEXT_DIAGNOSTIC { _selectDiagnostic(.NEXT) }
         case .SELECT_PREVIOUS_DIAGNOSTIC { _selectDiagnostic(.PREVIOUS) }
@@ -864,7 +882,7 @@ namespace Editor {
         var seek = currentLine.seekToBoundary(end.x, direction, step)
         end =
           shouldShrink ? direction == .PREVIOUS ? region.min : region.max :
-          seek != end.x ? Marker.new(seek, end.y) :
+          seek != end.x || step == .LINE ? Marker.new(seek, end.y) :
           direction == .PREVIOUS
           ? end.y != 0 ? Marker.new(nextLine.text.count, end.y - 1) : end
           : end.y != lastLine ? Marker.new(0, end.y + 1) : end
