@@ -1459,9 +1459,8 @@ void OSX::AppWindow::handleAction(Editor::Action action) {
 
       // Save text to clipboard
       if (event->text != text) {
-        auto clipboard = [NSPasteboard generalPasteboard];
         [clipboard clearContents];
-        [clipboard setString:[NSString stringWithUTF8String:text.c_str()] forType:NSPasteboardTypeString];
+        [clipboard setString:[NSString stringWithUTF8String:event->text.c_str()] forType:NSPasteboardTypeString];
       }
       break;
     }
