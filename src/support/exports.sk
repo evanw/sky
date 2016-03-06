@@ -6,3 +6,10 @@
 @export if BUILD == .OSX {
   namespace Graphics {}
 }
+
+@export if BUILD == .TERMINAL {
+  # GCC doesn't support the unicode parts of C++11 yet (wtf it's 2016 already)
+  def codePointsFromString(text string) List<int> {
+    return text.codePoints
+  }
+}

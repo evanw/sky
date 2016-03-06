@@ -1,5 +1,5 @@
 #define SKEW_GC_MARK_AND_SWEEP
-#import <skew.h>
+#include <skew.h>
 
 namespace Log {
   void info(const Skew::string &text) {}
@@ -7,11 +7,9 @@ namespace Log {
   void error(const Skew::string &text) {}
 }
 
-#import "compiled.cpp"
-#import <skew.cpp>
-#import <ncurses.h>
-#import <codecvt>
-#import <locale>
+#include "compiled.cpp"
+#include <skew.cpp>
+#include <ncurses.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -89,38 +87,12 @@ namespace Terminal {
       Skew::GC::collect();
     }
 
-    void writeToClipboard(std::string text) {
-      // Try writing the OS X clipboard
-      if (FILE *f = popen("pbcopy", "w")) {
-        fputs(text.c_str(), f);
-        pclose(f);
-      }
-
-      _clipboard = std::move(text);
-    }
-
-    std::string readFromClipboard() {
-      // Try reading the OS X clipboard
-      if (FILE *f = popen("pbpaste -Prefer text", "r")) {
-        char chunk[1024];
-        std::string buffer;
-        while (fgets(chunk, sizeof(chunk), f)) {
-          buffer += chunk;
-        }
-        if (!pclose(f)) {
-          _clipboard = std::move(buffer);
-        }
-      }
-
-      return _clipboard;
-    }
-
     void triggerAction(Editor::Action action) {
       switch (action) {
         case Editor::Action::CUT:
         case Editor::Action::COPY:
         case Editor::Action::PASTE: {
-          auto text = readFromClipboard();
+          auto text = _readFromClipboard();
           auto kind =
             action == Editor::Action::CUT ? UI::EventKind::CLIPBOARD_CUT :
             action == Editor::Action::COPY ? UI::EventKind::CLIPBOARD_COPY :
@@ -128,7 +100,7 @@ namespace Terminal {
           auto event = new UI::ClipboardEvent(kind, viewWithFocus(), text);
           dispatchEvent(event);
           if (event->text != text) {
-            writeToClipboard(event->text.std_str());
+            _writeToClipboard(event->text.std_str());
           }
           break;
         }
@@ -288,16 +260,17 @@ namespace Terminal {
         color == UI::Color::FOREGROUND_DEFINITION ? A_BOLD :
         0;
 
-      auto utf32 = std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t>().from_bytes(text.std_str());
-      int start = std::max(0, std::min((int)utf32.size(), clip.minX - (int)x));
-      int end = std::max(0, std::min((int)utf32.size(), clip.maxX - (int)x));
+      auto utf32 = codePointsFromString(text);
+      int start = std::max(0, std::min(utf32->count(), clip.minX - (int)x));
+      int end = std::max(0, std::min(utf32->count(), clip.maxX - (int)x));
       int n = std::max(0, end - start);
       chtype buffer[n];
 
       mvinchnstr(y, x + start, buffer, n);
       for (int i = 0; i < n; i++) {
         int color = buffer[i] & A_COLOR;
-        int c = utf32[start + i];
+        int c = (*utf32)[start + i];
+        if (c == '\t') c = ' ';
         if (c == ' ') c = buffer[i] & (~A_ATTRIBUTES | A_ALTCHARSET);
         else if (c == 0xB7) c = 126 | A_ALTCHARSET;
         else if (c > 0xFF) c = '?';
@@ -328,6 +301,38 @@ namespace Terminal {
     #endif
 
   private:
+    void _writeToCommand(const char *command, const std::string &text) {
+      if (FILE *f = popen(command, "w")) {
+        fputs(text.c_str(), f);
+        pclose(f);
+      }
+    }
+
+    void _readFromCommand(const char *command) {
+      if (FILE *f = popen(command, "r")) {
+        char chunk[1024];
+        std::string buffer;
+        while (fgets(chunk, sizeof(chunk), f)) {
+          buffer += chunk;
+        }
+        if (!pclose(f)) {
+          _clipboard = std::move(buffer);
+        }
+      }
+    }
+
+    void _writeToClipboard(std::string text) {
+      _writeToCommand("pbcopy", text);
+      _writeToCommand("xclip -i -selection clipboard", text);
+      _clipboard = std::move(text);
+    }
+
+    std::string _readFromClipboard() {
+      _readFromCommand("pbpaste -Prefer text");
+      _readFromCommand("xclip -o -selection clipboard");
+      return _clipboard;
+    }
+
     int _width = 0;
     int _height = 0;
     std::string _clipboard;
@@ -386,6 +391,9 @@ static void handleControlCharacter(Terminal::Host *host, char c) {
 }
 
 int main() {
+  // Don't let errors from clipboard commands crap all over the editor UI
+  fclose(stderr);
+
   // Let the ncurses library take over the screen and make sure it's cleaned up
   initscr();
   atexit([] { endwin(); });

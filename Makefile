@@ -15,7 +15,6 @@ INFO_PLIST_PATH = osx/Sky.app/Contents/Info.plist
 OSX_APP_PATH = osx/Sky.app/Contents/MacOS/Sky
 
 CLANG_FLAGS += -I node_modules/skew
-CLANG_FLAGS += -lc++
 CLANG_FLAGS += -std=c++11
 CLANG_FLAGS += -Wall
 CLANG_FLAGS += -Wextra
@@ -31,14 +30,15 @@ CLANG_FLAGS_OSX += -fobjc-arc
 CLANG_FLAGS_OSX += -framework Cocoa
 CLANG_FLAGS_OSX += -framework CoreVideo
 CLANG_FLAGS_OSX += -framework OpenGL
+CLANG_FLAGS_OSX += -lc++
 CLANG_FLAGS_OSX += -o $(OSX_APP_PATH)
 CLANG_FLAGS_OSX += -Wl,-sectcreate,__TEXT,__info_plist,$(INFO_PLIST_PATH)
 CLANG_FLAGS_OSX += osx/osx.mm
 
 CLANG_FLAGS_TERMINAL += $(CLANG_FLAGS)
-CLANG_FLAGS_TERMINAL += -lncurses
 CLANG_FLAGS_TERMINAL += -o terminal/sky
 CLANG_FLAGS_TERMINAL += terminal/terminal.cpp
+CLANG_FLAGS_TERMINAL += -lncurses # This must come last or GCC breaks
 
 default: debug
 
@@ -70,11 +70,11 @@ osx-release: | node_modules
 
 terminal-debug: | node_modules
 	$(SKEW) $(SKEW_FLAGS_TERMINAL)
-	clang $(CLANG_FLAGS_TERMINAL)
+	c++ $(CLANG_FLAGS_TERMINAL)
 
 terminal-release: | node_modules
 	$(SKEW) $(SKEW_FLAGS_TERMINAL)
-	clang $(CLANG_FLAGS_TERMINAL)
+	c++ $(CLANG_FLAGS_TERMINAL)
 
 watch-shaders: | node_modules
 	node_modules/.bin/watch glslx 'clear && make shaders && echo done'
