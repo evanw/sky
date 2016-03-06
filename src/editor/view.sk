@@ -809,17 +809,9 @@ namespace Editor {
       var newRegions = oldRegions.clone
 
       for region in oldRegions {
-        var min = region.min
-        var max = region.max
-        if direction == .PREVIOUS {
-          if min.y != 0 {
-            newRegions.append(Region.new(Marker.new(min.x, min.y - 1)))
-          }
-        } else {
-          if max.y != lastLine {
-            newRegions.append(Region.new(Marker.new(max.x, max.y + 1)))
-          }
-        }
+        var marker = direction == .PREVIOUS ? region.min : region.max
+        var y = Math.clamp(marker.y + (direction == .PREVIOUS ? -1 : 1), 0, lastLine)
+        newRegions.append(Region.new(Marker.new(Math.min(marker.x, _model[y].text.count), y)))
       }
 
       changeSelection(Selection.new(newRegions), .SCROLL_INTO_VIEW)
