@@ -1,0 +1,127 @@
+namespace Editor {
+  enum ScrollBehavior {
+    DO_NOT_SCROLL
+    SCROLL_INTO_VIEW
+    CENTER_IF_OUT_OF_VIEW
+  }
+
+  # Each view has two scrollbar objects, one for the horizontal scrollbar and
+  # one for the vertical scrollbar. The scrollbar size is independent from the
+  # size of the viewport into the content.
+  class Scrollbar {
+    var _isX bool
+    var _x = 0.0
+    var _y = 0.0
+    var _width = 0.0
+    var _height = 0.0
+    var _minSize = 0.0
+    var _viewSize = 0.0
+    var _viewOffset = 0.0
+    var _scrollSize = 0.0
+    var _scrollOffset = 0.0
+    var _positionOffset = 0.0
+    var _positionSize = 0.0
+    var _mappedSize = 0.0
+    var _mappedOffset = 0.0
+    var _draggingOffset = 0.0
+    var _isDraggingThumb = false
+
+    def new(axis Axis) {
+      _isX = axis == .X
+    }
+
+    def isNeeded bool {
+      return _viewSize < _scrollSize
+    }
+
+    def viewSize double {
+      return _viewSize
+    }
+
+    def scrollSize double {
+      return _scrollSize
+    }
+
+    def scrollOffset double {
+      return _scrollOffset
+    }
+
+    # Return a mapped position that will be at the center of the thumb when
+    # the document is scrolled so this position is vertically centered
+    def mappedPosition(position double) double {
+      return _positionOffset + _mappedSize / 2 + (position - _viewSize / 2) * (_positionSize - _mappedSize) / (_scrollSize - _viewSize)
+    }
+
+    def setScrollOffset(scrollOffset double) bool {
+      scrollOffset = Math.max(0, Math.min(scrollOffset, _scrollSize - _viewSize))
+      if _scrollOffset != scrollOffset {
+        _scrollOffset = scrollOffset
+        _computeMapped
+        return true
+      }
+      return false
+    }
+
+    def setMinimumSize(minSize double) {
+      _minSize = minSize
+      _computeMapped
+    }
+
+    def setPosition(minX double, minY double, maxX double, maxY double) {
+      _x = minX
+      _y = minY
+      _width = maxX - minX
+      _height = maxY - minY
+      _positionOffset = _isX ? _x : _y
+      _positionSize = _isX ? _width : _height
+      _computeMapped
+    }
+
+    def resize(viewSize double, scrollSize double) {
+      if _viewSize != viewSize || _scrollSize != scrollSize {
+        _viewSize = viewSize
+        _scrollSize = scrollSize
+
+        if !setScrollOffset(_scrollOffset) {
+          _computeMapped
+        }
+      }
+    }
+
+    def render(renderer UI.SemanticRenderer) {
+      if isNeeded {
+        renderer.renderScrollbarThumb(
+          _isX ? _x + _mappedOffset : _x,
+          _isX ? _y : _y + _mappedOffset,
+          _isX ? _mappedSize : _width,
+          _isX ? _height : _mappedSize,
+          .FOREGROUND_DEFAULT)
+      }
+    }
+
+    def containsPoint(viewLocation Vector) bool {
+      var x = viewLocation.x - _x
+      var y = viewLocation.y - _y
+      return isNeeded && x >= 0 && y >= 0 && x < _width && y < _height
+    }
+
+    def startDragging(viewLocation Vector, modifiers UI.Modifiers) bool {
+      if containsPoint(viewLocation) {
+        var pageSize = _viewSize * (_positionSize - _mappedSize) / (_scrollSize - _viewSize)
+        _draggingOffset = .ALT in modifiers ? _mappedSize / 2 : (_isX ? viewLocation.x - _x : viewLocation.y - _y) - _mappedOffset
+        _draggingOffset += pageSize * (_draggingOffset < 0 ? 1 : _draggingOffset >= _mappedSize ? -1 : 0)
+        return true
+      }
+      return false
+    }
+
+    def continueDragging(viewLocation Vector) bool {
+      return setScrollOffset(((_isX ? viewLocation.x - _x : viewLocation.y - _y) - _draggingOffset) * (_scrollSize - _viewSize) / (_positionSize - _mappedSize))
+    }
+
+    def _computeMapped {
+      _mappedSize = Math.max(_minSize, _positionSize * _viewSize / _scrollSize)
+      _mappedOffset = (_positionSize - _mappedSize) * _scrollOffset / (_scrollSize - _viewSize)
+    }
+  }
+}

@@ -29,6 +29,7 @@ namespace Syntax.SkewLexer {
   const _constants = {
     "false": 0,
     "null": 0,
+    "self": 0,
     "true": 0,
   }
 
