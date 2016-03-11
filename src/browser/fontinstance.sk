@@ -38,6 +38,8 @@ namespace Browser {
     def advanceWidth(codePoint int) double {
       var value = _advanceWidthCache.get(codePoint, -1)
 
+      # Measure 100 successive characters in an attempt to get a better
+      # measurement since some browsers never return a fractional value
       if value == -1 {
         value = _context.measureText(string.fromCodePoint(codePoint).repeat(100)).width / (100 * _pixelScale)
         _advanceWidthCache[codePoint] = value
@@ -148,8 +150,6 @@ namespace Browser {
         }
       }
 
-      # Measure 100 successive characters in an attempt to get a better
-      # measurement since some browsers never return a fractional value
       return Graphics.Glyph.new(codePoint, mask, originX - minX, originY - minY, 1 / _pixelScale, advanceWidth(codePoint))
     }
   }

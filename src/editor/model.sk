@@ -16,6 +16,8 @@ namespace Editor {
   class Model {
     var _name string
     var _platform UI.Platform
+    var _font UI.FontInstance
+    var _currentIndent int
     var _lexer Lexer = null
     var _observers List<ModelObserver> = []
     var _commits List<Commit> = []
@@ -32,8 +34,16 @@ namespace Editor {
       return _lines.count
     }
 
-    def maxLineSize int {
-      return _lines.maxLineSize
+    def font UI.FontInstance {
+      return _font
+    }
+
+    def maxAdvanceWidth double {
+      return _lines.maxAdvanceWidth
+    }
+
+    def currentIndent int {
+      return _currentIndent
     }
 
     def [](index int) Line {
@@ -73,6 +83,7 @@ namespace Editor {
     def setLexer(lexer Lexer) {
       if _lexer != lexer {
         _lexer = lexer
+        _lexer.setFont(_font, _currentIndent)
         _dirtyIndex = 0
         _lines.clearStyleState
         for observer in _observers {
@@ -190,6 +201,13 @@ namespace Editor {
         oldLines[0] = Line.new(oldLines[0].text.slice(minX, oldLines[0].text.count))
 
         # Update the document
+        var iterator = UI.AdvanceWidthIterator.INSTANCE
+        iterator.setFont(_font, _currentIndent)
+        for line in newLines {
+          iterator.reset(line.text)
+          iterator.seekTo(line.text.count)
+          line.advanceWidth = iterator.advanceWidthFromLeft
+        }
         _lines.changeLines(minY, maxY + 1, newLines)
 
         # Mutate the change to represent the inverse operation

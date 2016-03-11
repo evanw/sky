@@ -57,6 +57,7 @@ namespace Editor {
   # and everything will still work.
   class View : UI.View :: ModelObserver, WindowObserver {
     const _controller WindowController
+    const _iterator = UI.AdvanceWidthIterator.new
     var _model Model
     var _selection = Selection.new([.EMPTY])
     var _areCaretsVisible = false
@@ -83,8 +84,8 @@ namespace Editor {
     var _paddingRight = 0.0
     var _paddingBottom = 0.0
     var _lineHeight = 1.0
-    var _advanceWidth = 1.0
-    var _marginAdvanceWidth = 1.0
+    var _defaultSpaceAdvanceWidth = 1.0
+    var _marginSpaceAdvanceWidth = 1.0
     var _marginWidth = 0.0
     var _marginPaddingLeft = 0.0
     var _marginPaddingRight = 0.0
@@ -102,9 +103,11 @@ namespace Editor {
       setModel(model)
 
       var renderer = window.renderer
-      _advanceWidth = renderer.fontInstance(.DEFAULT_FONT).advanceWidth(' ')
-      _marginAdvanceWidth = renderer.fontInstance(.MARGIN_FONT).advanceWidth(' ')
-      _lineHeight = renderer.fontInstance(.DEFAULT_FONT).lineHeight
+      var defaultFont = renderer.fontInstance(.DEFAULT_FONT)
+      _defaultSpaceAdvanceWidth = defaultFont.advanceWidth(SPACE_CHARACTER)
+      _marginSpaceAdvanceWidth = renderer.fontInstance(.MARGIN_FONT).advanceWidth(SPACE_CHARACTER)
+      _lineHeight = defaultFont.lineHeight
+      _iterator.setFont(defaultFont, model.currentIndent)
 
       _scrollbarX.setMinimumSize(_lineHeight * 3)
       _scrollbarY.setMinimumSize(_lineHeight * 3)
@@ -389,8 +392,8 @@ namespace Editor {
       var renderer = window.renderer
       var translateX = _paddingLeft - _scrollbarX.scrollOffset + _marginWidth
       var translateY = _paddingTop - _scrollbarY.scrollOffset
-      var minX = _leftCharacter
-      var maxX = _rightCharacter
+      var minX = _leftPixel
+      var maxX = _rightPixel
       var minY = _topLine
       var maxY = _bottomLine + 1
       var regions = _selection.regions
@@ -411,12 +414,20 @@ namespace Editor {
         for y = startY; y <= endY; y++ {
           var line = _model[y]
           var count = line.text.count
-          var startX = Math.max(y == min.y ? min.x : 0, minX)
-          var endX = Math.min(y == max.y ? max.x : count + 1, maxX + 1)
+          var startX = y == min.y ? min.x : 0
+          var endX = y == max.y ? max.x : count + 1
 
           if startX != endX {
             var lineY = translateY + _lineHeight * y
-            renderer.renderRect(translateX + _advanceWidth * startX, lineY, _advanceWidth * (endX - startX), _lineHeight, .BACKGROUND_SELECTED)
+            _iterator.reset(line.text)
+            _iterator.seekTo(startX)
+            var offsetStartX = _iterator.advanceWidthFromLeft
+            _iterator.seekTo(endX)
+            var offsetEndX = _iterator.advanceWidthFromLeft
+            if endX == count + 1 {
+              offsetEndX += _defaultSpaceAdvanceWidth # Use a trailing space to represent newlines
+            }
+            renderer.renderRect(translateX + offsetStartX, lineY, offsetEndX - offsetStartX, _lineHeight, .BACKGROUND_SELECTED)
 
             # Render whitespace characters
             var limit = Math.min(endX, count)
@@ -425,13 +436,16 @@ namespace Editor {
             for x = startX; x <= endX; x++ {
               var c = x < limit ? line.text[x] : 0
               if c == ' ' {
-                spaceText += SPACE_CHARACTER
-              } else if c == '\t' {
-                spaceText += TAB_CHARACTER
+                spaceText += SPACE_STRING
               } else {
                 if spaceText != "" {
-                  renderer.renderText(translateX + _advanceWidth * spaceStart, lineY, spaceText, .DEFAULT_FONT, .FOREGROUND_DEFAULT, 0x3F)
+                  _iterator.seekTo(spaceStart)
+                  renderer.renderText(translateX + _iterator.advanceWidthFromLeft, lineY, spaceText, .DEFAULT_FONT, .FOREGROUND_DEFAULT, 0x3F)
                   spaceText = ""
+                }
+                if c == '\t' {
+                  _iterator.seekTo(x)
+                  renderer.renderText(translateX + _iterator.advanceWidthFromLeft, lineY, TAB_STRING, .DEFAULT_FONT, .FOREGROUND_DEFAULT, 0x3F)
                 }
                 spaceStart = x + 1
               }
@@ -455,29 +469,38 @@ namespace Editor {
         # Render text styled by spans
         else {
           var limit = line.text.count
-          var previous = 0
+          var previousOffsetX = 0.0
+          var previousEnd = 0
 
           for span in spans {
             var start = span.start
             var end = span.end
 
-            # Only render visible spans
-            if end < minX { continue }
-            if start > maxX { break }
-
-            # Render default-styled text between each span
-            if previous < start {
-              renderer.renderText(translateX + _advanceWidth * previous, offsetY, line.text.slice(previous, start), .DEFAULT_FONT, .FOREGROUND_DEFAULT, 0xFF)
+            # Stop after finding a span past the right of the viewport
+            if span.offsetX > maxX {
+              limit = span.start
+              break
             }
 
-            # Render the styled span text
-            renderer.renderText(translateX + _advanceWidth * start, offsetY, line.text.slice(start, end), .DEFAULT_FONT, span.color, 0xFF)
-            previous = end
+            # Skip spans to the left of the viewport
+            if span.offsetX + span.advanceWidth >= minX {
+              # Render default-styled text between each span
+              if previousEnd < start {
+                renderer.renderText(translateX + previousOffsetX, offsetY, line.text.slice(previousEnd, start), .DEFAULT_FONT, .FOREGROUND_DEFAULT, 0xFF)
+              }
+
+              # Render the styled span text
+              renderer.renderText(translateX + span.offsetX, offsetY, line.text.slice(start, end), .DEFAULT_FONT, span.color, 0xFF)
+            }
+
+            # Remember the end of this span
+            previousOffsetX = span.offsetX + span.advanceWidth
+            previousEnd = end
           }
 
           # Render one last run of unstyled text after the last span
-          if previous < limit && limit >= minX && previous <= maxX {
-            renderer.renderText(translateX + _advanceWidth * previous, offsetY, line.text.slice(previous, Math.min(limit, maxX)), .DEFAULT_FONT, .FOREGROUND_DEFAULT, 0xFF)
+          if previousEnd < limit && translateX + previousOffsetX < maxX {
+            renderer.renderText(translateX + previousOffsetX, offsetY, line.text.slice(previousEnd, limit), .DEFAULT_FONT, .FOREGROUND_DEFAULT, 0xFF)
           }
         }
 
@@ -488,12 +511,22 @@ namespace Editor {
             var start = diagnostic.start
             var end = Math.max(diagnostic.end, start + 1)
 
-            # Render a squiggle under the text if visible
-            if start >= previousEnd && end >= minX && start <= maxX {
-              renderer.renderSquiggle(translateX + _advanceWidth * start,
-                offsetY, _advanceWidth * (end - start), _lineHeight,
-                diagnostic.kind == .ERROR ? .BACKGROUND_DIAGNOSTIC_ERROR : .BACKGROUND_DIAGNOSTIC_WARNING)
-              previousEnd = end
+            # Only render diagnostics that don't overlap
+            if start >= previousEnd {
+              # Measure the diagnostic size
+              _iterator.reset(line.text)
+              _iterator.seekTo(start)
+              var diagnosticMinX = _iterator.advanceWidthFromLeft
+              _iterator.seekTo(end)
+              var diagnosticMaxX = _iterator.advanceWidthFromLeft
+
+              # Render a squiggle under the text if visible
+              if diagnosticMaxX >= minX && diagnosticMinX <= maxX {
+                renderer.renderSquiggle(translateX + diagnosticMinX,
+                  offsetY, diagnosticMaxX - diagnosticMinX, _lineHeight,
+                  diagnostic.kind == .ERROR ? .BACKGROUND_DIAGNOSTIC_ERROR : .BACKGROUND_DIAGNOSTIC_WARNING)
+                previousEnd = end
+              }
             }
           }
         }
@@ -505,7 +538,9 @@ namespace Editor {
         var marker = region.end
         if minY <= marker.y && marker.y <= maxY {
           if _areCaretsVisible {
-            renderer.renderCaret(translateX + _advanceWidth * marker.x, translateY + _lineHeight * marker.y, .FOREGROUND_CARET)
+            _iterator.reset(_model[marker.y].text)
+            _iterator.seekTo(marker.x)
+            renderer.renderCaret(translateX + _iterator.advanceWidthFromLeft, translateY + _lineHeight * marker.y, .FOREGROUND_CARET)
           }
           shouldHighlightLineInMargin[marker.y] = true
         }
@@ -530,7 +565,7 @@ namespace Editor {
           if isHighlighted {
             renderer.renderRect(0, offsetY, _marginWidth, _lineHeight, .BACKGROUND_MARGIN_HIGHLIGHTED)
           }
-          renderer.renderText(_marginPaddingLeft + _marginAdvanceWidth * (rightAlignWidth - text.count),
+          renderer.renderText(_marginPaddingLeft + _marginSpaceAdvanceWidth * (rightAlignWidth - text.count),
             offsetY, text, .MARGIN_FONT, isHighlighted ? .FOREGROUND_MARGIN_HIGHLIGHTED : .FOREGROUND_MARGIN, 0xFF)
         }
 
@@ -666,9 +701,22 @@ namespace Editor {
     }
 
     def _markerFromViewLocation(viewLocation Vector, mode MouseMode) Marker {
-      var x = Math.round((viewLocation.x + _scrollbarX.scrollOffset - _paddingLeft - _marginWidth) / _advanceWidth) as int
       var clampedY = Math.clamp(Math.floor((viewLocation.y + _scrollbarY.scrollOffset - _paddingTop) / _lineHeight) as int, 0, _model.count - 1)
-      return Marker.new(mode == .SELECTING_BOX ? x : Math.clamp(x, 0, _model[clampedY].text.count), clampedY)
+      var mouseX = viewLocation.x + _scrollbarX.scrollOffset - _paddingLeft - _marginWidth
+      var previousAdvanceWidth = 0.0
+      var previousIndex = 0
+      _iterator.reset(_model[clampedY].text)
+      while _iterator.advanceWidthFromLeft < mouseX {
+        previousIndex = _iterator.currentIndex
+        previousAdvanceWidth = _iterator.advanceWidthFromLeft
+        if _iterator.nextCodePoint == -1 {
+          break
+        }
+      }
+      var x = mouseX < (previousAdvanceWidth + _iterator.advanceWidthFromLeft) / 2 ? previousIndex : _iterator.currentIndex
+      # return Marker.new(mode == .SELECTING_BOX ? x : Math.clamp(x, 0, _model[clampedY].text.count), clampedY)
+      var todo = 0
+      return Marker.new(x, clampedY)
     }
 
     def _regionFromViewLocation(viewLocation Vector, mode MouseMode, step StepX) Region {
@@ -810,9 +858,9 @@ namespace Editor {
         return
       }
 
-      _marginWidth = setting(.SHOW_MARGIN) ? Math.floor(_marginPaddingLeft + _model.count.toString.count * _marginAdvanceWidth + _marginPaddingRight) : 0
+      _marginWidth = setting(.SHOW_MARGIN) ? Math.floor(_marginPaddingLeft + _model.count.toString.count * _marginSpaceAdvanceWidth + _marginPaddingRight) : 0
 
-      var scrollWidth = _marginWidth + _paddingLeft + _model.maxLineSize * _advanceWidth + _paddingRight
+      var scrollWidth = _marginWidth + _paddingLeft + _model.maxAdvanceWidth + _paddingRight
       var scrollHeight = _model.count * _lineHeight + (setting(.SCROLL_PAST_END) ? _viewHeight - _lineHeight : _paddingBottom + _paddingTop)
 
       _scrollbarX.resize(_viewWidth, scrollWidth)
@@ -822,12 +870,12 @@ namespace Editor {
       _invalidate(mode)
     }
 
-    def _leftCharacter int {
-      return Math.clamp(Math.floor((_scrollbarX.scrollOffset - _paddingLeft) / _advanceWidth) as int, 0, _model.maxLineSize)
+    def _leftPixel double {
+      return _scrollbarX.scrollOffset - _paddingLeft
     }
 
-    def _rightCharacter int {
-      return Math.clamp(Math.ceil((_viewWidth - _marginWidth + _scrollbarX.scrollOffset - _paddingRight) / _advanceWidth) as int, 0, _model.maxLineSize)
+    def _rightPixel double {
+      return _viewWidth - _marginWidth + _scrollbarX.scrollOffset - _paddingRight
     }
 
     def _topLine int {
@@ -843,43 +891,45 @@ namespace Editor {
         return
       }
 
-      var regions = selection.regions
-      var minX = _leftCharacter
-      var maxX = _rightCharacter
-      var minY = _topLine
-      var maxY = _bottomLine
-      var selectionMinX = _model.maxLineSize
-      var selectionMaxX = 0
-      var selectionMinY = _model.count - 1
-      var selectionMaxY = 0
+      var todo = 0
 
-      # Compute a bounding box around the selection
-      for region in regions {
-        var marker = region.end
-        selectionMinX = Math.min(selectionMinX, marker.x)
-        selectionMinY = Math.min(selectionMinY, marker.y)
-        selectionMaxX = Math.max(selectionMaxX, marker.x)
-        selectionMaxY = Math.max(selectionMaxY, marker.y)
-      }
+      # var regions = selection.regions
+      # var minX = _leftCharacter
+      # var maxX = _rightCharacter
+      # var minY = _topLine
+      # var maxY = _bottomLine
+      # var selectionMinX = _maxLineCount
+      # var selectionMaxX = 0
+      # var selectionMinY = _model.count - 1
+      # var selectionMaxY = 0
 
-      # Only scroll enough to keep the bounding box in view
-      if scroll == .SCROLL_INTO_VIEW {
-        if selectionMaxX <= minX { _scrollToX(selectionMaxX) }
-        else if selectionMinX >= maxX { _scrollToX(selectionMinX) }
+      # # Compute a bounding box around the selection
+      # for region in regions {
+      #   var marker = region.end
+      #   selectionMinX = Math.min(selectionMinX, marker.x)
+      #   selectionMinY = Math.min(selectionMinY, marker.y)
+      #   selectionMaxX = Math.max(selectionMaxX, marker.x)
+      #   selectionMaxY = Math.max(selectionMaxY, marker.y)
+      # }
 
-        if selectionMaxY <= minY { _scrollToY(selectionMaxY) }
-        else if selectionMinY >= maxY { _scrollToY(selectionMinY) }
-      }
+      # # Only scroll enough to keep the bounding box in view
+      # if scroll == .SCROLL_INTO_VIEW {
+      #   if selectionMaxX <= minX { _scrollToX(selectionMaxX) }
+      #   else if selectionMinX >= maxX { _scrollToX(selectionMinX) }
 
-      # Scroll the first marker to the center of the view if it's not visible
-      else if scroll == .CENTER_IF_OUT_OF_VIEW {
-        if selectionMaxX <= minX || selectionMinX >= maxX || selectionMaxY <= minY || selectionMinY >= maxY {
-          var marker = regions.first.min
-          _scrollbarX.setScrollOffset(marker.x * _advanceWidth - (_viewWidth - _paddingLeft - _paddingRight - _marginWidth) / 2)
-          _scrollbarY.setScrollOffset(marker.y * _lineHeight - (_viewHeight - _lineHeight - _paddingTop - _paddingBottom) / 2)
-          _invalidate(.RESET_CARET_BLINK_TIME)
-        }
-      }
+      #   if selectionMaxY <= minY { _scrollToY(selectionMaxY) }
+      #   else if selectionMinY >= maxY { _scrollToY(selectionMinY) }
+      # }
+
+      # # Scroll the first marker to the center of the view if it's not visible
+      # else if scroll == .CENTER_IF_OUT_OF_VIEW {
+      #   if selectionMaxX <= minX || selectionMinX >= maxX || selectionMaxY <= minY || selectionMinY >= maxY {
+      #     var marker = regions.first.min
+      #     _scrollbarX.setScrollOffset(marker.x * _advanceWidth - (_viewWidth - _paddingLeft - _paddingRight - _marginWidth) / 2)
+      #     _scrollbarY.setScrollOffset(marker.y * _lineHeight - (_viewHeight - _lineHeight - _paddingTop - _paddingBottom) / 2)
+      #     _invalidate(.RESET_CARET_BLINK_TIME)
+      #   }
+      # }
     }
 
     def _scrollTo(marker Marker) {
@@ -888,19 +938,21 @@ namespace Editor {
     }
 
     def _scrollToX(x int) {
-      var minX = _leftCharacter
-      var maxX = _rightCharacter
-      var offsetX = _scrollbarX.scrollOffset
+      var todo = 0
 
-      if x <= minX {
-        offsetX = x * _advanceWidth
-      } else if x >= maxX {
-        offsetX = x * _advanceWidth - (_viewWidth - _paddingLeft - _paddingRight - _marginWidth)
-      }
+      # var minX = _leftPixel
+      # var maxX = _rightPixel
+      # var offsetX = _scrollbarX.scrollOffset
 
-      if _scrollbarX.setScrollOffset(offsetX) {
-        _invalidate(.RESET_CARET_BLINK_TIME)
-      }
+      # if x <= minX {
+      #   offsetX = x * _advanceWidth
+      # } else if x >= maxX {
+      #   offsetX = x * _advanceWidth - (_viewWidth - _paddingLeft - _paddingRight - _marginWidth)
+      # }
+
+      # if _scrollbarX.setScrollOffset(offsetX) {
+      #   _invalidate(.RESET_CARET_BLINK_TIME)
+      # }
     }
 
     def _scrollToY(y int) {
@@ -922,7 +974,9 @@ namespace Editor {
   }
 
   namespace View {
-    const SPACE_CHARACTER = string.fromCodePoint(0xB7)
-    const TAB_CHARACTER = BUILD == .TERMINAL ? ">" : string.fromCodePoint(0x2192)
+    const SPACE_CHARACTER = 0xB7
+    const TAB_CHARACTER = BUILD == .TERMINAL ? SPACE_CHARACTER : 0x2192
+    const SPACE_STRING = string.fromCodePoint(SPACE_CHARACTER)
+    const TAB_STRING = string.fromCodePoint(TAB_CHARACTER)
   }
 }

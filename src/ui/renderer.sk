@@ -4,20 +4,6 @@ namespace UI {
     TEXT
   }
 
-  enum Font {
-    DEFAULT_FONT
-    MARGIN_FONT
-    UI_FONT
-  }
-
-  interface FontInstance {
-    def font Font
-    def size double
-    def lineHeight double
-    def advanceWidth(codePoint int) double # This assumes a 1:1 mapping between glyphs and code points
-    def renderGlyph(codePoint int) Graphics.Glyph # This may return null
-  }
-
   # This rendering interface is super simple so that it'll work for both a pixel-
   # based interface and a terminal-based interface.
   interface SemanticRenderer {

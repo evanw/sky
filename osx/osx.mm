@@ -919,6 +919,10 @@ namespace OSX {
 
     virtual void strokePolyline(Skew::List<double> *coordinates, int color, double thickness) override {
       assert(_isRendering);
+      assert(coordinates->count() % 2 == 0);
+
+      _glyphBatch->flush();
+      _solidBatch->strokeNonOverlappingPolyline(coordinates, Graphics::RGBA::premultiplied(color), thickness, Graphics::StrokeCap::OPEN);
     }
 
     virtual void renderText(double x, double y, Skew::string text, UI::Font font, int color) override {
@@ -1288,6 +1292,8 @@ void OSX::AppWindow::handleResize() {
 static UI::Key keyFromEvent(NSEvent *event) {
   static std::unordered_map<int, UI::Key> map = {
     { '.',                       UI::Key::PERIOD },
+    { ';',                       UI::Key::SEMICOLON },
+
     { '0',                       UI::Key::NUMBER_0 },
     { '1',                       UI::Key::NUMBER_1 },
     { '2',                       UI::Key::NUMBER_2 },
@@ -1298,7 +1304,7 @@ static UI::Key keyFromEvent(NSEvent *event) {
     { '7',                       UI::Key::NUMBER_7 },
     { '8',                       UI::Key::NUMBER_8 },
     { '9',                       UI::Key::NUMBER_9 },
-    { ';',                       UI::Key::SEMICOLON },
+
     { 'a',                       UI::Key::LETTER_A },
     { 'b',                       UI::Key::LETTER_B },
     { 'c',                       UI::Key::LETTER_C },
@@ -1325,6 +1331,34 @@ static UI::Key keyFromEvent(NSEvent *event) {
     { 'x',                       UI::Key::LETTER_X },
     { 'y',                       UI::Key::LETTER_Y },
     { 'z',                       UI::Key::LETTER_Z },
+
+    { 'A',                       UI::Key::LETTER_A },
+    { 'B',                       UI::Key::LETTER_B },
+    { 'C',                       UI::Key::LETTER_C },
+    { 'D',                       UI::Key::LETTER_D },
+    { 'E',                       UI::Key::LETTER_E },
+    { 'F',                       UI::Key::LETTER_F },
+    { 'G',                       UI::Key::LETTER_G },
+    { 'H',                       UI::Key::LETTER_H },
+    { 'I',                       UI::Key::LETTER_I },
+    { 'J',                       UI::Key::LETTER_J },
+    { 'K',                       UI::Key::LETTER_K },
+    { 'L',                       UI::Key::LETTER_L },
+    { 'M',                       UI::Key::LETTER_M },
+    { 'N',                       UI::Key::LETTER_N },
+    { 'O',                       UI::Key::LETTER_O },
+    { 'P',                       UI::Key::LETTER_P },
+    { 'Q',                       UI::Key::LETTER_Q },
+    { 'R',                       UI::Key::LETTER_R },
+    { 'S',                       UI::Key::LETTER_S },
+    { 'T',                       UI::Key::LETTER_T },
+    { 'U',                       UI::Key::LETTER_U },
+    { 'V',                       UI::Key::LETTER_V },
+    { 'W',                       UI::Key::LETTER_W },
+    { 'X',                       UI::Key::LETTER_X },
+    { 'Y',                       UI::Key::LETTER_Y },
+    { 'Z',                       UI::Key::LETTER_Z },
+
     { 27,                        UI::Key::ESCAPE },
     { NSCarriageReturnCharacter, UI::Key::ENTER },
     { NSDeleteCharacter,         UI::Key::BACKSPACE },

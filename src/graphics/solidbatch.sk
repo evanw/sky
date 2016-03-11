@@ -1,11 +1,11 @@
 namespace Graphics {
-  class SolidBatch {
-    enum Stroke {
-      CLOSED
-      OPEN
-      OPEN_WITHOUT_ENDPOINT_AA
-    }
+  enum StrokeCap {
+    CLOSED
+    OPEN
+    OPEN_WITHOUT_ENDPOINT_AA
+  }
 
+  class SolidBatch {
     const _inside List<double> = []
     const _material Material = null
     const _outside List<double> = []
@@ -97,7 +97,7 @@ namespace Graphics {
       _strokeLine(startX, startY, endX, endY, color, thickness, .OPEN_WITHOUT_ENDPOINT_AA)
     }
 
-    def _strokeLine(startX double, startY double, endX double, endY double, color RGBA, thickness double, stroke Stroke) {
+    def _strokeLine(startX double, startY double, endX double, endY double, color RGBA, thickness double, stroke StrokeCap) {
       assert(stroke != .CLOSED)
       var coordinates = _lineCoordinates
       coordinates[0] = startX
@@ -173,7 +173,7 @@ namespace Graphics {
       _appendPreviousVertex
     }
 
-    def strokeNonOverlappingPolyline(coordinates List<double>, color RGBA, thickness double, stroke Stroke) {
+    def strokeNonOverlappingPolyline(coordinates List<double>, color RGBA, thickness double, stroke StrokeCap) {
       # Need to draw the line wider by one pixel for anti-aliasing
       var aa = (thickness + _inversePixelScale) / _inversePixelScale
       var halfWidth = (thickness + _inversePixelScale) / 2

@@ -1,4 +1,6 @@
 namespace Editor {
+  const INVALID_ADVANCE_WIDTH = -1.0
+
   enum CharacterClass {
     WORD
     OTHER
@@ -12,6 +14,7 @@ namespace Editor {
   # if the lexer state becomes the same again.
   class Line {
     const text string
+    var advanceWidth = INVALID_ADVANCE_WIDTH
     var previousState LexerState = null
     var nextState LexerState = null
     var spans List<Span> = null
@@ -29,20 +32,19 @@ namespace Editor {
     }
 
     def seekToBoundary(index int, direction Direction, step StepX) int {
-      var count = text.count
-      var delta = direction.delta
-      var increment = step == .LINE ? delta * count : delta
-
-      if step == .WORD {
-        for i = index + delta; i > 0 && i < count; i += delta {
-          if isWordBoundary(i, direction) {
-            return i
-          }
-        }
-        increment *= count
+      # Jump to the start or end of the line
+      if step == .LINE {
+        return direction == .PREVIOUS ? 0 : text.count
       }
 
-      return Math.clamp(index + increment, 0, count)
+      # Scan for the character or word boundary
+      var iterator = Unicode.StringIterator.INSTANCE.reset(text, index)
+      while true {
+        var codePoint = direction == .PREVIOUS ? iterator.previousCodePoint : iterator.nextCodePoint
+        if step == .CHARACTER || codePoint == -1 || isWordBoundary(iterator.index, direction) {
+          return iterator.index
+        }
+      }
     }
   }
 
@@ -72,20 +74,28 @@ namespace Editor {
       return text
     }
 
-    def maxSize(lines List<Line>) int {
-      var count = 0
+    def maxAdvanceWidth(lines List<Line>) double {
+      var result = 0.0
       for line in lines {
-        count = Math.max(count, line.text.count)
+        assert(line.advanceWidth != INVALID_ADVANCE_WIDTH)
+        result = Math.max(result, line.advanceWidth)
       }
-      return count
+      return result
     }
   }
 
   # This is the storage object for a document. It provides access to an ordered
-  # collection of lines and tracks the maximum line size, which is useful for
-  # scroll bounds. Each model object contains one line buffer. This should
-  # probably be implemented using a gap buffer at some point for performance.
+  # collection of lines and tracks the maximum line advance width, which is
+  # useful for scroll bounds. Each model object contains one line buffer. This
+  # should probably be implemented using a gap buffer at some point for performance.
   class LineBuffer {
+    var _lines = [Line.new("")]
+    var _maxAdvanceWidth = 0.0
+
+    def new {
+      _lines[0].advanceWidth = 0
+    }
+
     def toString string {
       return Line.join(_lines)
     }
@@ -104,36 +114,29 @@ namespace Editor {
       return _lines.slice(start, end)
     }
 
-    # TODO: This is O(n^2)
     def changeLines(start int, end int, lines List<Line>) {
-      # Invalidate the maximum line size
-      if _hasMaxLineSize {
-        var size = Line.maxSize(lines)
+      assert(lines.all(line => line.advanceWidth != INVALID_ADVANCE_WIDTH))
 
-        if size > _maxLineSize {
-          _maxLineSize = size
-        }
-
-        else if Line.maxSize(_lines.slice(start, end)) == _maxLineSize {
-          _hasMaxLineSize = false
+      # Invalidate the maximum advance width
+      if _maxAdvanceWidth != INVALID_ADVANCE_WIDTH {
+        var size = Line.maxAdvanceWidth(lines)
+        if size > _maxAdvanceWidth {
+          _maxAdvanceWidth = size
+        } else if Line.maxAdvanceWidth(_lines.slice(start, end)) == _maxAdvanceWidth {
+          _maxAdvanceWidth = INVALID_ADVANCE_WIDTH
         }
       }
 
       # Replace all lines in the range [start, end)
       _lines.removeRange(start, end)
-      for line in lines {
-        _lines.insert(start, line)
-        start++
-      }
+      _lines.insert(start, lines) # TODO: This is O(n^2)
     }
 
-    def maxLineSize int {
-      if !_hasMaxLineSize {
-        _maxLineSize = Line.maxSize(_lines)
-        _hasMaxLineSize = true
+    def maxAdvanceWidth double {
+      if _maxAdvanceWidth == INVALID_ADVANCE_WIDTH {
+        _maxAdvanceWidth = Line.maxAdvanceWidth(_lines)
       }
-
-      return _maxLineSize
+      return _maxAdvanceWidth
     }
 
     def clearStyleState {
@@ -162,9 +165,5 @@ namespace Editor {
         }
       }
     }
-
-    var _lines = [Line.new("")]
-    var _hasMaxLineSize = false
-    var _maxLineSize = 0
   }
 }

@@ -56,7 +56,7 @@ namespace Syntax.SkewLexer {
     "string": 0,
   }
 
-  def tokenize(lexer Editor.CustomLexer) {
+  def tokenize(lexer Editor.Lexer) {
     var previousIdentifier string = null
 
     # The first line will have no previous state
@@ -72,7 +72,7 @@ namespace Syntax.SkewLexer {
       var c = lexer.takeNext
 
       # Whitespace
-      if Editor.Lexer.isSpace(c) {
+      if c == ' ' {
         continue
       }
 
@@ -142,6 +142,11 @@ namespace Syntax.SkewLexer {
         else if c == '\'' {
           lexer.transitionToState(_characterState, startOfToken)
         }
+
+        # Tab stop (must be a span to be positioned correctly)
+        else if c == '\t' {
+          lexer.addSpan(startOfToken, lexer.currentIndex, .FOREGROUND_DEFAULT)
+        }
       }
 
       previousIdentifier = null
@@ -166,5 +171,5 @@ namespace Syntax.SkewLexer {
 }
 
 namespace Editor.Lexer {
-  const SKEW = CustomLexer.new(lexer => Syntax.SkewLexer.tokenize(lexer))
+  const SKEW = new(lexer => Syntax.SkewLexer.tokenize(lexer))
 }
