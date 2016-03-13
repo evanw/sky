@@ -73,6 +73,7 @@ namespace Editor {
     var _draggingScrollbar Scrollbar = null
     var _mouseMode MouseMode = .NONE
     var _mouseStep StepX = .CHARACTER
+    var _draggingStart Vector = null
     var _draggingMarker Marker = null
     var _draggingRegion Region = null
     var _scrollbarX = Scrollbar.new(.X)
@@ -174,6 +175,12 @@ namespace Editor {
       }
     }
 
+    def _modelLocation(viewLocation Vector) Vector {
+      return Vector.new(
+        viewLocation.x + _scrollbarX.scrollOffset - _paddingLeft - _marginWidth,
+        Math.clamp(Math.floor((viewLocation.y + _scrollbarY.scrollOffset - _paddingTop) / _lineHeight) as int, 0, _model.count - 1))
+    }
+
     over handleEvent(event UI.Event) {
       switch event.type {
         case .MOUSE_DOWN {
@@ -201,8 +208,9 @@ namespace Editor {
               .ALT in event.mouseEvent.modifiers ? .SELECTING_BOX :
               .SELECTING_CHARACTERS
             _mouseStep = ((event.mouseEvent.clickCount + 2) % 3) as StepX
-            _draggingMarker = _markerFromViewLocation(viewLocation, _mouseMode)
-            _draggingRegion = _regionFromViewLocation(viewLocation, _mouseMode, _mouseStep)
+            _draggingStart = _modelLocation(viewLocation)
+            _draggingMarker = _markerFromViewLocation(viewLocation)
+            _draggingRegion = _regionFromViewLocation(viewLocation, _mouseStep)
           }
 
           handleMouseMove(viewLocation)
@@ -293,13 +301,13 @@ namespace Editor {
 
       else if _mouseMode != .NONE {
         var regions = _mergeBehavior != .NONE ? _previousSelection.regions.clone : List<Region>.new
-        var marker = _markerFromViewLocation(viewLocation, _mouseMode)
+        var marker = _markerFromViewLocation(viewLocation)
 
         switch _mouseMode {
           case .SELECTING_CHARACTERS {
             regions.append(_mergeBehavior == .EXTEND
               ? Region.span(regions.takeLast, Region.new(marker))
-              : Region.span(_draggingRegion, _regionFromViewLocation(viewLocation, _mouseMode, _mouseStep)))
+              : Region.span(_draggingRegion, _regionFromViewLocation(viewLocation, _mouseStep)))
           }
 
           case .SELECTING_LINES {
@@ -313,19 +321,24 @@ namespace Editor {
           }
 
           case .SELECTING_BOX {
-            var minX = Math.min(_draggingMarker.x, marker.x)
-            var maxX = Math.max(_draggingMarker.x, marker.x)
-            var minY = Math.min(_draggingMarker.y, marker.y)
-            var maxY = Math.max(_draggingMarker.y, marker.y)
+            var draggingEnd = _modelLocation(viewLocation)
+            var minX = Math.min(_draggingStart.x, draggingEnd.x)
+            var maxX = Math.max(_draggingStart.x, draggingEnd.x)
+            var minY = Math.min(_draggingStart.y, draggingEnd.y) as int
+            var maxY = Math.max(_draggingStart.y, draggingEnd.y) as int
+            var iterator = _iterator
             var first = regions.count
             var hasArea = false
 
             # Add clamped regions inside the selection box
             for y = minY; y <= maxY; y++ {
-              var count = _model[y].text.count
-              var start = Marker.new(Math.clamp(minX, 0, count), y)
-              var end = Marker.new(Math.clamp(maxX, 0, count), y)
-              regions.append(_draggingMarker.x == minX ? Region.new(start, end) : Region.new(end, start))
+              var line = _model[y]
+              iterator.reset(line.text)
+              iterator.seekForwardToAdvanceWidth(minX)
+              var start = Marker.new(iterator.currentIndex, y)
+              iterator.seekForwardToAdvanceWidth(maxX)
+              var end = Marker.new(iterator.currentIndex, y)
+              regions.append(_draggingStart.x == minX ? Region.new(start, end) : Region.new(end, start))
               if start.x != end.x {
                 hasArea = true
               }
@@ -433,6 +446,7 @@ namespace Editor {
       var minY = _topLine
       var maxY = _bottomLine + 1
       var regions = _selection.regions
+      var iterator = _iterator
 
       # Make sure syntax highlighting is up to date
       _model.styleLinesIfNeeded(minY, maxY)
@@ -455,11 +469,11 @@ namespace Editor {
 
           if startX != endX {
             var lineY = translateY + _lineHeight * y
-            _iterator.reset(line.text)
-            _iterator.seekTo(startX)
-            var offsetStartX = _iterator.advanceWidthFromLeft
-            _iterator.seekTo(endX)
-            var offsetEndX = _iterator.advanceWidthFromLeft
+            iterator.reset(line.text)
+            iterator.seekToIndex(startX)
+            var offsetStartX = iterator.advanceWidthFromLeft
+            iterator.seekToIndex(endX)
+            var offsetEndX = iterator.advanceWidthFromLeft
             if endX == count + 1 {
               offsetEndX += _defaultSpaceAdvanceWidth # Use a trailing space to represent newlines
             }
@@ -475,13 +489,13 @@ namespace Editor {
                 spaceText += SPACE_STRING
               } else {
                 if spaceText != "" {
-                  _iterator.seekTo(spaceStart)
-                  renderer.renderText(translateX + _iterator.advanceWidthFromLeft, lineY, spaceText, .CODE_FONT, .FOREGROUND_DEFAULT, 0x3F)
+                  iterator.seekToIndex(spaceStart)
+                  renderer.renderText(translateX + iterator.advanceWidthFromLeft, lineY, spaceText, .CODE_FONT, .FOREGROUND_DEFAULT, 0x3F)
                   spaceText = ""
                 }
                 if c == '\t' {
-                  _iterator.seekTo(x)
-                  renderer.renderText(translateX + _iterator.advanceWidthFromLeft, lineY, TAB_STRING, .CODE_FONT, .FOREGROUND_DEFAULT, 0x3F)
+                  iterator.seekToIndex(x)
+                  renderer.renderText(translateX + iterator.advanceWidthFromLeft, lineY, TAB_STRING, .CODE_FONT, .FOREGROUND_DEFAULT, 0x3F)
                 }
                 spaceStart = x + 1
               }
@@ -550,11 +564,11 @@ namespace Editor {
             # Only render diagnostics that don't overlap
             if start >= previousEnd {
               # Measure the diagnostic size
-              _iterator.reset(line.text)
-              _iterator.seekTo(start)
-              var diagnosticMinX = _iterator.advanceWidthFromLeft
-              _iterator.seekTo(end)
-              var diagnosticMaxX = _iterator.advanceWidthFromLeft
+              iterator.reset(line.text)
+              iterator.seekToIndex(start)
+              var diagnosticMinX = iterator.advanceWidthFromLeft
+              iterator.seekToIndex(end)
+              var diagnosticMaxX = iterator.advanceWidthFromLeft
 
               # Render a squiggle under the text if visible
               if diagnosticMaxX >= minX && diagnosticMinX <= maxX {
@@ -574,9 +588,9 @@ namespace Editor {
         var marker = region.end
         if minY <= marker.y && marker.y <= maxY {
           if _areCaretsVisible {
-            _iterator.reset(_model[marker.y].text)
-            _iterator.seekTo(marker.x)
-            renderer.renderCaret(translateX + _iterator.advanceWidthFromLeft, translateY + _lineHeight * marker.y, .FOREGROUND_CARET)
+            iterator.reset(_model[marker.y].text)
+            iterator.seekToIndex(marker.x)
+            renderer.renderCaret(translateX + iterator.advanceWidthFromLeft, translateY + _lineHeight * marker.y, .FOREGROUND_CARET)
           }
           shouldHighlightLineInMargin[marker.y] = true
         }
@@ -748,27 +762,17 @@ namespace Editor {
       _updateScrollSizeAndInvalidate(.RESET_CARET_BLINK_TIME)
     }
 
-    def _markerFromViewLocation(viewLocation Vector, mode MouseMode) Marker {
+    def _markerFromViewLocation(viewLocation Vector) Marker {
       var clampedY = Math.clamp(Math.floor((viewLocation.y + _scrollbarY.scrollOffset - _paddingTop) / _lineHeight) as int, 0, _model.count - 1)
       var mouseX = viewLocation.x + _scrollbarX.scrollOffset - _paddingLeft - _marginWidth
-      var previousAdvanceWidth = 0.0
-      var previousIndex = 0
-      _iterator.reset(_model[clampedY].text)
-      while _iterator.advanceWidthFromLeft < mouseX {
-        previousIndex = _iterator.currentIndex
-        previousAdvanceWidth = _iterator.advanceWidthFromLeft
-        if _iterator.nextCodePoint == -1 {
-          break
-        }
-      }
-      var x = mouseX < (previousAdvanceWidth + _iterator.advanceWidthFromLeft) / 2 ? previousIndex : _iterator.currentIndex
-      # return Marker.new(mode == .SELECTING_BOX ? x : Math.clamp(x, 0, _model[clampedY].text.count), clampedY)
-      var todo = 0
-      return Marker.new(x, clampedY)
+      var iterator = _iterator
+      iterator.reset(_model[clampedY].text)
+      iterator.seekForwardToAdvanceWidth(mouseX)
+      return Marker.new(iterator.currentIndex, clampedY)
     }
 
-    def _regionFromViewLocation(viewLocation Vector, mode MouseMode, step StepX) Region {
-      var marker = _markerFromViewLocation(viewLocation, mode)
+    def _regionFromViewLocation(viewLocation Vector, step StepX) Region {
+      var marker = _markerFromViewLocation(viewLocation)
       var x = marker.x
       var y = marker.y
       var line = _model[y]
@@ -1020,7 +1024,7 @@ namespace Editor {
     def _markerX(marker Marker) double {
       var iterator = _iterator
       iterator.reset(_model[marker.y].text)
-      iterator.seekTo(marker.x)
+      iterator.seekToIndex(marker.x)
       return iterator.advanceWidthFromLeft
     }
   }

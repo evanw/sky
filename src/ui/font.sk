@@ -59,7 +59,7 @@ namespace UI {
     }
 
     # This assumes the index is between code points, not in the middle of one
-    def seekTo(index int) {
+    def seekToIndex(index int) {
       var iterator = _unicodeIterator
       var oldIndex = iterator.index
 
@@ -99,6 +99,29 @@ namespace UI {
       iterator.index = 0
       _advanceWidthFromLeft = 0
       while iterator.index < index && nextCodePoint != -1 {}
+    }
+
+    # Note: this will not seek backward
+    def seekForwardToAdvanceWidth(advanceWidth double) {
+      var previousAdvanceWidth = advanceWidthFromLeft
+      var previousIndex = currentIndex
+
+      # Seek up to and one past the query
+      while advanceWidthFromLeft < advanceWidth {
+        previousAdvanceWidth = advanceWidthFromLeft
+        previousIndex = currentIndex
+
+        # Don't run off the end of the string
+        if nextCodePoint == -1 {
+          break
+        }
+      }
+
+      # Bisect the overlapped character at the center point
+      if advanceWidth < (previousAdvanceWidth + advanceWidthFromLeft) / 2 {
+        _unicodeIterator.index = previousIndex
+        _advanceWidthFromLeft = previousAdvanceWidth
+      }
     }
   }
 

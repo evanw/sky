@@ -205,7 +205,7 @@ namespace Editor {
         iterator.setFont(_font, _currentIndent)
         for line in newLines {
           iterator.reset(line.text)
-          iterator.seekTo(line.text.count)
+          iterator.seekToIndex(line.text.count)
           line.advanceWidth = iterator.advanceWidthFromLeft
         }
         _lines.changeLines(minY, maxY + 1, newLines)

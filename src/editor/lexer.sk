@@ -143,7 +143,7 @@ namespace Editor {
       assert(0 <= start && start < end && end <= _limit)
 
       # Get the start position
-      _iterator.seekTo(start)
+      _iterator.seekToIndex(start)
       var previousIndex = start
       var previousX = _iterator.advanceWidthFromLeft
 
@@ -168,7 +168,7 @@ namespace Editor {
       }
 
       # Don't disrupt lexing
-      _iterator.seekTo(_currentIndex)
+      _iterator.seekToIndex(_currentIndex)
     }
 
     def changePreviousSpanColor(color UI.Color) {
