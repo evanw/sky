@@ -826,9 +826,8 @@ namespace Editor {
       var newRegions = oldRegions.clone
 
       for region in oldRegions {
-        var marker = direction == .PREVIOUS ? region.min : region.max
-        var y = Math.clamp(marker.y + (direction == .PREVIOUS ? -1 : 1), 0, lastLine)
-        newRegions.append(Region.new(Marker.new(Math.min(marker.x, _model[y].text.count), y)))
+        var marker = _markerWithOriginalOffsetX(direction == .PREVIOUS ? region.min : region.max)
+        newRegions.append(Region.new(_lineMarkerForOffsetX(marker.originalOffsetX, Math.clamp(marker.y + (direction == .PREVIOUS ? -1 : 1), 0, lastLine))))
       }
 
       changeSelection(Selection.new(newRegions), .SCROLL_INTO_VIEW)
@@ -876,7 +875,6 @@ namespace Editor {
       var lastLine = _model.count - 1
       var stepSize = step == .LINE ? 1 : Math.round((_viewHeight - _paddingTop - _paddingBottom) / _lineHeight - 1) as int
       var newRegions List<Region> = []
-      var iterator = _iterator
 
       for region in _selection.regions {
         if action == .DELETE_SELECTION && !region.isEmpty {
@@ -887,15 +885,8 @@ namespace Editor {
         if step == .DOCUMENT || end.y == (direction == .PREVIOUS ? 0 : lastLine) {
           end = direction == .PREVIOUS ? Marker.ZERO : Marker.new(_model[lastLine].text.count, lastLine)
         } else {
-          if end.originalOffsetX == Marker.INVALID_OFFSET_X {
-            iterator.reset(_model[end.y].text)
-            iterator.seekToIndex(end.x)
-            end = Marker.new(end.x, end.y, iterator.advanceWidthFromLeft)
-          }
-          var y = direction == .PREVIOUS ? Math.max(end.y - stepSize, 0) : Math.min(end.y + stepSize, lastLine)
-          iterator.reset(_model[y].text)
-          iterator.seekForwardToAdvanceWidth(end.originalOffsetX)
-          end = Marker.new(iterator.currentIndex, y, end.originalOffsetX)
+          end = _markerWithOriginalOffsetX(end)
+          end = _lineMarkerForOffsetX(end.originalOffsetX, direction == .PREVIOUS ? Math.max(end.y - stepSize, 0) : Math.min(end.y + stepSize, lastLine))
         }
         newRegions.append(Region.new(action != .CHANGE_SELECTION ? region.start : end, end))
       }
@@ -905,6 +896,23 @@ namespace Editor {
       if action == .DELETE_SELECTION {
         insertText("")
       }
+    }
+
+    def _markerWithOriginalOffsetX(marker Marker) Marker {
+      if marker.originalOffsetX == Marker.INVALID_OFFSET_X {
+        var iterator = _iterator
+        iterator.reset(_model[marker.y].text)
+        iterator.seekToIndex(marker.x)
+        marker = Marker.new(marker.x, marker.y, iterator.advanceWidthFromLeft)
+      }
+      return marker
+    }
+
+    def _lineMarkerForOffsetX(originalOffsetX double, y int) Marker {
+      var iterator = _iterator
+      iterator.reset(_model[y].text)
+      iterator.seekForwardToAdvanceWidth(originalOffsetX)
+      return Marker.new(iterator.currentIndex, y, originalOffsetX)
     }
 
     def _updateScrollSizeAndInvalidate(mode InvalidateMode) {
