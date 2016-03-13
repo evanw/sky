@@ -159,7 +159,7 @@ namespace Syntax.SkewLexer {
       .FOREGROUND_DEFAULT
 
     # Add a trailing span if a non-default state continues off the end of the line
-    if color != .FOREGROUND_DEFAULT {
+    if color != .FOREGROUND_DEFAULT && lexer.startOfState != lexer.endOfLine {
       lexer.addSpan(lexer.startOfState, lexer.endOfLine, color)
     }
 

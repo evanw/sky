@@ -683,19 +683,20 @@ namespace OSX {
         return it->second;
       }
       _findCodePoint(codePoint);
-      return _advanceWidths[codePoint] = CTFontGetAdvancesForGlyphs(_fonts[_cachedFontIndex].get(), kCTFontOrientationDefault, &_cachedGlyph, nullptr, 1);
+      return _advanceWidths[codePoint] = CTFontGetAdvancesForGlyphs(_fonts[_cachedFontIndex].get(), kCTFontOrientationDefault, _cachedGlyphs, nullptr, 1);
     }
 
     virtual Graphics::Glyph *renderGlyph(int codePoint) override {
       _findCodePoint(codePoint);
       const auto &font = _fonts[_cachedFontIndex];
-      auto bounds = CTFontGetBoundingRectsForGlyphs(font.get(), kCTFontOrientationDefault, &_cachedGlyph, nullptr, 1);
+      auto bounds = CTFontGetBoundingRectsForGlyphs(font.get(), kCTFontOrientationDefault, _cachedGlyphs, nullptr, 1);
+      auto fontSize = _size * _pixelScale;
 
       // Make sure the context is big enough
       int minX = std::floor(bounds.origin.x) - 1;
-      int minY = std::floor(bounds.origin.y - _cachedFontAscent) - 1;
+      int minY = std::floor(bounds.origin.y - fontSize) - 1;
       int maxX = std::ceil(bounds.origin.x + bounds.size.width) + 2;
-      int maxY = std::ceil(bounds.origin.y + bounds.size.height - _cachedFontAscent) + 2;
+      int maxY = std::ceil(bounds.origin.y + bounds.size.height - fontSize) + 2;
       int width = maxX - minX;
       int height = maxY - minY;
       if (!_context || width > _width || height > _height) {
@@ -709,9 +710,9 @@ namespace OSX {
 
       // Render the glyph three times at different offsets
       for (int i = 0; i < 3; i++) {
-        auto position = CGPointMake(-minX + i / 3.0, -minY - _cachedFontAscent);
+        auto position = CGPointMake(-minX + i / 3.0, -minY - fontSize);
         CGContextClearRect(_context.get(), CGRectMake(0, 0, width, height));
-        CTFontDrawGlyphs(font.get(), &_cachedGlyph, &position, 1, _context.get());
+        CTFontDrawGlyphs(font.get(), _cachedGlyphs, &position, 1, _context.get());
 
         // Extract the mask (keep in mind CGContext is upside-down)
         auto from = _bytes.data() + (_height - height) * _width * 4 + 3;
@@ -750,27 +751,23 @@ namespace OSX {
         codeUnits[0] = codePoint;
         codeUnitCount = 1;
       } else {
-        codePoint -= 0x10000;
-        codeUnits[0] = (codePoint >> 10) + 0xD800;
-        codeUnits[1] = (codePoint & ((1 << 10) - 1)) + 0xDC00;
+        codeUnits[0] = ((codePoint - 0x10000) >> 10) + 0xD800;
+        codeUnits[1] = ((codePoint - 0x10000) & ((1 << 10) - 1)) + 0xDC00;
         codeUnitCount = 2;
       }
 
       // Search the entire font cascade
       for (int i = 0, length = (int)_fonts.size(); i < length; i++) {
         const auto &font = _fonts[i];
-
-        if (CTFontGetGlyphsForCharacters(font.get(), codeUnits, &_cachedGlyph, codeUnitCount)) {
+        if (CTFontGetGlyphsForCharacters(font.get(), codeUnits, _cachedGlyphs, codeUnitCount)) {
           _cachedFontIndex = i;
-          _cachedFontAscent = CTFontGetAscent(font.get());
           return;
         }
       }
 
       // Give up after reaching the end
-      _cachedGlyph = 0;
+      _cachedGlyphs[0] = 0;
       _cachedFontIndex = 0;
-      _cachedFontAscent = 0;
 
       Log::warning("failed to find a glyph for code unit " + std::to_string(codePoint));
     }
@@ -791,8 +788,7 @@ namespace OSX {
     // Stuff for font selection
     int _cachedCodePoint = -1;
     int _cachedFontIndex = -1;
-    double _cachedFontAscent = 0;
-    CGGlyph _cachedGlyph = -1;
+    CGGlyph _cachedGlyphs[2] = {0, 0}; // CTFontGetGlyphsForCharacters requires two elements but uses one
     std::vector<CFPtr<CTFontRef>> _fonts;
     Skew::List<Skew::string> *_fontNames;
   };
