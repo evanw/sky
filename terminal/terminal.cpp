@@ -167,7 +167,7 @@ namespace Terminal {
     }
 
     void insertUTF8(char c) {
-      dispatchEvent(new UI::ClipboardEvent(UI::EventKind::CLIPBOARD_PASTE, viewWithFocus(), std::string(1, c)));
+      dispatchEvent(new UI::TextEvent(UI::EventKind::TEXT, viewWithFocus(), std::string(1, c), false));
     }
 
     virtual UI::OperatingSystem operatingSystem() override {

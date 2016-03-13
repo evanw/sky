@@ -82,6 +82,8 @@ namespace UI {
     CLIPBOARD_COPY
     CLIPBOARD_PASTE
 
+    TEXT
+
     def isMouseEvent bool {
       return self >= MOUSE_DOWN && self <= MOUSE_SCROLL
     }
@@ -96,6 +98,10 @@ namespace UI {
 
     def isClipboardEvent bool {
       return self >= CLIPBOARD_CUT && self <= CLIPBOARD_PASTE
+    }
+
+    def isTextEvent bool {
+      return self == TEXT
     }
   }
 
@@ -126,6 +132,11 @@ namespace UI {
       assert(type.isClipboardEvent && self is ClipboardEvent)
       return self as ClipboardEvent
     }
+
+    def textEvent TextEvent {
+      assert(type.isTextEvent && self is TextEvent)
+      return self as TextEvent
+    }
   }
 
   class MouseEvent : Event {
@@ -155,5 +166,10 @@ namespace UI {
 
   class ClipboardEvent : Event {
     var text string
+  }
+
+  class TextEvent : Event {
+    var text string
+    var isComposing bool
   }
 }

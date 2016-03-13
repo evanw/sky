@@ -106,12 +106,20 @@ namespace Browser {
     }
 
     over render {
+      var translator = _canvas.translator
       _canvas.beginFrame
-      _canvas.translator.renderView(root)
+      translator.renderView(root)
       _canvas.endFrame
+
+      # Move the <input> using a transform to avoid a layout. The <input> must
+      # be moved near the cursor so IME UI makes sense (completion list, etc.).
+      _input.style.transform = "translate(\(translator.lastCaretX)px, \(translator.lastCaretY)px)"
     }
 
     over setFont(font UI.Font, names List<string>, size double, height double) {
+      if font == .CODE_FONT {
+        _input.style.height = "\(height)px"
+      }
       _canvas.setFont(font, names, size, height)
     }
 
@@ -258,6 +266,7 @@ namespace Browser {
     def _setHasFocus(hasFocus bool) {
       if hasFocus {
         _input.enabled = true
+        _input.value = ""
         _input.focus()
       }
 
@@ -274,10 +283,17 @@ namespace Browser {
     }
 
     def _createInput {
+      # Make the <input> transparent and give it a width of 0. The <input> must
+      # be moved near the cursor so IME UI makes sense (completion list, etc.).
       var style = _input.style
       style.position = "absolute"
+      style.border = "none"
+      style.outline = "none"
+      style.opacity = "0"
+      style.padding = "0"
+      style.width = "0"
+      style.left = "0"
       style.top = "0"
-      style.right = "200%"
 
       on(_input, "blur", event => {
         _setHasFocus(false)
@@ -295,28 +311,33 @@ namespace Browser {
           _delegate?.triggerAction(action)
           event.preventDefault()
         }
+
+        # Newlines won't appear as input events in a single-line <input>
+        else if event.which == '\r' {
+          _insertText("\n", false)
+          event.preventDefault()
+        }
       })
 
-      # Use the "keypress" event instead of the "input" event to avoid a layout
-      on(_input, "keypress", event => {
-        var c int = event.which
-        dispatchEvent(UI.ClipboardEvent.new(.CLIPBOARD_PASTE, viewWithFocus, c == '\r' ? "\n" : string.fromCodePoint(c)))
-        event.preventDefault()
-      })
+      # These events is supported by all major browsers
+      var isComposing = false
+      on(_input, "compositionstart", event => isComposing = true)
+      on(_input, "compositionend", event => isComposing = false)
 
-      on(_input, "cut", event => {
-        _handleClipboardEvent(event, .CLIPBOARD_CUT)
-      })
-
-      on(_input, "copy", event => {
-        _handleClipboardEvent(event, .CLIPBOARD_COPY)
-      })
-
-      on(_input, "paste", event => {
-        _handleClipboardEvent(event, .CLIPBOARD_PASTE)
-      })
+      # Text input events
+      on(_input, "input", event => _insertText(_input.value, isComposing))
+      on(_input, "cut", event => _handleClipboardEvent(event, .CLIPBOARD_CUT))
+      on(_input, "copy", event => _handleClipboardEvent(event, .CLIPBOARD_COPY))
+      on(_input, "paste", event => _handleClipboardEvent(event, .CLIPBOARD_PASTE))
 
       element.appendChild(_input)
+    }
+
+    def _insertText(text string, isComposing bool) {
+      dispatchEvent(UI.TextEvent.new(.TEXT, viewWithFocus, text, isComposing))
+      if !isComposing {
+        _input.value = ""
+      }
     }
 
     def _handleClipboardEvent(event dynamic, type UI.EventKind) {

@@ -1423,7 +1423,7 @@ void OSX::AppWindow::handleKeyEvent(NSEvent *event) {
 }
 
 void OSX::AppWindow::handleInsertText(NSString *text) {
-  dispatchEvent(new UI::ClipboardEvent(UI::EventKind::CLIPBOARD_PASTE, viewWithFocus(), [text UTF8String]));
+  dispatchEvent(new UI::TextEvent(UI::EventKind::TEXT, viewWithFocus(), [text UTF8String], false));
 }
 
 UI::MouseEvent *OSX::AppWindow::_mouseEventFromEvent(UI::EventKind kind, NSEvent *event, Vector *delta) {

@@ -50,6 +50,8 @@ namespace UI {
     const _renderer PixelRenderer
     var _theme Theme = .FALLBACK
     var _viewport Rect = .EMPTY
+    var lastCaretX = 0.0
+    var lastCaretY = 0.0
 
     def fontInstance(font Font) FontInstance {
       return _renderer.fontInstance(font)
@@ -80,6 +82,8 @@ namespace UI {
     }
 
     def renderCaret(x double, y double, color Color) {
+      lastCaretX = x + _viewport.x
+      lastCaretY = y + _viewport.y
       _renderer.fillRect(x, y, 1, _renderer.fontInstance(.CODE_FONT).lineHeight, _theme.findColor(color))
     }
 

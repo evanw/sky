@@ -63,6 +63,7 @@ namespace Editor {
     var _areCaretsVisible = false
     var _caretBlinkStartTime = 0.0
     var _isSelectingInTerminal = false
+    var _composingText string = null
     var _idleCount = 0
 
     # Mouse handling
@@ -246,6 +247,39 @@ namespace Editor {
         case .CLIPBOARD_PASTE {
           insertText(event.clipboardEvent.text)
         }
+
+        case .TEXT {
+          # Remove old composing text
+          if _composingText != null {
+            var count = _composingText.count
+            var regions List<Region> = []
+
+            # Generate a new selection
+            for region in _selection.regions {
+              var min = region.min
+              var max = region.max
+              var line = _model[min.y]
+              var minX = min.x - count
+
+              # Double-check that the text we're about to erase is outdated
+              if min.x == max.x && min.y == max.y && minX >= 0 && line.text.slice(minX, min.x) == _composingText {
+                min = Marker.new(minX, min.y)
+              }
+
+              regions.append(Region.new(min, max))
+            }
+
+            # Expand the selection before calling insertText() so the old composing text is removed
+            changeSelection(Selection.new(regions), .DO_NOT_SCROLL)
+          }
+
+          insertText(event.textEvent.text)
+
+          # Record new composing text
+          if event.textEvent.isComposing {
+            _composingText = event.textEvent.text
+          }
+        }
       }
     }
 
@@ -362,6 +396,7 @@ namespace Editor {
 
     def changeSelection(selection Selection, scroll ScrollBehavior) {
       _selection = selection
+      _composingText = null
       _scrollSelectionIntoView(selection, scroll)
       _invalidate(.RESET_CARET_BLINK_TIME)
     }
@@ -599,6 +634,7 @@ namespace Editor {
         }
       }
       _isSelectingInTerminal = false
+      _composingText = null
       _model.applyChanges(changes)
       _scrollTo(_selection.max)
     }
