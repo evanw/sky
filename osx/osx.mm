@@ -874,10 +874,6 @@ namespace OSX {
 
     virtual void setFont(UI::Font font, Skew::List<Skew::string> *names, double size, double height) override {
       _fontInstances[(int)font] = new FontInstance(font, names, size, height, _pixelScale);
-
-      if (font == UI::Font::CODE_FONT) {
-        _codeFontSize = size;
-      }
     }
 
     virtual void render() override;
@@ -936,12 +932,11 @@ namespace OSX {
       assert(_isRendering);
 
       auto fontInstance = _fontInstances[(int)font];
-      if (fontInstance == nullptr || x >= _width || y >= _height || y + _codeFontSize <= 0) {
+      if (fontInstance == nullptr || x >= _width || y >= _height || y + fontInstance->size() <= 0) {
         return;
       }
 
       _solidBatch->flush();
-      y += _codeFontSize - fontInstance->size();
       color = Graphics::RGBA::premultiplied(color);
 
       for (const auto &codePoint : std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t>().from_bytes(text.std_str())) {
@@ -989,7 +984,6 @@ namespace OSX {
     int _clearColor = 0;
     bool _isRendering = false;
     double _pixelScale = 0;
-    double _codeFontSize = 0;
     bool _needsToBeShown = true;
     NSWindow *_window = nullptr;
     NSCursor *_cursor = [NSCursor arrowCursor];

@@ -557,6 +557,7 @@ namespace Editor {
         renderer.renderRect(0, 0, _marginWidth, _viewHeight, .BACKGROUND_MARGIN)
 
         # Render line numbers
+        var baselineAlignment = renderer.fontInstance(.CODE_FONT).size - renderer.fontInstance(.MARGIN_FONT).size
         var rightAlignWidth = _model.count.toString.count
         for y = minY; y < maxY; y++ {
           var text = (y + 1).toString
@@ -566,7 +567,7 @@ namespace Editor {
             renderer.renderRect(0, offsetY, _marginWidth, _lineHeight, .BACKGROUND_MARGIN_HIGHLIGHTED)
           }
           renderer.renderText(_marginPaddingLeft + _marginSpaceAdvanceWidth * (rightAlignWidth - text.count),
-            offsetY, text, .MARGIN_FONT, isHighlighted ? .FOREGROUND_MARGIN_HIGHLIGHTED : .FOREGROUND_MARGIN, 0xFF)
+            offsetY + baselineAlignment, text, .MARGIN_FONT, isHighlighted ? .FOREGROUND_MARGIN_HIGHLIGHTED : .FOREGROUND_MARGIN, 0xFF)
         }
 
         # Render the border on top so the margin highlight doesn't obscure it

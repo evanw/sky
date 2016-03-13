@@ -132,7 +132,7 @@ namespace Browser {
       assert(_isRendering)
 
       var fontInstance = _fontInstances.get(font, null)
-      if fontInstance == null || x >= _width || y >= _height || y + _codeFontSize <= 0 {
+      if fontInstance == null || x >= _width || y >= _height || y + fontInstance.size <= 0 {
         return
       }
 
@@ -144,7 +144,7 @@ namespace Browser {
       }
 
       _context.fillStyle = _colorToStyle(color)
-      _context.fillText(text, x, y + _codeFontSize)
+      _context.fillText(text, x, y + fontInstance.size)
     }
 
     def _colorToStyle(color Graphics.RGBA) string {
