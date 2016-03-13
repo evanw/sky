@@ -1251,6 +1251,10 @@ void OSX::AppWindow::triggerFrame() {
   if (_delegate != nullptr) {
     _delegate->triggerFrame();
   }
+  if (_isInvalid) {
+    render();
+    _isInvalid = false;
+  }
 }
 
 void OSX::AppWindow::render() {

@@ -626,11 +626,11 @@ namespace Editor {
 
         # Render something at 10 fps even when idle otherwise Chrome's
         # render loop goes idle and stutters when starting back up
-        if window.platform.userAgent == .CHROME && _idleCount == 6 {
-          _idleCount = 0
-        } else {
+        if window.platform.userAgent != .CHROME || !window.isActive || _idleCount % 6 != 0 || _idleCount >= 5 * 60 {
           return
         }
+      } else {
+        _idleCount = 0
       }
 
       # Carets changed or we're rendering to prevent an idle render loop

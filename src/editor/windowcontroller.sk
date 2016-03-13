@@ -7,7 +7,6 @@ namespace Editor {
   class WindowController :: UI.WindowDelegate {
     const _window UI.Window
     const _observers List<WindowObserver> = []
-    var _isInvalid = true
 
     def new(platform UI.Platform) {
       var window = platform.createWindow
@@ -74,19 +73,12 @@ namespace Editor {
       for observer in _observers {
         observer.handleFrame
       }
-      if _isInvalid {
-        _window.render
-      }
     }
 
     def triggerAction(action Action) {
       for observer in _observers {
         observer.handleAction(action)
       }
-    }
-
-    def invalidate {
-      _isInvalid = true
     }
   }
 
