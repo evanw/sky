@@ -9,6 +9,9 @@ namespace Log {
 
 #include "compiled.cpp"
 #include <skew.cpp>
+#include <locale.h>
+
+#define _XOPEN_SOURCE_EXTENDED
 #include <ncurses.h>
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -21,6 +24,31 @@ enum {
   SKY_COLOR_SELECTED = 5,
   SKY_COLOR_STRING = 6,
 };
+
+// Using wchar_t for unicode was the worst idea ever
+void codePointToWchars(int codePoint, cchar_t &buffer) {
+  memset(buffer.chars, 0, sizeof(buffer.chars));
+
+  // UTF-32
+  if (sizeof(wchar_t) == 4) {
+    buffer.chars[0] = codePoint;
+  }
+
+  // UTF-16
+  else if (sizeof(wchar_t) == 2) {
+    if (codePoint < 0x10000) {
+      buffer.chars[0] = codePoint;
+    } else {
+      buffer.chars[0] = ((codePoint - 0x10000) >> 10) + 0xD800;
+      buffer.chars[1] = ((codePoint - 0x10000) & ((1 << 10) - 1)) + 0xDC00;
+    }
+  }
+
+  // UTF-8
+  else {
+    static_assert(sizeof(wchar_t) == 2 || sizeof(wchar_t) == 4, "unsupported platform");
+  }
+}
 
 namespace Terminal {
   struct FontInstance : UI::FontInstance {
@@ -39,8 +67,16 @@ namespace Terminal {
       return 1;
     }
 
+    // A single character can actually take up multiple cells in the terminal
+    // (or no cells at all if libc decides it doesn't feel like printing it)
     virtual double advanceWidth(int codePoint) override {
-      return 1;
+      auto it = _advanceWidths.find(codePoint);
+      if (it != _advanceWidths.end()) {
+        return it->second;
+      }
+      cchar_t buffer;
+      codePointToWchars(codePoint, buffer);
+      return _advanceWidths[codePoint] = std::max(0, wcswidth(buffer.chars, sizeof(buffer.chars) / sizeof(*buffer.chars)));
     }
 
     virtual Graphics::Glyph *renderGlyph(int codePoint) override {
@@ -55,6 +91,7 @@ namespace Terminal {
 
   private:
     UI::Font _font = {};
+    std::unordered_map<int, int> _advanceWidths;
   };
 
   struct Host : UI::Platform, UI::Window, private UI::SemanticRenderer {
@@ -114,7 +151,7 @@ namespace Terminal {
       }
     }
 
-    void insertASCII(char c) {
+    void insertUTF8(char c) {
       dispatchEvent(new UI::ClipboardEvent(UI::EventKind::CLIPBOARD_PASTE, viewWithFocus(), std::string(1, c)));
     }
 
@@ -195,24 +232,19 @@ namespace Terminal {
         int maxX = std::min(clip.maxX, (int)(x + width));
         int maxY = std::min(clip.maxY, (int)(y + height));
         int n = std::max(0, maxX - minX);
-        chtype buffer[n];
-
-        if (color == UI::Color::BACKGROUND_MARGIN) {
-          for (int x = 0; x < n; x++) {
-            buffer[x] = ' ';
-          }
-        }
+        cchar_t buffer;
 
         for (int y = minY; y < maxY; y++) {
-          if (color == UI::Color::BACKGROUND_SELECTED) {
-            mvinchnstr(y, minX, buffer, n);
-
-            for (int x = 0; x < n; x++) {
-              buffer[x] = (buffer[x] & ~A_COLOR) | COLOR_PAIR(SKY_COLOR_SELECTED);
+          for (int x = 0; x < n; x++) {
+            if (color == UI::Color::BACKGROUND_SELECTED) {
+              mvin_wch(y, minX + x, &buffer);
+              buffer.attr = (buffer.attr & ~A_COLOR) | COLOR_PAIR(SKY_COLOR_SELECTED);
+            } else {
+              buffer = {};
+              buffer.chars[0] = ' ';
             }
+            mvadd_wch(y, minX + x, &buffer);
           }
-
-          mvaddchnstr(y, minX, buffer, n);
         }
       }
     }
@@ -229,7 +261,11 @@ namespace Terminal {
         return;
       }
 
-      mvaddch(y, x, mvinch(y, x) | A_UNDERLINE);
+      // Underline the character at (x, y)
+      cchar_t c;
+      mvin_wch(y, x, &c);
+      c.attr |= A_UNDERLINE;
+      mvadd_wch(y, x, &c);
     }
 
     virtual void renderSquiggle(double x, double y, double width, double height, UI::Color color) override {
@@ -250,6 +286,7 @@ namespace Terminal {
         return;
       }
 
+      auto instance = fontInstance(font);
       bool isMargin = color == UI::Color::FOREGROUND_MARGIN || color == UI::Color::FOREGROUND_MARGIN_HIGHLIGHTED;
       int attributes =
         isMargin ? COLOR_PAIR(SKY_COLOR_MARGIN) :
@@ -264,19 +301,30 @@ namespace Terminal {
       int start = std::max(0, std::min(utf32->count(), clip.minX - (int)x));
       int end = std::max(0, std::min(utf32->count(), clip.maxX - (int)x));
       int n = std::max(0, end - start);
-      chtype buffer[n];
+      cchar_t buffer;
 
-      mvinchnstr(y, x + start, buffer, n);
+      // Merge the characters with the background attributes already present
       for (int i = 0; i < n; i++) {
-        int color = buffer[i] & A_COLOR;
-        int c = (*utf32)[start + i];
-        if (c == '\t') c = ' ';
-        if (c == ' ') c = buffer[i] & (~A_ATTRIBUTES | A_ALTCHARSET);
-        else if (c == 0xB7) c = 126 | A_ALTCHARSET;
-        else if (c > 0xFF) c = '?';
-        buffer[i] = (PAIR_NUMBER(color) == 0 ? attributes : color | (attributes & A_BOLD)) | c;
+        mvin_wch(y, x + start, &buffer);
+        int codePoint = (*utf32)[start + i];
+        int advanceWidth = instance->advanceWidth(codePoint);
+
+        // Non-printable characters (according to libc) will have an advance width of 0
+        if (advanceWidth > 0) {
+          // Transfer the text color
+          int color = buffer.attr & A_COLOR;
+          buffer.attr = PAIR_NUMBER(color) == 0 ? attributes : color | (attributes & A_BOLD);
+
+          // Make sure rendering a space doesn't cover up the character underneath
+          if (codePoint != ' ') {
+            codePointToWchars(codePoint, buffer);
+          }
+
+          // Write over the contents at (x, y)
+          mvadd_wch(y, x + start, &buffer);
+          x += advanceWidth;
+        }
       }
-      mvaddchnstr(y, x + start, buffer, n);
     }
 
     virtual void renderHorizontalLine(double x1, double x2, double y, UI::Color color) override {
@@ -382,6 +430,9 @@ int main() {
   // Don't let errors from clipboard commands crap all over the editor UI
   fclose(stderr);
 
+  // We want unicode support
+  setlocale(LC_ALL, "en_US.UTF-8");
+
   // Let the ncurses library take over the screen and make sure it's cleaned up
   initscr();
   atexit([] { endwin(); });
@@ -453,8 +504,8 @@ int main() {
     }
 
     // Handle regular typed text
-    else if ((c >= 32 && c < 127) || c == '\n') {
-      host->insertASCII(c);
+    else if ((c >= 32 && c <= 0xFF) || c == '\n') {
+      host->insertUTF8(c);
     }
 
     // Was the terminal resized?

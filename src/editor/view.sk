@@ -975,7 +975,7 @@ namespace Editor {
 
   namespace View {
     const SPACE_CHARACTER = 0xB7
-    const TAB_CHARACTER = BUILD == .TERMINAL ? SPACE_CHARACTER : 0x2192
+    const TAB_CHARACTER = 0x2192
     const SPACE_STRING = string.fromCodePoint(SPACE_CHARACTER)
     const TAB_STRING = string.fromCodePoint(TAB_CHARACTER)
   }
