@@ -507,7 +507,8 @@ int main() {
 
     // Handle shortcuts using control characters
     else if (c < 32 && c != '\n' && c != '\t') {
-      auto action = shortcuts->get((UI::Key)((int)UI::Key::LETTER_A + c - 1), UI::Modifiers::CONTROL);
+      auto key = c == 0 ? UI::Key::SPACEBAR : c <= 26 ? (UI::Key)((int)UI::Key::LETTER_A + c - 1) : UI::Key::NONE;
+      auto action = shortcuts->get(key, UI::Modifiers::CONTROL);
       if (action != Editor::Action::NONE) {
         host->triggerAction(action);
       }

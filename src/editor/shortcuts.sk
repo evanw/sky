@@ -53,6 +53,11 @@ namespace Editor {
       map.set(.TAB, .SHIFT, .INSERT_TAB_BACKWARD)
       map.set(.TAB, 0, .INSERT_TAB_FORWARD)
 
+      # The terminal uses Command+SPACEBAR instead of shift to toggle selection
+      if BUILD == .TERMINAL {
+        map.set(.SPACEBAR, base, .SELECT_TOGGLE)
+      }
+
       # These are from OS X spellcheck
       map.set(.SEMICOLON, base, .SELECT_NEXT_DIAGNOSTIC)
       map.set(.SEMICOLON, base | .SHIFT, .SELECT_PREVIOUS_DIAGNOSTIC)

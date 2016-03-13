@@ -62,6 +62,7 @@ namespace Editor {
     var _selection = Selection.new([.EMPTY])
     var _areCaretsVisible = false
     var _caretBlinkStartTime = 0.0
+    var _isSelectingInTerminal = false
     var _idleCount = 0
 
     # Mouse handling
@@ -597,6 +598,7 @@ namespace Editor {
           changes.append(change)
         }
       }
+      _isSelectingInTerminal = false
       _model.applyChanges(changes)
       _scrollTo(_selection.max)
     }
@@ -644,18 +646,27 @@ namespace Editor {
         return
       }
 
-      var motion MotionAction = action.isMoveMotion ? .CHANGE_SELECTION : action.isSelectMotion ? .EXTEND_SELECTION : .DELETE_SELECTION
+      var motion MotionAction =
+        action.isMoveMotion ? _isSelectingInTerminal ? .EXTEND_SELECTION : .CHANGE_SELECTION :
+        action.isSelectMotion ? .EXTEND_SELECTION :
+        .DELETE_SELECTION
+
+      # When terminal selection mode is toggled, any other action untoggles it back
+      if motion != .EXTEND_SELECTION && action != .SELECT_TOGGLE {
+        _isSelectingInTerminal = false
+      }
 
       switch action {
         case .UNDO { _model.undo }
         case .REDO { _model.redo }
 
         case .SELECT_ALL { changeSelection(selectionContainingEverything, .DO_NOT_SCROLL) }
-        case .SELECT_EXPAND_TO_LINE { changeSelection(selectionExpandedToLines, .DO_NOT_SCROLL) }
         case .SELECT_BREAK_INTO_LINES { changeSelection(selectionBrokenIntoLines, .DO_NOT_SCROLL) }
+        case .SELECT_EXPAND_TO_LINE { changeSelection(selectionExpandedToLines, .DO_NOT_SCROLL) }
         case .SELECT_FIRST_REGION { _selectFirstRegion }
         case .SELECT_NEXT_DIAGNOSTIC { _selectDiagnostic(.NEXT) }
         case .SELECT_PREVIOUS_DIAGNOSTIC { _selectDiagnostic(.PREVIOUS) }
+        case .SELECT_TOGGLE { _isSelectingInTerminal = !_isSelectingInTerminal }
 
         case .INSERT_CURSOR_ABOVE { _insertCursorY(.PREVIOUS) }
         case .INSERT_CURSOR_BELOW { _insertCursorY(.NEXT) }
