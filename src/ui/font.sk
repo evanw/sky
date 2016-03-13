@@ -21,13 +21,12 @@ namespace UI {
   class AdvanceWidthIterator {
     const _unicodeIterator = Unicode.StringIterator.new
     var _font FontInstance = null
-    var _currentIndex = 0
     var _advanceWidthFromLeft = 0.0
     var _spaceAdvanceWidth = 0.0
     var _tabStopSpacing = 0.0
 
     def currentIndex int {
-      return _currentIndex
+      return _unicodeIterator.index
     }
 
     def advanceWidthFromLeft double {
@@ -36,7 +35,6 @@ namespace UI {
 
     def reset(text string) {
       _unicodeIterator.reset(text, 0)
-      _currentIndex = 0
       _advanceWidthFromLeft = 0
     }
 
@@ -49,47 +47,58 @@ namespace UI {
     }
 
     def nextCodePoint int {
-      var c = _unicodeIterator.nextCodePoint
-      _currentIndex = _unicodeIterator.index
-      if c != -1 {
-        if c == '\t' {
+      var codePoint = _unicodeIterator.nextCodePoint
+      if codePoint != -1 {
+        if codePoint == '\t' {
           _advanceWidthFromLeft = roundUpToNextTabStop(_advanceWidthFromLeft, _tabStopSpacing)
         } else {
-          _advanceWidthFromLeft += _font.advanceWidth(c)
+          _advanceWidthFromLeft += _font.advanceWidth(codePoint)
         }
       }
-      return c
+      return codePoint
     }
 
     # This assumes the index is between code points, not in the middle of one
     def seekTo(index int) {
       var iterator = _unicodeIterator
       var oldIndex = iterator.index
-      var oldAdvanceWidth = _advanceWidthFromLeft
 
-      # Start from the beginning
-      if index < oldIndex / 2 {
-        iterator.index = 0
-        _currentIndex = 0
-        _advanceWidthFromLeft = 0
+      # No-op
+      if index == oldIndex {
+        return
+      }
+
+      # Scan forward
+      if index > oldIndex {
         while iterator.index < index && nextCodePoint != -1 {}
+        return
       }
 
-      # Back up
-      else if index < oldIndex {
-        iterator.index = index
-        _currentIndex = index
-        _advanceWidthFromLeft = 0
-        while iterator.index < oldIndex && nextCodePoint != -1 {}
-        iterator.index = index
-        _currentIndex = index
-        _advanceWidthFromLeft = oldAdvanceWidth - _advanceWidthFromLeft
+      # Try scanning backward
+      if index > oldIndex / 2 {
+        while true {
+          var codePoint = iterator.previousCodePoint
+
+          # There's no way of knowing how wide a tab stop is by itself
+          if codePoint == '\t' {
+            iterator.index = 0
+            break
+          }
+
+          # We're using doubles so error accumulation should be small
+          _advanceWidthFromLeft -= _font.advanceWidth(codePoint)
+
+          # Stop when the index was reached
+          if iterator.index <= index {
+            return
+          }
+        }
       }
 
-      # Keep going
-      else {
-        while index > iterator.index && nextCodePoint != -1 {}
-      }
+      # If that didn't work, start over from the beginning and scan forward
+      iterator.index = 0
+      _advanceWidthFromLeft = 0
+      while iterator.index < index && nextCodePoint != -1 {}
     }
   }
 

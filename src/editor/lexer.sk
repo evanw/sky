@@ -7,6 +7,10 @@ namespace Editor {
     const color UI.Color
   }
 
+  namespace Span {
+    const ORDER_BY_START = (a Span, b Span) => a.start <=> b.start
+  }
+
   class LexerState {
     def equals(other LexerState) bool {
       return other == self
@@ -41,6 +45,21 @@ namespace Editor {
       _limit = line.text.count
       _spans = []
       _tokenizeLine(self)
+
+      # Make sure all tabs have spans since they are variable width
+      var previousIndex = 0
+      var count = _spans.count
+      for i in 0..count {
+        var span = _spans[i]
+        assert(previousIndex <= span.start) # Tokenized spans must be sorted
+        _addSpansForTabs(previousIndex, span.start)
+        previousIndex = span.end
+      }
+      _addSpansForTabs(previousIndex, _limit)
+      if _spans.count != count {
+        _spans.sort(Span.ORDER_BY_START)
+      }
+
       line.previousState = previousState
       line.nextState = _state
       line.spans = _spans
@@ -121,12 +140,34 @@ namespace Editor {
     }
 
     def addSpan(start int, end int, color UI.Color) {
-      assert(start < end)
+      assert(0 <= start && start < end && end <= _limit)
+
+      # Get the start position
       _iterator.seekTo(start)
-      var minX = _iterator.advanceWidthFromLeft
-      _iterator.seekTo(end)
-      var maxX = _iterator.advanceWidthFromLeft
-      _spans.append(Span.new(start, end, minX, maxX - minX, color))
+      var previousIndex = start
+      var previousX = _iterator.advanceWidthFromLeft
+
+      # Split the span at each tab character
+      while _iterator.currentIndex < end {
+        var nextIndex = _iterator.currentIndex
+        var nextX = _iterator.advanceWidthFromLeft
+        var codePoint = _iterator.nextCodePoint
+
+        # Tab width depends on context so separate it out into its own span
+        if codePoint == '\t' {
+          _spans.append(Span.new(previousIndex, nextIndex, previousX, nextX - previousX, color))
+          previousIndex = _iterator.currentIndex
+          previousX = _iterator.advanceWidthFromLeft
+          _spans.append(Span.new(nextIndex, previousIndex, nextX, previousX - nextX, color))
+        }
+      }
+
+      # Add a final span at the end
+      if previousIndex < end {
+        _spans.append(Span.new(previousIndex, _iterator.currentIndex, previousX, _iterator.advanceWidthFromLeft - previousX, color))
+      }
+
+      # Don't disrupt lexing
       _iterator.seekTo(_currentIndex)
     }
 
@@ -139,6 +180,15 @@ namespace Editor {
       assert(_iterator.currentIndex >= _currentIndex)
       if _iterator.currentIndex == _currentIndex {
         _nextCodePoint = _iterator.nextCodePoint
+      }
+    }
+
+    def _addSpansForTabs(start int, end int) {
+      var line = _current
+      for i in start..end {
+        if line.text[i] == '\t' {
+          addSpan(i, i + 1, .FOREGROUND_DEFAULT)
+        }
       }
     }
   }

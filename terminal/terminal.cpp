@@ -116,10 +116,17 @@ namespace Terminal {
 
     void render() {
       erase();
+
+      // Let the root view render itself
       assert(_clipRectStack.empty());
       _clipRectStack.push_back(ClipRect{0, 0, _width, _height});
       _root->render();
       _clipRectStack.pop_back();
+
+      // Make sure dead characters on OS X (such as the umlaut) don't shift stuff over
+      move(_height - 1, _width - 1);
+
+      // The ncurses library will compute the minimum terminal commands to update the screen
       refresh();
       Skew::GC::collect();
     }
@@ -307,9 +314,14 @@ namespace Terminal {
       for (int i = 0; i < n; i++) {
         mvin_wch(y, x + start, &buffer);
         int codePoint = (*utf32)[start + i];
-        int advanceWidth = instance->advanceWidth(codePoint);
+
+        // Make sure tab doesn't mess stuff up
+        if (codePoint == '\t') {
+          codePoint = ' ';
+        }
 
         // Non-printable characters (according to libc) will have an advance width of 0
+        int advanceWidth = instance->advanceWidth(codePoint);
         if (advanceWidth > 0) {
           // Transfer the text color
           int color = buffer.attr & A_COLOR;

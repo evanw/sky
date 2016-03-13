@@ -72,7 +72,7 @@ namespace Syntax.SkewLexer {
       var c = lexer.takeNext
 
       # Whitespace
-      if c == ' ' {
+      if Editor.Lexer.isSpace(c) {
         continue
       }
 
@@ -141,11 +141,6 @@ namespace Syntax.SkewLexer {
         # Character literal
         else if c == '\'' {
           lexer.transitionToState(_characterState, startOfToken)
-        }
-
-        # Tab stop (must be a span to be positioned correctly)
-        else if c == '\t' {
-          lexer.addSpan(startOfToken, lexer.currentIndex, .FOREGROUND_DEFAULT)
         }
       }
 
