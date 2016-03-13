@@ -10,15 +10,14 @@ namespace Editor {
 
     def new(platform UI.Platform) {
       var window = platform.createWindow
-      window.setTitle("Untitled - Sky")
+      window.setTitle("Untitled - Sky Text Editor")
       window.setTheme(.XCODE)
-      # window.setFont(.CODE_FONT, MONOSPACE_FONTS, 12, 16)
-      window.setFont(.CODE_FONT, SANS_SERIF_FONTS, 12, 16)
+      window.setFont(.CODE_FONT, MONOSPACE_FONTS, 12, 16)
       window.setFont(.MARGIN_FONT, MONOSPACE_FONTS, 10, 14)
       window.setFont(.UI_FONT, SANS_SERIF_FONTS, 12, 16)
       _window = window
 
-      var model = Model.new("Untitled", platform, window.renderer.fontInstance(.CODE_FONT), 8)
+      var model = Model.new("Untitled", platform, window.renderer.fontInstance(.CODE_FONT), 2)
       model.setLexer(.SKEW)
 
       var view = View.new(self, model)
@@ -31,27 +30,6 @@ namespace Editor {
         view.changeMarginPadding(1, 1)
       }
       view.appendTo(window.root)
-
-      # Include some unicode text for testing in debug mode
-      if !RELEASE {
-        view.insertText("{\n" +
-          "\t\"strings\": [\n" +
-          "\t\t\"Цлїςσδε\",\n" +
-          "\t\t\"ﾌﾑｱﾑｶﾓｹﾓ\",\n" +
-          "\t\t\"フムヤムカモケモ\",\n" +
-          "\t\t\"㊀㊁㊂㊃㊄\",\n" +
-          "\t\t\"☳☶☲\",\n" +
-          "\t\t\"𡇙𝌆\",\n" +
-          "\t\t\"🙈🙉🙊\",\n" +
-          "\t\t\"spɹɐʍʞɔɐq puɐ uʍop ǝpᴉsdn sᴉ ʇxǝʇ sᴉɥʇ\",\n" +
-          "\t\t\"¯\\_(ツ)_/¯\",\n" +
-          "\t\t\"(╯°□°）╯︵ ┻━┻\",\n" +
-          "\t\t\"┬──┬ ノ(゜-゜ノ)\",\n" +
-          "\t\t\"ಠ_ಠ\"\n" +
-          "\t]\n" +
-          "}\n"
-        )
-      }
 
       window.setDelegate(self)
       window.focusView(view)
