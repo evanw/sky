@@ -1,4 +1,5 @@
 #define SKEW_GC_MARK_AND_SWEEP
+#define _XOPEN_SOURCE_EXTENDED
 #include <skew.h>
 
 namespace Log {
@@ -11,8 +12,12 @@ namespace Log {
 #include <skew.cpp>
 #include <locale.h>
 
-#define _XOPEN_SOURCE_EXTENDED
-#include <ncurses.h>
+// The "ncurses" library is in a platform-dependent location
+#if __linux__
+  #include <ncursesw/ncurses.h> // Install: "apt-get install libncursesw5-dev"
+#else
+  #include <ncurses.h> // Comes with OS X?
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -250,7 +255,7 @@ namespace Terminal {
               mvin_wch(y, minX + x, &buffer);
               buffer.attr = (buffer.attr & ~A_COLOR) | COLOR_PAIR(SKY_COLOR_SELECTED);
             } else {
-              buffer = {};
+              memset(&buffer, 0, sizeof(buffer));
               buffer.chars[0] = ' ';
             }
             mvadd_wch(y, minX + x, &buffer);

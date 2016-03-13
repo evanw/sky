@@ -38,7 +38,13 @@ CLANG_FLAGS_OSX += osx/osx.mm
 CLANG_FLAGS_TERMINAL += $(CLANG_FLAGS)
 CLANG_FLAGS_TERMINAL += -o terminal/sky
 CLANG_FLAGS_TERMINAL += terminal/terminal.cpp
-CLANG_FLAGS_TERMINAL += -lncurses # This must come last or GCC breaks
+
+# The "ncurses" library is in a platform-dependent location
+ifeq ($(shell uname), Linux)
+	CLANG_FLAGS_TERMINAL += -lncursesw # This must come last or GCC breaks
+else
+	CLANG_FLAGS_TERMINAL += -lncurses
+endif
 
 default: debug
 
