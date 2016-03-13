@@ -121,14 +121,14 @@ namespace Browser {
       assert(_isRendering)
 
       var fontInstance = _fontInstances.get(font, null)
-      if x >= _width || y >= _height || y + fontInstance.size <= 0 {
+      if fontInstance == null || x >= _width || y >= _height || y + _codeFontSize <= 0 {
         return
       }
 
       var iterator = Unicode.StringIterator.INSTANCE.reset(text, 0)
 
       _solidBatch.flush
-      y += _defaultFontSize - fontInstance.size
+      y += _codeFontSize - fontInstance.size
       color = color.premultiplied
 
       for codePoint = iterator.nextCodePoint; codePoint != -1; codePoint = iterator.nextCodePoint {

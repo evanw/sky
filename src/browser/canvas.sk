@@ -4,7 +4,7 @@ namespace Browser {
     var _height = 0
     var _pixelScale = 0.0
     var _isRendering = false
-    var _defaultFontSize = 0.0
+    var _codeFontSize = 0.0
     var _element = document.createElement("canvas")
     var _mousemove fn(dynamic) = null
     var _mouseup fn(dynamic) = null
@@ -65,8 +65,8 @@ namespace Browser {
     def setFont(font UI.Font, names List<string>, size double, height double) {
       _fontInstances[font] = FontInstance.new(font, names, size, height, _fontInstanceScale)
 
-      if font == .DEFAULT_FONT {
-        _defaultFontSize = size
+      if font == .CODE_FONT {
+        _codeFontSize = size
       }
     }
 

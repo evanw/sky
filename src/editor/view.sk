@@ -103,7 +103,7 @@ namespace Editor {
       setModel(model)
 
       var renderer = window.renderer
-      var defaultFont = renderer.fontInstance(.DEFAULT_FONT)
+      var defaultFont = renderer.fontInstance(.CODE_FONT)
       _defaultSpaceAdvanceWidth = defaultFont.advanceWidth(SPACE_CHARACTER)
       _marginSpaceAdvanceWidth = renderer.fontInstance(.MARGIN_FONT).advanceWidth(SPACE_CHARACTER)
       _lineHeight = defaultFont.lineHeight
@@ -440,12 +440,12 @@ namespace Editor {
               } else {
                 if spaceText != "" {
                   _iterator.seekTo(spaceStart)
-                  renderer.renderText(translateX + _iterator.advanceWidthFromLeft, lineY, spaceText, .DEFAULT_FONT, .FOREGROUND_DEFAULT, 0x3F)
+                  renderer.renderText(translateX + _iterator.advanceWidthFromLeft, lineY, spaceText, .CODE_FONT, .FOREGROUND_DEFAULT, 0x3F)
                   spaceText = ""
                 }
                 if c == '\t' {
                   _iterator.seekTo(x)
-                  renderer.renderText(translateX + _iterator.advanceWidthFromLeft, lineY, TAB_STRING, .DEFAULT_FONT, .FOREGROUND_DEFAULT, 0x3F)
+                  renderer.renderText(translateX + _iterator.advanceWidthFromLeft, lineY, TAB_STRING, .CODE_FONT, .FOREGROUND_DEFAULT, 0x3F)
                 }
                 spaceStart = x + 1
               }
@@ -463,7 +463,7 @@ namespace Editor {
 
         # Rendering unstyled text is simple
         if spans == null {
-          renderer.renderText(translateX, offsetY, line.text, .DEFAULT_FONT, .FOREGROUND_DEFAULT, 0xFF)
+          renderer.renderText(translateX, offsetY, line.text, .CODE_FONT, .FOREGROUND_DEFAULT, 0xFF)
         }
 
         # Render text styled by spans
@@ -486,11 +486,11 @@ namespace Editor {
             if span.offsetX + span.advanceWidth >= minX {
               # Render default-styled text between each span
               if previousEnd < start {
-                renderer.renderText(translateX + previousOffsetX, offsetY, line.text.slice(previousEnd, start), .DEFAULT_FONT, .FOREGROUND_DEFAULT, 0xFF)
+                renderer.renderText(translateX + previousOffsetX, offsetY, line.text.slice(previousEnd, start), .CODE_FONT, .FOREGROUND_DEFAULT, 0xFF)
               }
 
               # Render the styled span text
-              renderer.renderText(translateX + span.offsetX, offsetY, line.text.slice(start, end), .DEFAULT_FONT, span.color, 0xFF)
+              renderer.renderText(translateX + span.offsetX, offsetY, line.text.slice(start, end), .CODE_FONT, span.color, 0xFF)
             }
 
             # Remember the end of this span
@@ -500,7 +500,7 @@ namespace Editor {
 
           # Render one last run of unstyled text after the last span
           if previousEnd < limit && translateX + previousOffsetX < maxX {
-            renderer.renderText(translateX + previousOffsetX, offsetY, line.text.slice(previousEnd, limit), .DEFAULT_FONT, .FOREGROUND_DEFAULT, 0xFF)
+            renderer.renderText(translateX + previousOffsetX, offsetY, line.text.slice(previousEnd, limit), .CODE_FONT, .FOREGROUND_DEFAULT, 0xFF)
           }
         }
 

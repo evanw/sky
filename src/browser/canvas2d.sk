@@ -3,7 +3,7 @@ namespace Browser {
     var _context dynamic
     var _cachedStyles IntMap<string> = {}
     var _hasViewport = false
-    var _previousFont UI.Font = .DEFAULT_FONT
+    var _previousFont UI.Font = .CODE_FONT
     var _isPreviousFontValid = false
 
     def new(window Window) {
@@ -132,7 +132,7 @@ namespace Browser {
       assert(_isRendering)
 
       var fontInstance = _fontInstances.get(font, null)
-      if fontInstance == null || x >= _width || y >= _height || y + _defaultFontSize <= 0 {
+      if fontInstance == null || x >= _width || y >= _height || y + _codeFontSize <= 0 {
         return
       }
 
@@ -144,7 +144,7 @@ namespace Browser {
       }
 
       _context.fillStyle = _colorToStyle(color)
-      _context.fillText(text, x, y + _defaultFontSize)
+      _context.fillText(text, x, y + _codeFontSize)
     }
 
     def _colorToStyle(color Graphics.RGBA) string {

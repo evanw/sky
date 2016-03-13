@@ -647,23 +647,18 @@ namespace OSX {
 
       // Find the first user-provided font name
       for (const auto &name : *_fontNames) {
-        CFPtr<CFStringRef> holder(CFStringCreateWithCString(kCFAllocatorDefault, name.c_str(), kCFStringEncodingUTF8));
-        _fonts.emplace_back(CTFontCreateWithName(holder.get(), fontSize, nullptr));
-
-        // Did we find it?
-        if (_fonts.back() != nullptr) {
+        if (_addFont(name.c_str(), fontSize)) {
           Log::info("selected font '" + name.std_str() + "'");
           break;
         }
 
         // Try the next one
-        _fonts.pop_back();
         Log::warning("failed to font font '" + name.std_str() + "'");
       }
 
-      // Use the default fixed-pitch font as a fallback
+      // Use the default font as a fallback
       if (_fonts.empty()) {
-        _fonts.emplace_back(CTFontCreateUIFontForLanguage(kCTFontUIFontUserFixedPitch, fontSize, nullptr));
+        _fonts.emplace_back(CTFontCreateUIFontForLanguage(_font == UI::Font::CODE_FONT ? kCTFontUIFontUserFixedPitch : kCTFontUIFontSystem, fontSize, nullptr));
       }
 
       // Get the font fallback list
@@ -675,6 +670,12 @@ namespace OSX {
         auto descriptor = (CTFontDescriptorRef)CFArrayGetValueAtIndex(defaultCascade.get(), i);
         _fonts.emplace_back(CTFontCreateWithFontDescriptor(descriptor, fontSize, nullptr));
       }
+
+      // These aren't in the default font fallback list for some reason but
+      // they are present in Chrome. I'm using the same code as Chrome far as
+      // I can tell so I have no idea why the result is different. Oh well.
+      _addFont("Arial Unicode MS", fontSize); // Test character: "☲"
+      _addFont("Apple Symbols", fontSize); // Test character: "𝌆"
     }
 
     virtual double advanceWidth(int codePoint) override {
@@ -736,6 +737,16 @@ namespace OSX {
     #endif
 
   private:
+    bool _addFont(const char *name, double fontSize) {
+      CFPtr<CFStringRef> holder(CFStringCreateWithCString(kCFAllocatorDefault, name, kCFStringEncodingUTF8));
+      _fonts.emplace_back(CTFontCreateWithName(holder.get(), fontSize, nullptr));
+      if (_fonts.back() != nullptr) {
+        return true;
+      }
+      _fonts.pop_back();
+      return false;
+    }
+
     void _findCodePoint(int codePoint) {
       if (_cachedCodePoint == codePoint) {
         return;
@@ -864,8 +875,8 @@ namespace OSX {
     virtual void setFont(UI::Font font, Skew::List<Skew::string> *names, double size, double height) override {
       _fontInstances[(int)font] = new FontInstance(font, names, size, height, _pixelScale);
 
-      if (font == UI::Font::DEFAULT_FONT) {
-        _defaultFontSize = size;
+      if (font == UI::Font::CODE_FONT) {
+        _codeFontSize = size;
       }
     }
 
@@ -925,12 +936,12 @@ namespace OSX {
       assert(_isRendering);
 
       auto fontInstance = _fontInstances[(int)font];
-      if (fontInstance == nullptr || x >= _width || y >= _height || y + _defaultFontSize <= 0) {
+      if (fontInstance == nullptr || x >= _width || y >= _height || y + _codeFontSize <= 0) {
         return;
       }
 
       _solidBatch->flush();
-      y += _defaultFontSize - fontInstance->size();
+      y += _codeFontSize - fontInstance->size();
       color = Graphics::RGBA::premultiplied(color);
 
       for (const auto &codePoint : std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t>().from_bytes(text.std_str())) {
@@ -978,7 +989,7 @@ namespace OSX {
     int _clearColor = 0;
     bool _isRendering = false;
     double _pixelScale = 0;
-    double _defaultFontSize = 0;
+    double _codeFontSize = 0;
     bool _needsToBeShown = true;
     NSWindow *_window = nullptr;
     NSCursor *_cursor = [NSCursor arrowCursor];

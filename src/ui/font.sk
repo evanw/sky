@@ -1,6 +1,6 @@
 namespace UI {
   enum Font {
-    DEFAULT_FONT
+    CODE_FONT
     MARGIN_FONT
     UI_FONT
   }

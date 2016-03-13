@@ -80,7 +80,7 @@ namespace UI {
     }
 
     def renderCaret(x double, y double, color Color) {
-      _renderer.fillRect(x, y, 1, _renderer.fontInstance(.DEFAULT_FONT).lineHeight, _theme.findColor(color))
+      _renderer.fillRect(x, y, 1, _renderer.fontInstance(.CODE_FONT).lineHeight, _theme.findColor(color))
     }
 
     def renderSquiggle(x double, y double, width double, height double, color Color) {

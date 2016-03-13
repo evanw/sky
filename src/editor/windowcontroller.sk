@@ -13,13 +13,13 @@ namespace Editor {
       var window = platform.createWindow
       window.setTitle("Untitled - Sky")
       window.setTheme(.XCODE)
-      # window.setFont(.DEFAULT_FONT, MONOSPACE_FONTS, 12, 16)
-      window.setFont(.DEFAULT_FONT, SANS_SERIF_FONTS, 12, 16)
+      # window.setFont(.CODE_FONT, MONOSPACE_FONTS, 12, 16)
+      window.setFont(.CODE_FONT, SANS_SERIF_FONTS, 12, 16)
       window.setFont(.MARGIN_FONT, MONOSPACE_FONTS, 10, 14)
       window.setFont(.UI_FONT, SANS_SERIF_FONTS, 12, 16)
       _window = window
 
-      var model = Model.new("Untitled", platform, window.renderer.fontInstance(.DEFAULT_FONT), 8)
+      var model = Model.new("Untitled", platform, window.renderer.fontInstance(.CODE_FONT), 8)
       model.setLexer(.SKEW)
 
       var view = View.new(self, model)
@@ -33,20 +33,26 @@ namespace Editor {
       }
       view.appendTo(window.root)
 
-# TODO: remove this
-view.insertText("{
-	\"text\": \"unicode_test\",
-	\"vector_strings\": [
-		\"Цлїςσδε\",
-		\"ﾌﾑｱﾑｶﾓｹﾓ\",
-		\"フムヤムカモケモ\",
-		\"㊀㊁㊂㊃㊄\",
-		\"☳☶☲\",
-		\"𡇙𝌆\",
-		\"🙈🙉🙊\" # TODO: Make caret movement respect code point boundaries
-	]
-}
-")
+      # Include some unicode text for testing in debug mode
+      if !RELEASE {
+        view.insertText("{\n" +
+          "\t\"strings\": [\n" +
+          "\t\t\"Цлїςσδε\",\n" +
+          "\t\t\"ﾌﾑｱﾑｶﾓｹﾓ\",\n" +
+          "\t\t\"フムヤムカモケモ\",\n" +
+          "\t\t\"㊀㊁㊂㊃㊄\",\n" +
+          "\t\t\"☳☶☲\",\n" +
+          "\t\t\"𡇙𝌆\",\n" +
+          "\t\t\"🙈🙉🙊\",\n" +
+          "\t\t\"spɹɐʍʞɔɐq puɐ uʍop ǝpᴉsdn sᴉ ʇxǝʇ sᴉɥʇ\",\n" +
+          "\t\t\"¯\\_(ツ)_/¯\",\n" +
+          "\t\t\"(╯°□°）╯︵ ┻━┻\",\n" +
+          "\t\t\"┬──┬ ノ(゜-゜ノ)\",\n" +
+          "\t\t\"ಠ_ಠ\"\n" +
+          "\t]\n" +
+          "}\n"
+        )
+      }
 
       window.setDelegate(self)
       window.focusView(view)

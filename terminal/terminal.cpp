@@ -348,10 +348,14 @@ static void handleEscapeSequence(Terminal::Host *host) {
   static std::unordered_map<std::string, Editor::Action> map = {
     { "[", Editor::Action::SELECT_FIRST_REGION },
     { "[3~", Editor::Action::DELETE_RIGHT_CHARACTER },
+    { "[5~", Editor::Action::MOVE_UP_PAGE },
+    { "[6~", Editor::Action::MOVE_DOWN_PAGE },
     { "[A", Editor::Action::MOVE_UP_LINE },
     { "[B", Editor::Action::MOVE_DOWN_LINE },
     { "[C", Editor::Action::MOVE_RIGHT_CHARACTER },
     { "[D", Editor::Action::MOVE_LEFT_CHARACTER },
+    { "[F", Editor::Action::MOVE_RIGHT_LINE },
+    { "[H", Editor::Action::MOVE_LEFT_LINE },
   };
   std::string sequence;
 
@@ -369,22 +373,6 @@ static void handleEscapeSequence(Terminal::Host *host) {
 
   // Dispatch an action if there's a match
   auto it = map.find(sequence);
-  if (it != map.end()) {
-    host->triggerAction(it->second);
-  }
-}
-
-static void handleControlCharacter(Terminal::Host *host, char c) {
-  static std::unordered_map<char, Editor::Action> map = {
-    { 'A', Editor::Action::SELECT_ALL },
-    { 'C', Editor::Action::COPY },
-    { 'V', Editor::Action::PASTE },
-    { 'X', Editor::Action::CUT },
-    { 'Y', Editor::Action::REDO },
-    { 'Z', Editor::Action::UNDO },
-  };
-
-  auto it = map.find(c);
   if (it != map.end()) {
     host->triggerAction(it->second);
   }
@@ -415,8 +403,9 @@ int main() {
   timeout(10); // Don't let getch() block too long
 
   bool isInvalid = false;
-  auto host = new Terminal::Host;
-  Skew::Root<Editor::App> app(new Editor::App(host));
+  Skew::Root<Terminal::Host> host(new Terminal::Host);
+  Skew::Root<Editor::App> app(new Editor::App(host.get()));
+  Skew::Root<Editor::ShortcutMap> shortcuts(new Editor::ShortcutMap(host.get()));
 
   host->handleResize();
   host->render();
@@ -447,7 +436,10 @@ int main() {
 
     // Handle shortcuts using control characters
     else if (c < 32 && c != '\n' && c != '\t') {
-      handleControlCharacter(host, c + 'A' - 1);
+      auto action = shortcuts->get((UI::Key)((int)UI::Key::LETTER_A + c - 1), UI::Modifiers::CONTROL);
+      if (action != Editor::Action::NONE) {
+        host->triggerAction(action);
+      }
     }
 
     // Special-case tab
