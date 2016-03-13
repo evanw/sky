@@ -892,68 +892,65 @@ namespace Editor {
         return
       }
 
-      var todo = 0
+      var regions = selection.regions
+      var minX = _leftPixel
+      var maxX = _rightPixel
+      var minY = _topLine
+      var maxY = _bottomLine
+      var selectionMinX = _model.maxAdvanceWidth
+      var selectionMaxX = 0.0
+      var selectionMinY = _model.count - 1
+      var selectionMaxY = 0
 
-      # var regions = selection.regions
-      # var minX = _leftCharacter
-      # var maxX = _rightCharacter
-      # var minY = _topLine
-      # var maxY = _bottomLine
-      # var selectionMinX = _maxLineCount
-      # var selectionMaxX = 0
-      # var selectionMinY = _model.count - 1
-      # var selectionMaxY = 0
+      # Compute a bounding box around the selection
+      for region in regions {
+        var marker = region.end
+        var x = _markerX(marker)
+        selectionMinX = Math.min(selectionMinX, x)
+        selectionMaxX = Math.max(selectionMaxX, x)
+        selectionMinY = Math.min(selectionMinY, marker.y)
+        selectionMaxY = Math.max(selectionMaxY, marker.y)
+      }
 
-      # # Compute a bounding box around the selection
-      # for region in regions {
-      #   var marker = region.end
-      #   selectionMinX = Math.min(selectionMinX, marker.x)
-      #   selectionMinY = Math.min(selectionMinY, marker.y)
-      #   selectionMaxX = Math.max(selectionMaxX, marker.x)
-      #   selectionMaxY = Math.max(selectionMaxY, marker.y)
-      # }
+      # Only scroll enough to keep the bounding box in view
+      if scroll == .SCROLL_INTO_VIEW {
+        if selectionMaxX <= minX { _scrollToX(selectionMaxX) }
+        else if selectionMinX >= maxX { _scrollToX(selectionMinX) }
 
-      # # Only scroll enough to keep the bounding box in view
-      # if scroll == .SCROLL_INTO_VIEW {
-      #   if selectionMaxX <= minX { _scrollToX(selectionMaxX) }
-      #   else if selectionMinX >= maxX { _scrollToX(selectionMinX) }
+        if selectionMaxY <= minY { _scrollToY(selectionMaxY) }
+        else if selectionMinY >= maxY { _scrollToY(selectionMinY) }
+      }
 
-      #   if selectionMaxY <= minY { _scrollToY(selectionMaxY) }
-      #   else if selectionMinY >= maxY { _scrollToY(selectionMinY) }
-      # }
-
-      # # Scroll the first marker to the center of the view if it's not visible
-      # else if scroll == .CENTER_IF_OUT_OF_VIEW {
-      #   if selectionMaxX <= minX || selectionMinX >= maxX || selectionMaxY <= minY || selectionMinY >= maxY {
-      #     var marker = regions.first.min
-      #     _scrollbarX.setScrollOffset(marker.x * _advanceWidth - (_viewWidth - _paddingLeft - _paddingRight - _marginWidth) / 2)
-      #     _scrollbarY.setScrollOffset(marker.y * _lineHeight - (_viewHeight - _lineHeight - _paddingTop - _paddingBottom) / 2)
-      #     _invalidate(.RESET_CARET_BLINK_TIME)
-      #   }
-      # }
+      # Scroll the first marker to the center of the view if it's not visible
+      else if scroll == .CENTER_IF_OUT_OF_VIEW {
+        if selectionMaxX <= minX || selectionMinX >= maxX || selectionMaxY <= minY || selectionMinY >= maxY {
+          var marker = regions.first.min
+          _scrollbarX.setScrollOffset(_markerX(marker) - (_viewWidth - _paddingLeft - _paddingRight - _marginWidth) / 2)
+          _scrollbarY.setScrollOffset(marker.y * _lineHeight - (_viewHeight - _lineHeight - _paddingTop - _paddingBottom) / 2)
+          _invalidate(.RESET_CARET_BLINK_TIME)
+        }
+      }
     }
 
     def _scrollTo(marker Marker) {
-      _scrollToX(marker.x)
+      _scrollToX(_markerX(marker))
       _scrollToY(marker.y)
     }
 
-    def _scrollToX(x int) {
-      var todo = 0
+    def _scrollToX(x double) {
+      var minX = _leftPixel
+      var maxX = _rightPixel
+      var offsetX = _scrollbarX.scrollOffset
 
-      # var minX = _leftPixel
-      # var maxX = _rightPixel
-      # var offsetX = _scrollbarX.scrollOffset
+      if x <= minX {
+        offsetX = x
+      } else if x >= maxX {
+        offsetX = x - (_viewWidth - _paddingLeft - _paddingRight - _marginWidth)
+      }
 
-      # if x <= minX {
-      #   offsetX = x * _advanceWidth
-      # } else if x >= maxX {
-      #   offsetX = x * _advanceWidth - (_viewWidth - _paddingLeft - _paddingRight - _marginWidth)
-      # }
-
-      # if _scrollbarX.setScrollOffset(offsetX) {
-      #   _invalidate(.RESET_CARET_BLINK_TIME)
-      # }
+      if _scrollbarX.setScrollOffset(offsetX) {
+        _invalidate(.RESET_CARET_BLINK_TIME)
+      }
     }
 
     def _scrollToY(y int) {
@@ -971,6 +968,13 @@ namespace Editor {
       if _scrollbarY.setScrollOffset(offsetY) {
         _invalidate(.RESET_CARET_BLINK_TIME)
       }
+    }
+
+    def _markerX(marker Marker) double {
+      var iterator = _iterator
+      iterator.reset(_model[marker.y].text)
+      iterator.seekTo(marker.x)
+      return iterator.advanceWidthFromLeft
     }
   }
 

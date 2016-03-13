@@ -102,10 +102,13 @@ namespace Terminal {
       int maxY;
     };
 
-    void triggerFrame() {
+    bool triggerFrame() {
       if (_delegate != nullptr) {
         _delegate->triggerFrame();
       }
+      bool wasInvalid = _isInvalid;
+      _isInvalid = false;
+      return wasInvalid;
     }
 
     void handleResize() {
@@ -481,8 +484,8 @@ int main() {
       if (isInvalid) {
         host->render();
         isInvalid = false;
-      } else {
-        host->triggerFrame();
+      } else if (host->triggerFrame()) {
+        isInvalid = true;
       }
       continue;
     }
