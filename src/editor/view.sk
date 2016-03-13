@@ -874,8 +874,9 @@ namespace Editor {
 
     def _triggerActionY(action MotionAction, direction Direction, step StepY) {
       var lastLine = _model.count - 1
-      var pageSize = Math.round((_viewHeight - _paddingTop - _paddingBottom) / _lineHeight - 1) as int
+      var stepSize = step == .LINE ? 1 : Math.round((_viewHeight - _paddingTop - _paddingBottom) / _lineHeight - 1) as int
       var newRegions List<Region> = []
+      var iterator = _iterator
 
       for region in _selection.regions {
         if action == .DELETE_SELECTION && !region.isEmpty {
@@ -883,18 +884,19 @@ namespace Editor {
           continue
         }
         var end = action == .EXTEND_SELECTION ? region.end : direction == .PREVIOUS ? region.min : region.max
-        var y =
-          direction == .PREVIOUS ?
-            step == .LINE ? Math.max(end.y - 1, 0) :
-            step == .PAGE ? Math.max(end.y - pageSize, 0) :
-            0
-          : step == .LINE ? Math.min(end.y + 1, lastLine) :
-            step == .PAGE ? Math.min(end.y + pageSize, lastLine) :
-            lastLine
-        end = Marker.new(
-          step != .DOCUMENT && y != end.y ? Math.min(end.x, _model[y].text.count) :
-          direction == .PREVIOUS ? 0 : _model[lastLine].text.count,
-          y)
+        if step == .DOCUMENT || end.y == (direction == .PREVIOUS ? 0 : lastLine) {
+          end = direction == .PREVIOUS ? Marker.ZERO : Marker.new(_model[lastLine].text.count, lastLine)
+        } else {
+          if end.originalOffsetX == Marker.INVALID_OFFSET_X {
+            iterator.reset(_model[end.y].text)
+            iterator.seekToIndex(end.x)
+            end = Marker.new(end.x, end.y, iterator.advanceWidthFromLeft)
+          }
+          var y = direction == .PREVIOUS ? Math.max(end.y - stepSize, 0) : Math.min(end.y + stepSize, lastLine)
+          iterator.reset(_model[y].text)
+          iterator.seekForwardToAdvanceWidth(end.originalOffsetX)
+          end = Marker.new(iterator.currentIndex, y, end.originalOffsetX)
+        }
         newRegions.append(Region.new(action != .CHANGE_SELECTION ? region.start : end, end))
       }
 

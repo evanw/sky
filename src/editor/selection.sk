@@ -5,12 +5,23 @@ namespace Editor {
     const x int
     const y int
 
+    # Moving a caret up or down past a blank line should end up at a similar
+    # x offset value, not at an x offset value of 0. That original offset is
+    # tracked here.
+    const originalOffsetX double
+
+    def new(x int, y int, originalOffsetX double) {
+      self.x = x
+      self.y = y
+      self.originalOffsetX = originalOffsetX
+    }
+
     def toString string {
-      return "Marker(\(x), \(y))"
+      return "Marker(\(x), \(y), \(originalOffsetX))"
     }
 
     def equals(other Marker) bool {
-      return x == other.x && y == other.y
+      return x == other.x && y == other.y && originalOffsetX == other.originalOffsetX
     }
 
     def <=>(other Marker) int {
@@ -20,7 +31,8 @@ namespace Editor {
   }
 
   namespace Marker {
-    const ZERO = Marker.new(0, 0)
+    const ZERO = new(0, 0)
+    const INVALID_OFFSET_X = -1
 
     def min(a Marker, b Marker) Marker {
       return a < b ? a : b
@@ -28,6 +40,10 @@ namespace Editor {
 
     def max(a Marker, b Marker) Marker {
       return a > b ? a : b
+    }
+
+    def new(x int, y int) Marker {
+      return new(x, y, INVALID_OFFSET_X)
     }
   }
 
