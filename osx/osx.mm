@@ -684,7 +684,7 @@ namespace OSX {
         return it->second;
       }
       _findCodePoint(codePoint);
-      return _advanceWidths[codePoint] = CTFontGetAdvancesForGlyphs(_fonts[_cachedFontIndex].get(), kCTFontOrientationDefault, _cachedGlyphs, nullptr, 1);
+      return _advanceWidths[codePoint] = CTFontGetAdvancesForGlyphs(_fonts[_cachedFontIndex].get(), kCTFontOrientationDefault, _cachedGlyphs, nullptr, 1) / _pixelScale;
     }
 
     virtual Graphics::Glyph *renderGlyph(int codePoint) override {
