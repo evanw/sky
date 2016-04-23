@@ -100,7 +100,7 @@ namespace Syntax.SkewLexer {
             text in _types || Editor.Lexer.isUpperCase(c) || text == "fn" && (!lexer.hasNext || lexer.peekNext == '(') ? .FOREGROUND_TYPE :
             c == '_' ? .FOREGROUND_INSTANCE :
             .FOREGROUND_DEFAULT
-          var isAfterDefinitionKeyword = (color == .FOREGROUND_DEFAULT || color == .FOREGROUND_TYPE || color == .FOREGROUND_INSTANCE) &&
+          var isAfterDefinitionKeyword = (color == .FOREGROUND_DEFAULT || color == .FOREGROUND_TYPE || color == .FOREGROUND_INSTANCE || color == .FOREGROUND_CONSTANT) &&
             previousIdentifier != null && previousIdentifier in _definitionKeywords
 
           # Make definitions stand out
