@@ -376,10 +376,17 @@ namespace Browser {
     def _startAnimationLoop {
       var tick fn() = => {
         _delegate?.triggerFrame
+
+        # Chrome sometimes automatically scrolls stuff that shouldn't be scrollable :(
+        _element.scrollLeft = 0
+        _element.scrollTop = 0
+
+        # Only draw if requested
         if _isInvalid {
           render
           _isInvalid = false
         }
+
         (window.requestAnimationFrame ? window.requestAnimationFrame : dynamic.setTimeout)(tick)
       }
       tick()
