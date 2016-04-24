@@ -1,4 +1,5 @@
 #define SKEW_GC_MARK_AND_SWEEP
+#define SKEW_GC_PARALLEL
 #import <skew.h>
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1129,6 +1130,10 @@ static CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeSt
 
 - (void)invalidate {
   [self setNeedsDisplay:YES];
+
+  #ifdef SKEW_GC_PARALLEL
+    Skew::GC::parallelCollect();
+  #endif
 }
 
 - (void)drawRect:(NSRect)rect {
@@ -1268,7 +1273,9 @@ void OSX::AppWindow::render() {
     _needsToBeShown = false;
   }
 
-  Skew::GC::collect();
+  #ifndef SKEW_GC_PARALLEL
+    Skew::GC::blockingCollect();
+  #endif
 }
 
 void OSX::AppWindow::handleResize() {

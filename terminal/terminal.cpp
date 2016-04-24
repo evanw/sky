@@ -1,4 +1,5 @@
 #define SKEW_GC_MARK_AND_SWEEP
+#define SKEW_GC_PARALLEL
 #define _XOPEN_SOURCE_EXTENDED
 #include <skew.h>
 
@@ -136,7 +137,12 @@ namespace Terminal {
 
       // The ncurses library will compute the minimum terminal commands to update the screen
       refresh();
-      Skew::GC::collect();
+
+      #ifdef SKEW_GC_PARALLEL
+        Skew::GC::parallelCollect();
+      #else
+        Skew::GC::blockingCollect();
+      #endif
     }
 
     void triggerAction(Editor::Action action) {

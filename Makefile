@@ -80,7 +80,7 @@ terminal-debug: | node_modules
 
 terminal-release: | node_modules
 	$(SKEW) $(SKEW_FLAGS_TERMINAL)
-	c++ $(CLANG_FLAGS_TERMINAL)
+	c++ $(CLANG_FLAGS_TERMINAL) $(CLANG_FLAGS_RELEASE)
 
 watch-shaders: | node_modules
 	node_modules/.bin/watch glslx 'clear && make shaders && echo done'
