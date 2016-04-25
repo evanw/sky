@@ -1,5 +1,5 @@
 namespace UI.Theme {
-  const MONOKAI = Theme.new(null, null, null, {
+  const MONOKAI = Theme.new(27, 27, null, null, null, {
     Color.BACKGROUND_DEFAULT:            Graphics.RGBA.hex(0x272822),
     Color.BACKGROUND_DIAGNOSTIC_ERROR:   Graphics.RGBA.hex(0xFF2211),
     Color.BACKGROUND_MARGIN_HIGHLIGHTED: Graphics.RGBA.hex(0x3E3D32),

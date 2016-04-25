@@ -3,6 +3,8 @@ namespace UI {
   # default values either by having a theme fallback color directly or by
   # being substituted with another identifier that has a fallback color.
   class Theme {
+    const tabHeight double
+    const tabAreaHeight double
     const tabArea Graphics.DisplayList
     const activeTab Graphics.DisplayList
     const inactiveTab Graphics.DisplayList
@@ -24,7 +26,7 @@ namespace UI {
   }
 
   namespace Theme {
-    const FALLBACK = Theme.new(null, null, null, {
+    const FALLBACK = Theme.new(27, 27, null, null, null, {
       UI.Color.BACKGROUND_DEFAULT:            Graphics.RGBA.hex(0xFFFFFF),
       UI.Color.BACKGROUND_DIAGNOSTIC_ERROR:   Graphics.RGBA.hex(0xFF8877),
       UI.Color.BACKGROUND_DIAGNOSTIC_WARNING: Graphics.RGBA.hex(0xFFEF00),

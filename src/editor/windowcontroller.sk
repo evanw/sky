@@ -22,7 +22,7 @@ namespace Editor {
       _window = window
 
       var tabs = TabsView.new(self)
-      tabs.setLayout(.STRETCH, 0, 0, .MIN, 0, TabsView.HEIGHT)
+      tabs.setLayout(.STRETCH, 0, 0, .MIN, 0, window.theme.tabAreaHeight)
       tabs.appendTo(window.root)
 
       _documentStore.addObserver(self)
@@ -73,7 +73,7 @@ namespace Editor {
       if BUILD != .TERMINAL {
         view.changePadding(5, 5, 5, 5)
         view.changeMarginPadding(15, 5)
-        view.setLayout(.STRETCH, 0, 0, .STRETCH, TabsView.HEIGHT, 0)
+        view.setLayout(.STRETCH, 0, 0, .STRETCH, window.theme.tabAreaHeight, 0)
       }
 
       else {

@@ -85,6 +85,7 @@ namespace Editor {
       var height = bounds.height
       var font = renderer.fontInstance(.UI_FONT)
       var activeIndex = _documentStore.activeIndex
+      var tabHeight = theme.tabHeight
       var tabs = _tabs
       var advanceWidthIterator = UI.AdvanceWidthIterator.INSTANCE
       var unicodeIterator = Unicode.StringIterator.INSTANCE
@@ -100,7 +101,7 @@ namespace Editor {
         for i = tabs.count - 1; i >= 0; i-- {
           if i != activeIndex {
             var tab = tabs[i]
-            renderer.renderDisplayList(theme.inactiveTab, DISPLAY_LIST_WIDTH, DISPLAY_LIST_HEIGHT, tab.left, 0, tab.right - tab.left, height)
+            renderer.renderDisplayList(theme.inactiveTab, DISPLAY_LIST_WIDTH, DISPLAY_LIST_HEIGHT, tab.left, height - tabHeight, tab.right - tab.left, tabHeight)
           }
         }
       }
@@ -122,7 +123,7 @@ namespace Editor {
       # # Do the active tab last so it comes on top
       if activeIndex != -1 && theme.activeTab != null {
         var tab = tabs[activeIndex]
-        renderer.renderDisplayList(theme.activeTab, DISPLAY_LIST_WIDTH, DISPLAY_LIST_HEIGHT, tab.left, 0, tab.right - tab.left, height)
+        renderer.renderDisplayList(theme.activeTab, DISPLAY_LIST_WIDTH, DISPLAY_LIST_HEIGHT, tab.left, height - tabHeight, tab.right - tab.left, tabHeight)
       }
 
       # Draw the active tab text last in its own batch
@@ -155,10 +156,11 @@ namespace Editor {
       }
 
       var x = (tab.left + tab.right - textWidth) / 2
-      var offset = Math.round((bounds.height - font.lineHeight) / 2)
+      var tabHeight = window.theme.tabHeight
+      var offset = Math.round((tabHeight - font.lineHeight) / 2)
       var renderer = window.renderer
       renderer.renderText(x, offset + 1, text, .UI_FONT, .FOREGROUND_TABS_SHADOW, 255)
-      renderer.renderText(x, offset, text, .UI_FONT, isActive ? .FOREGROUND_TABS_ACTIVE : .FOREGROUND_TABS_INACTIVE, 255)
+      renderer.renderText(x, offset + bounds.height - tabHeight, text, .UI_FONT, isActive ? .FOREGROUND_TABS_ACTIVE : .FOREGROUND_TABS_INACTIVE, 255)
     }
 
     over handleEvent(event UI.Event) {
@@ -301,7 +303,6 @@ namespace Editor {
   namespace TabsView {
     const DISPLAY_LIST_HEIGHT = 100
     const DISPLAY_LIST_WIDTH = 100
-    const HEIGHT = 27
     const MAX_TAB_WIDTH = 250
     const NEW_TAB_WIDTH = 26
   }

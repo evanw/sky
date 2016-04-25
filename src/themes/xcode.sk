@@ -1,10 +1,11 @@
 namespace UI.Theme {
-  const XCODE = Theme.new(
+  const XCODE = Theme.new(27, 27,
     Graphics.DisplayList.new([
       Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0xD9D9D9) as int,
       Graphics.DisplayCommand.BEGIN_PATH, 0, 99.5,
       Graphics.DisplayCommand.LINE_TO, 100, 99.5,
-      Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0xBBBBBB) as int, 1]),
+      Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0xBBBBBB) as int, 1,
+    ]),
 
     Graphics.DisplayList.new([
       Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0xE5E5E5) as int,
@@ -16,7 +17,8 @@ namespace UI.Theme {
       Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0xBBBBBB) as int, 1,
       Graphics.DisplayCommand.BEGIN_PATH, 99.5, 0,
       Graphics.DisplayCommand.LINE_TO, 99.5, 100,
-      Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0xBBBBBB) as int, 1]),
+      Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0xBBBBBB) as int, 1,
+    ]),
 
     Graphics.DisplayList.new([
       Graphics.DisplayCommand.BEGIN_PATH, -0.5, 0,
@@ -24,7 +26,8 @@ namespace UI.Theme {
       Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0xBBBBBB) as int, 1,
       Graphics.DisplayCommand.BEGIN_PATH, 99.5, 0,
       Graphics.DisplayCommand.LINE_TO, 99.5, 100,
-      Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0xBBBBBB) as int, 1]),
+      Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0xBBBBBB) as int, 1,
+    ]),
 
     {
       Color.BACKGROUND_DEFAULT:       Graphics.RGBA.hex(0xFFFFFF),
