@@ -1,0 +1,73 @@
+namespace Graphics {
+  class PathTessellator {
+    var _cursorX double
+    var _cursorY double
+    const _inverseSquaredPixelScale double
+    const _coordinates List<double>
+
+    def new (x double, y double, pixelScale double) {
+      _cursorX = x
+      _cursorY = y
+      _inverseSquaredPixelScale = 1 / (pixelScale * pixelScale)
+      _coordinates = [x, y]
+    }
+
+    def lineTo(x double, y double) PathTessellator {
+      _coordinates.append(x)
+      _coordinates.append(y)
+      _cursorX = x
+      _cursorY = y
+      return self
+    }
+
+    def curveTo(ax double, ay double, bx double, by double, x double, y double) PathTessellator {
+      _tessellateCurveTo(_cursorX, _cursorY, ax, ay, bx, by, x, y, 0)
+      _cursorX = x
+      _cursorY = y
+      return self
+    }
+
+    def _tessellateCurveTo(x0 double, y0 double, x1 double, y1 double, x2 double, y2 double, x3 double, y3 double, depth int) {
+      # Don't subdivide lines
+      if x0 != x1 || y0 != y1 || x2 != x3 || y2 != y3 {
+        # Try to approximate the full cubic curve with a straight line
+        var dx30 = x3 - x0
+        var dy30 = y3 - y0
+        var dx13 = x1 - x3
+        var dy13 = y1 - y3
+        var dx23 = x2 - x3
+        var dy23 = y2 - y3
+
+        # Compute the error that this approximation would cause
+        var error = Math.abs(dx13 * dy30 - dy13 * dx30) + Math.abs(dx23 * dy30 - dy23 * dx30)
+        var errorLimit = _inverseSquaredPixelScale * (dx30 * dx30 + dy30 * dy30)
+
+        # Keep going if a flat approximation would cause too much error
+        # or if the cubic curve comes out from and back to the same point
+        if depth < 10 && (errorLimit == 0 || error * error > errorLimit) {
+          var x01 = (x0 + x1) / 2
+          var y01 = (y0 + y1) / 2
+          var x12 = (x1 + x2) / 2
+          var y12 = (y1 + y2) / 2
+          var x23 = (x2 + x3) / 2
+          var y23 = (y2 + y3) / 2
+          var x012 = (x01 + x12) / 2
+          var y012 = (y01 + y12) / 2
+          var x123 = (x12 + x23) / 2
+          var y123 = (y12 + y23) / 2
+          var x0123 = (x012 + x123) / 2
+          var y0123 = (y012 + y123) / 2
+          _tessellateCurveTo(x0, y0, x01, y01, x012, y012, x0123, y0123, depth + 1)
+          _tessellateCurveTo(x0123, y0123, x123, y123, x23, y23, x3, y3, depth + 1)
+          return
+        }
+      }
+
+      lineTo(x3, y3)
+    }
+
+    def finish List<double> {
+      return _coordinates
+    }
+  }
+}
