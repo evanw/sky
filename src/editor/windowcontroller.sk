@@ -7,8 +7,8 @@ namespace Editor {
   class WindowController :: UI.WindowDelegate, DocumentStoreObserver {
     const _window UI.Window
     const _observers List<WindowObserver> = []
-    const _documents = DocumentStore.new
-    const _views List<View> = []
+    const _documentStore = DocumentStore.new
+    const _view View
 
     def new(platform UI.Platform) {
       var window = platform.createWindow
@@ -19,36 +19,41 @@ namespace Editor {
       window.setFont(.UI_FONT, SANS_SERIF_FONTS, 12, 16, 0)
       _window = window
 
-      var model = Model.new("Untitled", platform, window.renderer.fontInstance(.CODE_FONT), 2)
-      model.setLexer(.SKEW)
-      _documents.appendDocument(model)
-
-      var view = View.new(self, model)
+      _view = View.new(self)
       if BUILD != .TERMINAL {
-        view.changePadding(5, 5, 5, 5)
-        view.changeMarginPadding(15, 5)
-        view.setLayout(.STRETCH, 0, 0, .STRETCH, TabsView.HEIGHT, 0)
+        _view.changePadding(5, 5, 5, 5)
+        _view.changeMarginPadding(15, 5)
+        _view.setLayout(.STRETCH, 0, 0, .STRETCH, TabsView.HEIGHT, 0)
 
         var tabs = TabsView.new(self)
         tabs.setLayout(.STRETCH, 0, 0, .MIN, 0, TabsView.HEIGHT)
         tabs.appendTo(window.root)
       } else {
-        view.setScrollbarThickness(1)
-        view.changePadding(0, 0, 1, 0) # Leave one character of padding on the right so the caret can be seen at the end of the line
-        view.changeMarginPadding(1, 1)
+        _view.setScrollbarThickness(1)
+        _view.changePadding(0, 0, 1, 0) # Leave one character of padding on the right so the caret can be seen at the end of the line
+        _view.changeMarginPadding(1, 1)
       }
-      view.appendTo(window.root)
+      _view.appendTo(window.root)
+
+      _documentStore.addObserver(self)
+      _documentStore.appendDocument(createNewDocument)
 
       window.setDelegate(self)
-      window.focusView(view)
+      window.focusView(_view)
     }
 
     def window UI.Window {
       return _window
     }
 
-    def documents DocumentStore {
-      return _documents
+    def documentStore DocumentStore {
+      return _documentStore
+    }
+
+    def createNewDocument Model {
+      var document = Model.new("Untitled", window.platform, window.renderer.fontInstance(.CODE_FONT), 2)
+      document.setLexer(.SKEW)
+      return document
     }
 
     def addObserver(observer WindowObserver) {
@@ -71,7 +76,9 @@ namespace Editor {
       }
     }
 
-    def handleDocumentStoreChange(model Model, from int, to int) {
+    def handleDocumentStoreChange(active Model, moved Model, from int, to int) {
+      _view.setModel(active)
+      _window.invalidate
     }
   }
 

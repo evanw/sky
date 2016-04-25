@@ -99,11 +99,10 @@ namespace Editor {
       ViewSetting.SHOW_MARGIN: true,
     }
 
-    def new(controller WindowController, model Model) {
+    def new(controller WindowController) {
       super(controller.window)
       _controller = controller
       controller.addObserver(self)
-      setModel(model)
 
       var renderer = window.renderer
       var defaultFont = renderer.fontInstance(.CODE_FONT)
@@ -181,6 +180,13 @@ namespace Editor {
     }
 
     over handleEvent(event UI.Event) {
+      if _model == null {
+        if event.type.isMouseEvent {
+          window.setCursor(.ARROW)
+        }
+        return
+      }
+
       switch event.type {
         case .MOUSE_DOWN {
           var viewLocation = event.mouseEvent.locationInView(self)
@@ -426,18 +432,33 @@ namespace Editor {
     }
 
     def setModel(model Model) {
-      if _model != model {
-        if _model != null {
-          _model.removeObserver(self)
-        }
-        _model = model
+      if _model == model {
+        return
+      }
+
+      if _model != null {
+        _model.removeObserver(self)
+      }
+
+      _model = model
+
+      if model != null {
         model.addObserver(self)
         _iterator.setFont(window.renderer.fontInstance(.CODE_FONT), model.currentIndent)
-        _updateScrollSizeAndInvalidate(.RESET_CARET_BLINK_TIME)
+      }
+
+      _updateScrollSizeAndInvalidate(.RESET_CARET_BLINK_TIME)
+
+      if model != null {
+        changeSelection(Selection.new([.EMPTY]), .SCROLL_INTO_VIEW)
       }
     }
 
     over render {
+      if _model == null {
+        return
+      }
+
       var renderer = window.renderer
       var translateX = _paddingLeft - _scrollbarX.scrollOffset + _marginWidth
       var translateY = _paddingTop - _scrollbarY.scrollOffset
@@ -916,7 +937,7 @@ namespace Editor {
     }
 
     def _updateScrollSizeAndInvalidate(mode InvalidateMode) {
-      if _viewWidth == 0 || _viewHeight == 0 {
+      if _viewWidth == 0 || _viewHeight == 0 || _model == null {
         return
       }
 

@@ -26,6 +26,10 @@ namespace Editor {
     var _commitIndex = 0
     var _dirtyIndex = 0
 
+    def name string {
+      return _name
+    }
+
     def toString string {
       return _lines.toString
     }
