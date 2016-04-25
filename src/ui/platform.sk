@@ -10,6 +10,7 @@ namespace UI {
 
   enum UserAgent {
     CHROME
+    EDGE
     FIREFOX
     IE
     SAFARI

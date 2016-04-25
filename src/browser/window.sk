@@ -38,6 +38,10 @@ namespace Browser {
     var _mousemove fn(dynamic) = null
     var _mouseup fn(dynamic) = null
     var _window UI.Window = null
+
+    # Clipboard support
+    var _cutAndCopyAreProbablyBroken = false
+    var _previousClipboard string = null
     var _fakeClipboard = ""
 
     def new {
@@ -70,10 +74,14 @@ namespace Browser {
 
       _userAgent =
         "Trident" in userAgent ? .IE :
+        "Edge" in userAgent ? .EDGE :
         "Chrome" in userAgent ? .CHROME :
         "Firefox" in userAgent ? .FIREFOX :
         "Apple" in vendor ? .SAFARI :
         .UNKNOWN
+
+      # Bug: Safari/IE fail to fire cut/copy events if the input element is empty (http://caniuse.com/clipboard)
+      _cutAndCopyAreProbablyBroken = _userAgent == .IE || _userAgent == .EDGE || _userAgent == .SAFARI
 
       _shortcuts = Editor.ShortcutMap.new(self)
       _canvas = _createCanvas
@@ -291,7 +299,7 @@ namespace Browser {
       style.outline = "none"
       style.opacity = "0"
       style.padding = "0"
-      style.width = "0"
+      style.transform = "scaleX(0)" # Safari breaks if we set "width" to 0
       style.left = "0"
       style.top = "0"
 
@@ -303,11 +311,19 @@ namespace Browser {
         var modifiers = _modifiersFromEvent(event)
         var action = _shortcuts.get(_keyCodeFromEvent(event), modifiers)
 
-        # Ignore clipboard actions since they need access to clipboardData
-        # and that is only available inside special clipboard events. If
-        # we handled clipboard actions here, the clipboard data would be
-        # incorrect and the actual clipboard events would be prevented.
-        if action != .NONE && action != .CUT && action != .COPY && action != .PASTE {
+        # Safari/IE have a broken clipboard implementation. Fall back to the
+        # fake clipboard for cut and copy in those browsers. There's no way
+        # to do feature detection for this bug unfortunately.
+        if action == .CUT || action == .COPY {
+          if _cutAndCopyAreProbablyBroken {
+            var clipboardEvent = UI.ClipboardEvent.new(action == .CUT ? .CLIPBOARD_CUT : .CLIPBOARD_COPY, viewWithFocus, _fakeClipboard)
+            dispatchEvent(clipboardEvent)
+            _fakeClipboard = clipboardEvent.text
+          }
+        }
+
+        # Ignore the paste action (we use the "paste" event instead)
+        else if action != .NONE && action != .PASTE {
           _delegate?.triggerAction(action)
           event.preventDefault()
         }
@@ -343,15 +359,25 @@ namespace Browser {
     def _handleClipboardEvent(event dynamic, type UI.EventType) {
       var normalClipboard = event.clipboardData
       var ieClipboard = window.clipboardData
-      var text = ""
+      var text = _fakeClipboard
 
       # Load clipboard data
       if normalClipboard {
         text = normalClipboard.getData("text/plain")
       } else if ieClipboard {
         text = ieClipboard.getData("Text")
-      } else {
-        text = _fakeClipboard
+      }
+
+      # If cut/copy don't work and we just pasted the same thing, read from the
+      # fake clipboard instead of the real one because that may contain content
+      # that was cut or copied and that didn't make it back to the real clipboard
+      if _cutAndCopyAreProbablyBroken {
+        if type == .CLIPBOARD_PASTE && text == _previousClipboard {
+          text = _fakeClipboard
+        } else {
+          _previousClipboard = text
+          _fakeClipboard = text
+        }
       }
 
       # Dispatch the event to the view with focus
@@ -364,12 +390,11 @@ namespace Browser {
           normalClipboard.setData("text/plain", clipboardEvent.text)
         } else if ieClipboard {
           ieClipboard.setData("Text", clipboardEvent.text)
-        } else {
-          _fakeClipboard = text
         }
+        _fakeClipboard = clipboardEvent.text
       }
 
-      # Make sure that this event doesn't actually insert into the textarea
+      # Make sure that this event doesn't actually insert into the input element
       event.preventDefault()
     }
 
