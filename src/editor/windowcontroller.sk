@@ -4,9 +4,11 @@ namespace Editor {
     def handleFrame
   }
 
-  class WindowController :: UI.WindowDelegate {
+  class WindowController :: UI.WindowDelegate, DocumentStoreObserver {
     const _window UI.Window
     const _observers List<WindowObserver> = []
+    const _documents = DocumentStore.new
+    const _views List<View> = []
 
     def new(platform UI.Platform) {
       var window = platform.createWindow
@@ -19,6 +21,7 @@ namespace Editor {
 
       var model = Model.new("Untitled", platform, window.renderer.fontInstance(.CODE_FONT), 2)
       model.setLexer(.SKEW)
+      _documents.appendDocument(model)
 
       var view = View.new(self, model)
       if BUILD != .TERMINAL {
@@ -44,6 +47,10 @@ namespace Editor {
       return _window
     }
 
+    def documents DocumentStore {
+      return _documents
+    }
+
     def addObserver(observer WindowObserver) {
       _observers.appendOne(observer)
     }
@@ -62,6 +69,9 @@ namespace Editor {
       for observer in _observers {
         observer.handleAction(action)
       }
+    }
+
+    def handleDocumentStoreChange(model Model, from int, to int) {
     }
   }
 

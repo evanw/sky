@@ -110,7 +110,6 @@ namespace Editor {
       _defaultSpaceAdvanceWidth = defaultFont.advanceWidth(SPACE_CHARACTER)
       _marginSpaceAdvanceWidth = renderer.fontInstance(.MARGIN_FONT).advanceWidth(SPACE_CHARACTER)
       _lineHeight = defaultFont.lineHeight
-      _iterator.setFont(defaultFont, model.currentIndent)
 
       _scrollbarX.setMinimumSize(_lineHeight * 3)
       _scrollbarY.setMinimumSize(_lineHeight * 3)
@@ -433,6 +432,7 @@ namespace Editor {
         }
         _model = model
         model.addObserver(self)
+        _iterator.setFont(window.renderer.fontInstance(.CODE_FONT), model.currentIndent)
         _updateScrollSizeAndInvalidate(.RESET_CARET_BLINK_TIME)
       }
     }

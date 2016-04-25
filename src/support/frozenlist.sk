@@ -28,6 +28,14 @@ type FrozenList<T> : List<T> {
   def [](index int) T {
     return (self as List<T>)[index]
   }
+
+  def indexOf(value T) int {
+    return (self as List<T>).indexOf(value)
+  }
+
+  def lastIndexOf(value T) int {
+    return (self as List<T>).lastIndexOf(value)
+  }
 }
 
 class List {

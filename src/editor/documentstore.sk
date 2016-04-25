@@ -1,0 +1,80 @@
+namespace Editor {
+  interface DocumentStoreObserver {
+    def handleDocumentStoreChange(model Model, from int, to int)
+  }
+
+  class DocumentStore {
+    var _documents = List<Model>.new.freeze
+    var _observers List<DocumentStoreObserver> = []
+    var _activeIndex = -1
+
+    def documents FrozenList<Model> {
+      return _documents
+    }
+
+    def activeDocument Model {
+      return _activeIndex == -1 ? null : _documents[_activeIndex]
+    }
+
+    def setActiveDocument(document Model) {
+      if document == null {
+        _activeIndex = -1
+      } else {
+        _activeIndex = _documents.indexOf(document)
+        assert(_activeIndex != -1)
+      }
+    }
+
+    def addObserver(observer DocumentStoreObserver) {
+      _observers.appendOne(observer)
+    }
+
+    def removeObserver(observer DocumentStoreObserver) {
+      _observers.removeOne(observer)
+    }
+
+    def appendDocument(model Model) {
+      insertDocument(_documents.count, model)
+    }
+
+    def insertDocument(index int, model Model) {
+      assert(index >= 0 && index <= _documents.count)
+      assert(!(model in _documents))
+      var documents = _documents.thaw
+      documents.insert(index, model)
+      _documents = documents.freeze
+      _activeIndex = index
+      _publishDocumentStoreChange(model, -1, index)
+    }
+
+    def moveDocument(from int, to int) {
+      assert(from >= 0 && from < _documents.count)
+      assert(to >= 0 && to < _documents.count)
+      if from != to {
+        var documents = _documents.thaw
+        var model = documents.takeAt(from)
+        documents.insert(to, model)
+        _documents = documents.freeze
+        _activeIndex = to
+        _publishDocumentStoreChange(model, from, to)
+      }
+    }
+
+    def removeDocument(index int) {
+      assert(index >= 0 && index < _documents.count)
+      var documents = _documents.thaw
+      var model = documents.takeAt(index)
+      _documents = documents.freeze
+      if _activeIndex >= documents.count {
+        _activeIndex = documents.count - 1
+      }
+      _publishDocumentStoreChange(model, index, -1)
+    }
+
+    def _publishDocumentStoreChange(model Model, from int, to int) {
+      for observer in _observers {
+        observer.handleDocumentStoreChange(model, from, to)
+      }
+    }
+  }
+}
