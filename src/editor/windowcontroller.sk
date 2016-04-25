@@ -62,8 +62,8 @@ namespace Editor {
 
   namespace WindowController {
     const MONOSPACE_FONTS = [
-      "Menlo-Regular",
       "Monaco",
+      "Menlo",
       "Consolas",
       "Courier New",
       "monospace",
