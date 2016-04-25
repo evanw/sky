@@ -549,7 +549,7 @@ namespace Editor {
           }
 
           # Render one last run of unstyled text after the last span
-          if previousEnd < limit && translateX + previousOffsetX < maxX {
+          if previousEnd < limit && previousOffsetX < maxX {
             renderer.renderText(translateX + previousOffsetX, offsetY, line.text.slice(previousEnd, limit), .CODE_FONT, .FOREGROUND_DEFAULT, 0xFF)
           }
         }
