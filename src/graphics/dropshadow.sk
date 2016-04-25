@@ -22,7 +22,7 @@ namespace Graphics {
       clipX double, clipY double, clipWidth double, clipHeight double,
       shadowAlpha double, blurSigma double) {
 
-      if clipX >= _width || clipY >= _height || clipX + clipWidth <= 0 || clipY + clipHeight <= 0 {
+      if clipX >= _width || clipY >= _height || clipX + clipWidth <= 0 || clipY + clipHeight <= 0 || shadowAlpha <= 0 {
         return
       }
 

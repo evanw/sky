@@ -52,6 +52,8 @@ namespace UI {
     ARROW_RIGHT
     ARROW_UP
     BACKSPACE
+    BRACKET_LEFT
+    BRACKET_RIGHT
     COMMA
     DELETE
     END

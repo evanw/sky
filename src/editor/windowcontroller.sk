@@ -15,15 +15,21 @@ namespace Editor {
       window.setFont(.CODE_FONT, MONOSPACE_FONTS, 12, 16, 0)
       window.setFont(.MARGIN_FONT, MONOSPACE_FONTS, 10, 14, 0)
       window.setFont(.UI_FONT, SANS_SERIF_FONTS, 12, 16, 0)
+      window.setFont(.UI_FONT_BOLD, SANS_SERIF_FONTS, 12, 16, .BOLD)
       _window = window
 
       var model = Model.new("Untitled", platform, window.renderer.fontInstance(.CODE_FONT), 2)
       model.setLexer(.SKEW)
 
+      var tabs = TabsView.new(self)
+      tabs.setLayout(.STRETCH, 0, 0, .MIN, 0, TabsView.HEIGHT)
+      tabs.appendTo(window.root)
+
       var view = View.new(self, model)
       if BUILD != .TERMINAL {
         view.changePadding(5, 5, 5, 5)
         view.changeMarginPadding(15, 5)
+        view.setLayout(.STRETCH, 0, 0, .STRETCH, TabsView.HEIGHT, 0)
       } else {
         view.setScrollbarThickness(1)
         view.changePadding(0, 0, 1, 0) # Leave one character of padding on the right so the caret can be seen at the end of the line

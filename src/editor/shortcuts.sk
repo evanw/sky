@@ -38,6 +38,9 @@ namespace Editor {
       var base = platform.baseModifier
       var isOSX = platform.operatingSystem == .OSX
 
+      map.set(.ENTER, base | .SHIFT, .INSERT_LINE_ABOVE)
+      map.set(.ENTER, base, .INSERT_LINE_BELOW)
+      map.set(.ESCAPE, 0, .SELECT_FIRST_REGION)
       map.set(.LETTER_A, base, .SELECT_ALL)
       map.set(.LETTER_C, base, .COPY)
       map.set(.LETTER_L, base | .SHIFT, .SELECT_BREAK_INTO_LINES)
@@ -47,11 +50,28 @@ namespace Editor {
       map.set(.LETTER_Y, base, .REDO)
       map.set(.LETTER_Z, base | .SHIFT, .REDO)
       map.set(.LETTER_Z, base, .UNDO)
-      map.set(.ENTER, base | .SHIFT, .INSERT_LINE_ABOVE)
-      map.set(.ENTER, base, .INSERT_LINE_BELOW)
-      map.set(.ESCAPE, 0, .SELECT_FIRST_REGION)
       map.set(.TAB, .SHIFT, .INSERT_TAB_BACKWARD)
       map.set(.TAB, 0, .INSERT_TAB_FORWARD)
+
+      map.set(.LETTER_N, base | .SHIFT, .NEW_WINDOW)
+      map.set(.LETTER_N, base, .NEW_DOCUMENT)
+      map.set(.LETTER_T, base, .NEW_DOCUMENT)
+      map.set(.LETTER_W, base | .SHIFT, .CLOSE_WINDOW)
+      map.set(.LETTER_W, base, .CLOSE_DOCUMENT)
+
+      map.set(.BRACKET_LEFT, base | .SHIFT, .TABS_PREVIOUS)
+      map.set(.BRACKET_RIGHT, base | .SHIFT, .TABS_NEXT)
+      map.set(.NUMBER_1, base, .TABS_1)
+      map.set(.NUMBER_2, base, .TABS_2)
+      map.set(.NUMBER_3, base, .TABS_3)
+      map.set(.NUMBER_4, base, .TABS_4)
+      map.set(.NUMBER_5, base, .TABS_5)
+      map.set(.NUMBER_6, base, .TABS_6)
+      map.set(.NUMBER_7, base, .TABS_7)
+      map.set(.NUMBER_8, base, .TABS_8)
+      map.set(.NUMBER_9, base, .TABS_LAST)
+      map.set(.TAB, .CONTROL | .SHIFT, .TABS_PREVIOUS)
+      map.set(.TAB, .CONTROL, .TABS_NEXT)
 
       # The terminal uses Command+SPACEBAR instead of shift to toggle selection
       if BUILD == .TERMINAL {

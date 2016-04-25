@@ -2,11 +2,28 @@ namespace Editor {
   enum Action {
     NONE
 
+    CLOSE_DOCUMENT
+    CLOSE_WINDOW
+    NEW_DOCUMENT
+    NEW_WINDOW
+
     CUT
     COPY
     PASTE
     UNDO
     REDO
+
+    TABS_NEXT
+    TABS_PREVIOUS
+    TABS_1
+    TABS_2
+    TABS_3
+    TABS_4
+    TABS_5
+    TABS_6
+    TABS_7
+    TABS_8
+    TABS_LAST
 
     SELECT_ALL
     SELECT_BREAK_INTO_LINES

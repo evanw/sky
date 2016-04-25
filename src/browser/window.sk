@@ -24,6 +24,8 @@ namespace Browser {
     186: .SEMICOLON,
     188: .COMMA,
     190: .PERIOD,
+    219: .BRACKET_LEFT,
+    221: .BRACKET_RIGHT,
   }
 
   class Window : UI.Window :: UI.Platform {

@@ -100,9 +100,10 @@ namespace Log {
 #import <sys/time.h>
 
 #define Rect RectWhyIsThisAGlobalGoshDarnIt
+#import <Carbon/Carbon.h>
 #import <Cocoa/Cocoa.h>
-#import <OpenGL/OpenGL.h>
 #import <OpenGL/gl.h>
+#import <OpenGL/OpenGL.h>
 #undef Rect
 
 @class AppView;
@@ -1259,6 +1260,15 @@ static CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeSt
   appWindow->handleAction(Editor::Action::INSERT_TAB_FORWARD);
 }
 
+- (BOOL)performKeyEquivalent:(NSEvent *)event {
+  if ([event keyCode] == kVK_Tab && ([event modifierFlags] & (NSAlternateKeyMask | NSCommandKeyMask | NSControlKeyMask)) == NSControlKeyMask) {
+    appWindow->handleAction([event modifierFlags] & NSShiftKeyMask ? Editor::Action::TABS_PREVIOUS : Editor::Action::TABS_NEXT);
+    return YES;
+  }
+
+  return NO;
+}
+
 @end
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1322,6 +1332,10 @@ static UI::Key keyFromEvent(NSEvent *event) {
   static std::unordered_map<int, UI::Key> map = {
     { '.',                       UI::Key::PERIOD },
     { ';',                       UI::Key::SEMICOLON },
+    { '[',                       UI::Key::BRACKET_LEFT },
+    { ']',                       UI::Key::BRACKET_RIGHT },
+    { '{',                       UI::Key::BRACKET_LEFT },
+    { '}',                       UI::Key::BRACKET_RIGHT },
 
     { '0',                       UI::Key::NUMBER_0 },
     { '1',                       UI::Key::NUMBER_1 },
@@ -1585,8 +1599,8 @@ UI::Window *OSX::Platform::createWindow() {
   auto fileMenu = [[NSMenu alloc] init];
   [fileMenu setTitle:@"File"];
   [[mainMenu addItemWithTitle:@"" action:nil keyEquivalent:@""] setSubmenu:fileMenu];
-  [fileMenu addItemWithTitle:@"New" action:@selector(createNewWindow:) keyEquivalent:@"n"];
-  [fileMenu addItemWithTitle:@"Close" action:@selector(performClose:) keyEquivalent:@"w"];
+  [fileMenu addItemWithTitle:@"New" action:@selector(createNewWindow:) keyEquivalent:@"N"];
+  [fileMenu addItemWithTitle:@"Close" action:@selector(performClose:) keyEquivalent:@"W"];
 
   auto editMenu = [[NSMenu alloc] init];
   [editMenu setTitle:@"Edit"];

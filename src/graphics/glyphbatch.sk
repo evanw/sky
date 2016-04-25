@@ -60,7 +60,7 @@ namespace Graphics {
       if metadata == null {
         # Culling before rendering
         var advanceWidth = fontInstance.advanceWidth(codePoint)
-        if x >= _width || y >= _height || x + advanceWidth <= 0 || y + fontInstance.size <= 0 {
+        if x >= _width || y >= _height || x + advanceWidth <= 0 || y + fontInstance.size <= 0 || color.alpha == 0 {
           return advanceWidth
         }
 
@@ -79,7 +79,7 @@ namespace Graphics {
       }
 
       # Culling
-      else if x >= _width || y >= _height || x + metadata.glyph.advanceWidth <= 0 || y + fontInstance.size <= 0 {
+      else if x >= _width || y >= _height || x + metadata.glyph.advanceWidth <= 0 || y + fontInstance.size <= 0 || color.alpha == 0 {
         return metadata.glyph.advanceWidth
       }
 

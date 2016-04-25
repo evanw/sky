@@ -41,7 +41,7 @@ namespace Graphics {
     }
 
     def fillRect(x double, y double, width double, height double, color RGBA) {
-      if x >= _width || y >= _height || x + width <= 0 || y + height <= 0 {
+      if x >= _width || y >= _height || x + width <= 0 || y + height <= 0 || color.alpha == 0 {
         return
       }
 
@@ -58,7 +58,7 @@ namespace Graphics {
     }
 
     def fillRoundedRect(x double, y double, width double, height double, color RGBA, radius double) {
-      if x >= _width || y >= _height || x + width <= 0 || y + height <= 0 {
+      if x >= _width || y >= _height || x + width <= 0 || y + height <= 0 || color.alpha == 0 {
         return
       }
 
@@ -114,7 +114,7 @@ namespace Graphics {
       var n = coordinates.count
       assert(n % 2 == 0)
 
-      if n < 6 {
+      if n < 6 || color.alpha == 0 {
         return
       }
 
@@ -180,7 +180,7 @@ namespace Graphics {
       var n = coordinates.count
 
       assert(n % 2 == 0)
-      if n < 4 {
+      if n < 4 || color.alpha == 0 {
         return
       }
 

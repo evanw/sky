@@ -119,13 +119,15 @@ namespace UI {
     }
 
     def renderHorizontalLine(x1 double, x2 double, y double, color Color) {
-      assert(x1 <= x2)
-      _renderer.fillRect(x1, y, x2 - x1, 1, _theme.findColor(color))
+      if x1 < x2 {
+        _renderer.fillRect(x1, y, x2 - x1, 1, _theme.findColor(color))
+      }
     }
 
     def renderVerticalLine(x double, y1 double, y2 double, color Color) {
-      assert(y1 <= y2)
-      _renderer.fillRect(x, y1, 1, y2 - y1, _theme.findColor(color))
+      if y1 < y2 {
+        _renderer.fillRect(x, y1, 1, y2 - y1, _theme.findColor(color))
+      }
     }
 
     def renderScrollbarThumb(x double, y double, width double, height double, color Color) {

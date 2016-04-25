@@ -53,7 +53,7 @@ namespace Browser {
     over fillRect(x double, y double, width double, height double, color Graphics.RGBA) {
       assert(_isRendering)
 
-      if x >= _width || y >= _height || x + width <= 0 || y + height <= 0 {
+      if x >= _width || y >= _height || x + width <= 0 || y + height <= 0 || color.alpha == 0 {
         return
       }
 
@@ -64,7 +64,7 @@ namespace Browser {
     over fillRoundedRect(x double, y double, width double, height double, color Graphics.RGBA, radius double) {
       assert(_isRendering)
 
-      if x >= _width || y >= _height || x + width <= 0 || y + height <= 0 {
+      if x >= _width || y >= _height || x + width <= 0 || y + height <= 0 || color.alpha == 0 {
         return
       }
 
@@ -88,19 +88,20 @@ namespace Browser {
 
     over strokePolyline(coordinates List<double>, color Graphics.RGBA, thickness double) {
       assert(_isRendering)
-
       assert(coordinates.count % 2 == 0)
 
-      var context = _context
-      context.strokeStyle = _colorToStyle(color)
-      context.lineWidth = thickness
-      context.beginPath()
+      if color.alpha != 0 {
+        var context = _context
+        context.strokeStyle = _colorToStyle(color)
+        context.lineWidth = thickness
+        context.beginPath()
 
-      for i = 0; i < coordinates.count; i += 2 {
-        context.lineTo(coordinates[i], coordinates[i + 1])
+        for i = 0; i < coordinates.count; i += 2 {
+          context.lineTo(coordinates[i], coordinates[i + 1])
+        }
+
+        context.stroke()
       }
-
-      context.stroke()
     }
 
     over renderRectShadow(
@@ -110,7 +111,7 @@ namespace Browser {
 
       assert(_isRendering)
 
-      if clipX >= _width || clipY >= _height || clipX + clipWidth <= 0 || clipY + clipHeight <= 0 {
+      if clipX >= _width || clipY >= _height || clipX + clipWidth <= 0 || clipY + clipHeight <= 0 || shadowAlpha <= 0 {
         return
       }
 
@@ -132,7 +133,7 @@ namespace Browser {
       assert(_isRendering)
 
       var fontInstance = _fontInstances.get(font, null)
-      if fontInstance == null || x >= _width || y >= _height || y + fontInstance.size <= 0 {
+      if fontInstance == null || x >= _width || y >= _height || y + fontInstance.size <= 0 || color.alpha == 0 {
         return
       }
 

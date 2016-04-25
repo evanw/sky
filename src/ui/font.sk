@@ -3,6 +3,7 @@ namespace UI {
     CODE_FONT
     MARGIN_FONT
     UI_FONT
+    UI_FONT_BOLD
   }
 
   flags FontFlags {
