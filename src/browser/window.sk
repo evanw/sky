@@ -256,11 +256,11 @@ namespace Browser {
       _changeDragHandlers(.LOCAL)
     }
 
-    def _mouseEventFromEvent(kind UI.EventKind, event dynamic, delta Vector) UI.MouseEvent {
+    def _mouseEventFromEvent(type UI.EventType, event dynamic, delta Vector) UI.MouseEvent {
       var bounds = _element.getBoundingClientRect()
       var locationInWindow = Vector.new(event.pageX - bounds.left, event.pageY - bounds.top)
       var target = _draggingView ?? viewFromLocation(locationInWindow)
-      return UI.MouseEvent.new(kind, target, locationInWindow, _modifiersFromEvent(event), event.detail as int, delta)
+      return UI.MouseEvent.new(type, target, locationInWindow, _modifiersFromEvent(event), event.detail as int, delta)
     }
 
     def _setHasFocus(hasFocus bool) {
@@ -340,7 +340,7 @@ namespace Browser {
       }
     }
 
-    def _handleClipboardEvent(event dynamic, type UI.EventKind) {
+    def _handleClipboardEvent(event dynamic, type UI.EventType) {
       var normalClipboard = event.clipboardData
       var ieClipboard = window.clipboardData
       var text = ""

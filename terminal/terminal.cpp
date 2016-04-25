@@ -151,11 +151,11 @@ namespace Terminal {
         case Editor::Action::COPY:
         case Editor::Action::PASTE: {
           auto text = _readFromClipboard();
-          auto kind =
-            action == Editor::Action::CUT ? UI::EventKind::CLIPBOARD_CUT :
-            action == Editor::Action::COPY ? UI::EventKind::CLIPBOARD_COPY :
-            UI::EventKind::CLIPBOARD_PASTE;
-          auto event = new UI::ClipboardEvent(kind, viewWithFocus(), text);
+          auto type =
+            action == Editor::Action::CUT ? UI::EventType::CLIPBOARD_CUT :
+            action == Editor::Action::COPY ? UI::EventType::CLIPBOARD_COPY :
+            UI::EventType::CLIPBOARD_PASTE;
+          auto event = new UI::ClipboardEvent(type, viewWithFocus(), text);
           dispatchEvent(event);
           if (event->text != text) {
             _writeToClipboard(event->text.std_str());
@@ -173,7 +173,7 @@ namespace Terminal {
     }
 
     void insertUTF8(char c) {
-      dispatchEvent(new UI::TextEvent(UI::EventKind::TEXT, viewWithFocus(), std::string(1, c), false));
+      dispatchEvent(new UI::TextEvent(UI::EventType::TEXT, viewWithFocus(), std::string(1, c), false));
     }
 
     virtual UI::OperatingSystem operatingSystem() override {

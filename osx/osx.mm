@@ -978,7 +978,7 @@ namespace OSX {
     #endif
 
   private:
-    UI::MouseEvent *_mouseEventFromEvent(UI::EventKind kind, NSEvent *event, Vector *delta);
+    UI::MouseEvent *_mouseEventFromEvent(UI::EventType type, NSEvent *event, Vector *delta);
 
     int _width = 0;
     int _height = 0;
@@ -1430,16 +1430,16 @@ void OSX::AppWindow::handleKeyEvent(NSEvent *event) {
 }
 
 void OSX::AppWindow::handleInsertText(NSString *text) {
-  dispatchEvent(new UI::TextEvent(UI::EventKind::TEXT, viewWithFocus(), [text UTF8String], false));
+  dispatchEvent(new UI::TextEvent(UI::EventType::TEXT, viewWithFocus(), [text UTF8String], false));
 }
 
-UI::MouseEvent *OSX::AppWindow::_mouseEventFromEvent(UI::EventKind kind, NSEvent *event, Vector *delta) {
+UI::MouseEvent *OSX::AppWindow::_mouseEventFromEvent(UI::EventType type, NSEvent *event, Vector *delta) {
   auto point = [event locationInWindow];
   auto height = [[[event window] contentView] bounds].size.height;
   auto viewLocation = new Vector(point.x, height - point.y);
   auto target = _draggingView != nullptr ? _draggingView : viewFromLocation(viewLocation);
-  int clickCount = kind == UI::EventKind::MOUSE_DOWN ? (int)[event clickCount] : 0;
-  return new UI::MouseEvent(kind, target, viewLocation, modifiersFromEvent(event), clickCount, delta);
+  int clickCount = type == UI::EventType::MOUSE_DOWN ? (int)[event clickCount] : 0;
+  return new UI::MouseEvent(type, target, viewLocation, modifiersFromEvent(event), clickCount, delta);
 }
 
 void OSX::AppWindow::handleMouseEvent(NSEvent *event) {
@@ -1448,7 +1448,7 @@ void OSX::AppWindow::handleMouseEvent(NSEvent *event) {
     case NSOtherMouseDown:
     case NSRightMouseDown: {
       _draggingView = nullptr;
-      _draggingView = dispatchEvent(_mouseEventFromEvent(UI::EventKind::MOUSE_DOWN, event, nullptr));
+      _draggingView = dispatchEvent(_mouseEventFromEvent(UI::EventType::MOUSE_DOWN, event, nullptr));
       break;
     }
 
@@ -1456,20 +1456,20 @@ void OSX::AppWindow::handleMouseEvent(NSEvent *event) {
     case NSLeftMouseDragged:
     case NSOtherMouseDragged:
     case NSRightMouseDragged: {
-      dispatchEvent(_mouseEventFromEvent(UI::EventKind::MOUSE_MOVE, event, nullptr));
+      dispatchEvent(_mouseEventFromEvent(UI::EventType::MOUSE_MOVE, event, nullptr));
       break;
     }
 
     case NSLeftMouseUp:
     case NSOtherMouseUp:
     case NSRightMouseUp: {
-      dispatchEvent(_mouseEventFromEvent(UI::EventKind::MOUSE_UP, event, nullptr));
+      dispatchEvent(_mouseEventFromEvent(UI::EventType::MOUSE_UP, event, nullptr));
       _draggingView = nullptr;
       break;
     }
 
     case NSScrollWheel: {
-      dispatchEvent(_mouseEventFromEvent(UI::EventKind::MOUSE_SCROLL, event, new Vector(-[event scrollingDeltaX], -[event scrollingDeltaY])));
+      dispatchEvent(_mouseEventFromEvent(UI::EventType::MOUSE_SCROLL, event, new Vector(-[event scrollingDeltaX], -[event scrollingDeltaY])));
       break;
     }
   }
@@ -1496,11 +1496,11 @@ void OSX::AppWindow::handleAction(Editor::Action action) {
       }
 
       // Send event
-      auto kind =
-        action == Editor::Action::CUT ? UI::EventKind::CLIPBOARD_CUT :
-        action == Editor::Action::COPY ? UI::EventKind::CLIPBOARD_COPY :
-        UI::EventKind::CLIPBOARD_PASTE;
-      auto event = new UI::ClipboardEvent(kind, viewWithFocus(), text);
+      auto type =
+        action == Editor::Action::CUT ? UI::EventType::CLIPBOARD_CUT :
+        action == Editor::Action::COPY ? UI::EventType::CLIPBOARD_COPY :
+        UI::EventType::CLIPBOARD_PASTE;
+      auto event = new UI::ClipboardEvent(type, viewWithFocus(), text);
       dispatchEvent(event);
 
       // Save text to clipboard
