@@ -1,21 +1,77 @@
 namespace Editor {
-  class TabsView : UI.View :: WindowObserver {
+  enum TabMove {
+    IMMEDIATE
+    ANIMATED
+  }
+
+  class TabInfo {
+    const document Model
+    var left = 0.0
+    var right = 0.0
+    var startLeft = 0.0
+    var startRight = 0.0
+    var endLeft = 0.0
+    var endRight = 0.0
+    var animationRemaining = 0.0
+
+    def moveTo(targetLeft double, targetRight double, mode TabMove) {
+      switch mode {
+        case .IMMEDIATE {
+          left = startLeft = endLeft = targetLeft
+          right = startRight = endRight = targetRight
+          animationRemaining = 0
+        }
+
+        case .ANIMATED {
+          startLeft = left
+          startRight = right
+          endLeft = targetLeft
+          endRight = targetRight
+          animationRemaining = 1
+        }
+      }
+    }
+
+    def updateAnimation(seconds double) bool {
+      if animationRemaining == 0 {
+        return false
+      }
+
+      animationRemaining -= seconds * ANIMATION_SPEED
+
+      if animationRemaining > 0 {
+        var t = 1 - animationRemaining
+        t *= t * (3 - 2 * t)
+        left = startLeft + (endLeft - startLeft) * t
+        right = startRight + (endRight - startRight) * t
+      }
+
+      else {
+        moveTo(endLeft, endRight, .IMMEDIATE)
+      }
+
+      return true
+    }
+  }
+
+  namespace TabInfo {
+    const ANIMATION_SPEED = 4
+  }
+
+  class TabsView : UI.View :: WindowObserver, DocumentStoreObserver {
     const _documentStore DocumentStore
     const _controller WindowController
-    var _tabLeft = 0.0
-    var _tabRight = 0.0
+    const _tabs List<TabInfo> = []
+    var _previousTime double
 
     def new(controller WindowController) {
       super(controller.window)
       controller.addObserver(self)
       _controller = controller
       _documentStore = controller.documentStore
-    }
-
-    def _loadTabRange(index int) {
-      var scale = Math.min((bounds.width - NEW_TAB_WIDTH) / _documentStore.documents.count, MAX_TAB_WIDTH)
-      _tabLeft = Math.round(index * scale)
-      _tabRight = Math.round((index + 1) * scale)
+      _documentStore.addObserver(self)
+      _previousTime = _window.platform.nowInSeconds
+      assert(_documentStore.documents.isEmpty)
     }
 
     over render {
@@ -24,20 +80,20 @@ namespace Editor {
       var height = bounds.height
       var font = renderer.fontInstance(.UI_FONT)
       var offset = Math.round((height - font.lineHeight) / 2)
-      var documents = _documentStore.documents
       var activeIndex = _documentStore.activeIndex
+      var tabs = _tabs
 
       # View background
       renderer.renderRect(0, 0, width, height, .BACKGROUND_TABS_INACTIVE)
 
       # Tab backgrounds and borders
-      for i = documents.count - 1; i >= 0; i-- {
-        _loadTabRange(i)
+      for i = tabs.count - 1; i >= 0; i-- {
+        var tab = tabs[i]
         if i == activeIndex {
-          renderer.renderRect(_tabLeft, 0, _tabRight - _tabLeft, height, .BACKGROUND_TABS_ACTIVE)
-          renderer.renderRect(_tabLeft, height - 2, _tabRight - _tabLeft, 2, .BORDER_TABS_BASE)
+          renderer.renderRect(tab.left, 0, tab.right - tab.left, height, .BACKGROUND_TABS_ACTIVE)
+          renderer.renderRect(tab.left, height - 2, tab.right - tab.left, 2, .BORDER_TABS_BASE)
         }
-        renderer.renderRect(_tabRight, 0, 1, height, .BORDER_TABS)
+        renderer.renderRect(tab.right, 0, 1, height, .BORDER_TABS)
       }
 
       # New tab plus
@@ -53,12 +109,12 @@ namespace Editor {
       # Draw tab text last for better batching
       var iterator = UI.AdvanceWidthIterator.INSTANCE
       iterator.setFont(font, 0)
-      for i in 0..documents.count {
-        var text = documents[i].name # TODO: …
+      for i in 0..tabs.count {
+        var tab = tabs[i]
+        var text = tab.document.name # TODO: …
         iterator.reset(text)
         iterator.seekToIndex(text.count)
-        _loadTabRange(i)
-        var x = (_tabLeft + _tabRight - iterator.advanceWidthFromLeft) / 2
+        var x = (tab.left + tab.right - iterator.advanceWidthFromLeft) / 2
         renderer.renderText(x, offset + 1, text, .UI_FONT, .FOREGROUND_TABS_SHADOW, 255)
         renderer.renderText(x, offset, text, .UI_FONT, i == activeIndex ? .FOREGROUND_TABS_ACTIVE : .FOREGROUND_TABS_INACTIVE, 255)
       }
@@ -72,11 +128,12 @@ namespace Editor {
       switch event.type {
         case .MOUSE_DOWN {
           var location = event.mouseEvent.locationInView(self)
+          var tabs = _tabs
 
           # Click on an existing tab
-          for i in 0.._documentStore.documents.count {
-            _loadTabRange(i)
-            if location.x >= _tabLeft && location.x < _tabRight {
+          for i in 0..tabs.count {
+            var tab = tabs[i]
+            if location.x >= tab.left && location.x < tab.right {
               _documentStore.setActiveIndex(i)
               event.accept
               return
@@ -121,6 +178,54 @@ namespace Editor {
     }
 
     def handleFrame {
+      var currentTime = _window.platform.nowInSeconds
+      var seconds = currentTime - _previousTime
+      _previousTime = currentTime
+
+      # Ignore long pauses when the app goes idle
+      if seconds < 0 || seconds > 0.25 {
+        return
+      }
+
+      # Update tab animations
+      for tab in _tabs {
+        if tab.updateAnimation(seconds) {
+          _window.invalidate
+        }
+      }
+    }
+
+    def _createTabForDocument(document Model) TabInfo {
+      var tab = TabInfo.new(document)
+      if !_tabs.isEmpty {
+        tab.left = tab.right = _tabs.last.right
+      }
+      return tab
+    }
+
+    def handleDocumentStoreChange(moved Model, from int, to int) {
+      # Keep the list of tabs in sync with the list of documents
+      if moved != null {
+        if from == -1 { _tabs.insert(to, _createTabForDocument(moved)) }
+        else if to == -1 { _tabs.removeAt(from) }
+        else { _tabs.insert(to, _tabs.takeAt(from)) }
+      }
+
+      updateTabTargets(.ANIMATED)
+    }
+
+    over handleSizeChange {
+      updateTabTargets(.IMMEDIATE)
+    }
+
+    def updateTabTargets(mode TabMove) {
+      var tabs = _tabs
+      var count = tabs.count
+      var scale = Math.min((bounds.width - NEW_TAB_WIDTH) / count, MAX_TAB_WIDTH)
+
+      for i in 0..count {
+        tabs[i].moveTo(Math.round(i * scale), Math.round((i + 1) * scale), mode)
+      }
     }
   }
 
