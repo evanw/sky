@@ -2,6 +2,9 @@ namespace UI.Theme {
   const IDLE = Theme.new({
     Color.BACKGROUND_DEFAULT:          Graphics.RGBA.hex(0xFFFFFF),
     Color.BACKGROUND_SELECTED:         Graphics.RGBA.hex(0xBEBEBE),
+    Color.BACKGROUND_TABS_ACTIVE:      Graphics.RGBA.hex(0xF7F4EB),
+    Color.BACKGROUND_TABS_INACTIVE:    Graphics.RGBA.hex(0xEEE9D6),
+    Color.BORDER_TABS:                 Graphics.RGBA.hex(0xC3BFAF),
     Color.FOREGROUND_COMMENT:          Graphics.RGBA.hex(0xDD0000),
     Color.FOREGROUND_CONSTANT:         Graphics.RGBA.hex(0x900090),
     Color.FOREGROUND_DEFAULT:          Graphics.RGBA.hex(0x000000),
@@ -10,5 +13,6 @@ namespace UI.Theme {
     Color.FOREGROUND_KEYWORD_CONSTANT: Graphics.RGBA.hex(0x900090),
     Color.FOREGROUND_STRING:           Graphics.RGBA.hex(0x00AA00),
     Color.FOREGROUND_TYPE:             Graphics.RGBA.hex(0x770000),
+    Color.FOREGROUND_TABS_INACTIVE:    Graphics.RGBA.hex(0x474640),
   })
 }

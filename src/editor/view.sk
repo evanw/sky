@@ -600,7 +600,7 @@ namespace Editor {
       if _marginWidth != 0 {
         # Render the shadow first so it doesn't show up over the margin
         if _scrollbarX.scrollOffset != 0 {
-          renderer.renderRightwardShadow(_marginWidth, 0, 20, _viewHeight)
+          renderer.renderShadow(_marginWidth, 0, 20, _viewHeight, .RIGHT)
         }
 
         # Clear the background behind the line number margin

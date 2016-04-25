@@ -4,6 +4,13 @@ namespace UI {
     TEXT
   }
 
+  enum Direction {
+    DOWN
+    LEFT
+    RIGHT
+    UP
+  }
+
   # This rendering interface is super simple so that it'll work for both a pixel-
   # based interface and a terminal-based interface.
   interface SemanticRenderer {
@@ -14,7 +21,7 @@ namespace UI {
     def renderCaret(x double, y double, color Color)
     def renderHorizontalLine(x1 double, x2 double, y double, color Color)
     def renderRect(x double, y double, width double, height double, color Color)
-    def renderRightwardShadow(x double, y double, width double, height double)
+    def renderShadow(x double, y double, width double, height double, direction Direction)
     def renderScrollbarThumb(x double, y double, width double, height double, color Color)
     def renderSquiggle(x double, y double, width double, height double, color Color)
     def renderText(x double, y double, text string, font Font, color Color, alpha int)
@@ -107,11 +114,15 @@ namespace UI {
       _renderer.strokePolyline(coordinates, _theme.findColor(color), 1)
     }
 
-    def renderRightwardShadow(x double, y double, width double, height double) {
+    def renderShadow(x double, y double, width double, height double, direction Direction) {
+      var isX = direction == .LEFT || direction == .RIGHT
       _renderer.renderRectShadow(
-        x - 2 * width, y - width, 2 * width, height + 2 * width,
+        direction == .LEFT ? x + width : direction == .RIGHT ? x - 2 * width : x - height,
+        direction == .UP ? y + height : direction == .DOWN ? y - 2 * height : y - width,
+        isX ? 2 * width : width + 2 * height,
+        isX ? height + 2 * width : 2 * height,
         x, y, width, height,
-        0.5, width / 3.0)
+        0.5, (isX ? width : height) / 3.0)
     }
 
     def renderText(x double, y double, text string, font Font, color Color, alpha int) {

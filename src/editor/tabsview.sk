@@ -31,6 +31,7 @@ namespace Editor {
         _loadTabRange(i)
         if i == _activeTabIndex {
           renderer.renderRect(_tabLeft, 0, _tabRight - _tabLeft, height, .BACKGROUND_TABS_ACTIVE)
+          renderer.renderRect(_tabLeft, height - 2, _tabRight - _tabLeft, 2, .BORDER_TABS_BASE)
         }
         renderer.renderRect(_tabRight, 0, 1, height, .BORDER_TABS)
       }
@@ -53,10 +54,9 @@ namespace Editor {
         iterator.reset(text)
         iterator.seekToIndex(text.count)
         _loadTabRange(i)
-        renderer.renderText((_tabLeft + _tabRight - iterator.advanceWidthFromLeft) / 2, offset, text,
-          # i == _activeTabIndex ? .UI_FONT_BOLD : .UI_FONT,
-          .UI_FONT,
-          i == _activeTabIndex ? .FOREGROUND_TABS_ACTIVE : .FOREGROUND_TABS_INACTIVE, 255)
+        var x = (_tabLeft + _tabRight - iterator.advanceWidthFromLeft) / 2
+        renderer.renderText(x, offset + 1, text, .UI_FONT, .FOREGROUND_TABS_SHADOW, 255)
+        renderer.renderText(x, offset, text, .UI_FONT, i == _activeTabIndex ? .FOREGROUND_TABS_ACTIVE : .FOREGROUND_TABS_INACTIVE, 255)
       }
     }
 
@@ -81,7 +81,7 @@ namespace Editor {
           }
 
           # Create a new tab
-          if location.x >= bounds.width - NEW_TAB_WIDTH {
+          if location.x >= bounds.width - NEW_TAB_WIDTH || event.mouseEvent.clickCount % 2 == 0 {
             createNewDocument
             event.accept
           }
@@ -137,8 +137,7 @@ namespace Editor {
 
   namespace TabsView {
     const MAX_TAB_WIDTH = 250.0
-    # const MAX_TAB_WIDTH = Math.INFINITY
-    const NEW_TAB_WIDTH = 24
-    const HEIGHT = 25
+    const NEW_TAB_WIDTH = 26
+    const HEIGHT = 27
   }
 }

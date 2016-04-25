@@ -5,6 +5,7 @@ namespace UI.Theme {
     Color.BACKGROUND_DIAGNOSTIC_WARNING: Graphics.RGBA.hex(0xE4D964),
     Color.BACKGROUND_MARGIN:             Graphics.RGBA.hex(0xEEE8D5),
     Color.BACKGROUND_SELECTED:           Graphics.RGBA.hex(0xEEE8D5),
+    Color.BACKGROUND_TABS_INACTIVE:      Graphics.RGBA.hex(0xEEE8D5),
     Color.FOREGROUND_CARET:              Graphics.RGBA.hex(0x000000),
     Color.FOREGROUND_COMMENT:            Graphics.RGBA.hex(0x93A1A1),
     Color.FOREGROUND_CONSTANT:           Graphics.RGBA.hex(0xCB4B16),

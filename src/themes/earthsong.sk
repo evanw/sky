@@ -3,6 +3,7 @@ namespace UI.Theme {
     Color.BACKGROUND_DEFAULT:            Graphics.RGBA.hex(0x36312C),
     Color.BACKGROUND_MARGIN_HIGHLIGHTED: Graphics.RGBA.hex(0x45403B),
     Color.BACKGROUND_SELECTED:           Graphics.RGBA.hex(0x574E45),
+    Color.BACKGROUND_TABS_INACTIVE:      Graphics.RGBA.hex(0x272420),
     Color.FOREGROUND_CARET:              Graphics.RGBA.hex(0xF8F8F0),
     Color.FOREGROUND_COMMENT:            Graphics.RGBA.hex(0x7A7267),
     Color.FOREGROUND_CONSTANT:           Graphics.RGBA.hex(0xE6DB74),
@@ -12,6 +13,7 @@ namespace UI.Theme {
     Color.FOREGROUND_NUMBER:             Graphics.RGBA.hex(0xF8BB39),
     Color.FOREGROUND_PREPROCESSOR:       Graphics.RGBA.hex(0x75715E),
     Color.FOREGROUND_STRING:             Graphics.RGBA.hex(0xF8BB39),
+    Color.FOREGROUND_TABS_INACTIVE:      Graphics.RGBA.hex(0x968574),
     Color.FOREGROUND_TYPE:               Graphics.RGBA.hex(0x95CC5E),
   })
 }

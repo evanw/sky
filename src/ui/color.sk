@@ -6,6 +6,7 @@ namespace UI {
     # Border colors
     BORDER_MARGIN
     BORDER_TABS
+    BORDER_TABS_BASE
 
     # Background colors
     BACKGROUND_DEFAULT
@@ -26,6 +27,7 @@ namespace UI {
     FOREGROUND_MARGIN_HIGHLIGHTED
     FOREGROUND_TABS_ACTIVE
     FOREGROUND_TABS_INACTIVE
+    FOREGROUND_TABS_SHADOW
 
     # Syntax-specific colors
     FOREGROUND_ANNOTATION

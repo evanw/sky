@@ -296,7 +296,7 @@ namespace Terminal {
     virtual void renderSquiggle(double x, double y, double width, double height, UI::Color color) override {
     }
 
-    virtual void renderRightwardShadow(double x, double y, double width, double height) override {
+    virtual void renderShadow(double x, double y, double width, double height, UI::Direction direction) override {
     }
 
     virtual void renderText(double x, double y, Skew::string text, UI::Font font, UI::Color color, int alpha) override {
@@ -307,7 +307,7 @@ namespace Terminal {
       x += clip.minX;
       y += clip.minY;
 
-      if (y < clip.minY || y >= clip.maxY) {
+      if (y < clip.minY || y >= clip.maxY || color == UI::Color::FOREGROUND_TABS_SHADOW || alpha == 0) {
         return;
       }
 
