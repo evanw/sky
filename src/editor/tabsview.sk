@@ -25,7 +25,7 @@ namespace Editor {
       var font = renderer.fontInstance(.UI_FONT)
       var offset = Math.round((height - font.lineHeight) / 2)
       var documents = _documentStore.documents
-      var activeDocument = _documentStore.activeDocument
+      var activeIndex = _documentStore.activeIndex
 
       # View background
       renderer.renderRect(0, 0, width, height, .BACKGROUND_TABS_INACTIVE)
@@ -33,7 +33,7 @@ namespace Editor {
       # Tab backgrounds and borders
       for i = documents.count - 1; i >= 0; i-- {
         _loadTabRange(i)
-        if documents[i] == activeDocument {
+        if i == activeIndex {
           renderer.renderRect(_tabLeft, 0, _tabRight - _tabLeft, height, .BACKGROUND_TABS_ACTIVE)
           renderer.renderRect(_tabLeft, height - 2, _tabRight - _tabLeft, 2, .BORDER_TABS_BASE)
         }
@@ -54,14 +54,13 @@ namespace Editor {
       var iterator = UI.AdvanceWidthIterator.INSTANCE
       iterator.setFont(font, 0)
       for i in 0..documents.count {
-        var document = documents[i]
-        var text = document.name # TODO: …
+        var text = documents[i].name # TODO: …
         iterator.reset(text)
         iterator.seekToIndex(text.count)
         _loadTabRange(i)
         var x = (_tabLeft + _tabRight - iterator.advanceWidthFromLeft) / 2
         renderer.renderText(x, offset + 1, text, .UI_FONT, .FOREGROUND_TABS_SHADOW, 255)
-        renderer.renderText(x, offset, text, .UI_FONT, document == activeDocument ? .FOREGROUND_TABS_ACTIVE : .FOREGROUND_TABS_INACTIVE, 255)
+        renderer.renderText(x, offset, text, .UI_FONT, i == activeIndex ? .FOREGROUND_TABS_ACTIVE : .FOREGROUND_TABS_INACTIVE, 255)
       }
     }
 
@@ -73,13 +72,12 @@ namespace Editor {
       switch event.type {
         case .MOUSE_DOWN {
           var location = event.mouseEvent.locationInView(self)
-          var documents = _documentStore.documents
 
           # Click on an existing tab
-          for i in 0..documents.count {
+          for i in 0.._documentStore.documents.count {
             _loadTabRange(i)
             if location.x >= _tabLeft && location.x < _tabRight {
-              _documentStore.setActiveDocument(documents[i])
+              _documentStore.setActiveIndex(i)
               event.accept
               return
             }
@@ -95,22 +93,21 @@ namespace Editor {
     }
 
     def _changeActiveIndex(index int) {
-      var documents = _documentStore.documents
-      if index >= 0 && index < documents.count {
-        _documentStore.setActiveDocument(documents[index])
+      if index >= 0 && index < _documentStore.documents.count {
+        _documentStore.setActiveIndex(index)
       }
     }
 
     def handleAction(action Action) {
-      var documents = _documentStore.documents
-      var activeIndex = documents.indexOf(_documentStore.activeDocument)
+      var count = _documentStore.documents.count
+      var activeIndex = _documentStore.activeIndex
 
       switch action {
         case .NEW_DOCUMENT { _documentStore.appendDocument(_controller.createNewDocument) }
         case .CLOSE_DOCUMENT { if activeIndex != -1 { _documentStore.removeDocument(activeIndex) } }
 
-        case .TABS_PREVIOUS { _changeActiveIndex((activeIndex - 1) %% documents.count) }
-        case .TABS_NEXT { _changeActiveIndex((activeIndex + 1) % documents.count) }
+        case .TABS_PREVIOUS { _changeActiveIndex((activeIndex - 1) %% count) }
+        case .TABS_NEXT { _changeActiveIndex((activeIndex + 1) % count) }
         case .TABS_1 { _changeActiveIndex(0) }
         case .TABS_2 { _changeActiveIndex(1) }
         case .TABS_3 { _changeActiveIndex(2) }
@@ -119,7 +116,7 @@ namespace Editor {
         case .TABS_6 { _changeActiveIndex(5) }
         case .TABS_7 { _changeActiveIndex(6) }
         case .TABS_8 { _changeActiveIndex(7) }
-        case .TABS_LAST { _changeActiveIndex(documents.count - 1) }
+        case .TABS_LAST { _changeActiveIndex(count - 1) }
       }
     }
 

@@ -1,6 +1,6 @@
 namespace Editor {
   interface DocumentStoreObserver {
-    def handleDocumentStoreChange(active Model, moved Model, from int, to int)
+    def handleDocumentStoreChange(moved Model, from int, to int)
   }
 
   class DocumentStore {
@@ -12,18 +12,18 @@ namespace Editor {
       return _documents
     }
 
+    def activeIndex int {
+      return _activeIndex
+    }
+
     def activeDocument Model {
       return _activeIndex == -1 ? null : _documents[_activeIndex]
     }
 
-    def setActiveDocument(document Model) {
-      if document != activeDocument {
-        if document == null {
-          _activeIndex = -1
-        } else {
-          _activeIndex = _documents.indexOf(document)
-          assert(_activeIndex != -1)
-        }
+    def setActiveIndex(index int) {
+      assert(index >= -1 && index < _documents.count)
+      if index != _activeIndex {
+        _activeIndex = index
         _publishDocumentStoreChange(null, -1, -1)
       }
     }
@@ -75,9 +75,8 @@ namespace Editor {
     }
 
     def _publishDocumentStoreChange(moved Model, from int, to int) {
-      var active = activeDocument
       for observer in _observers {
-        observer.handleDocumentStoreChange(active, moved, from, to)
+        observer.handleDocumentStoreChange(moved, from, to)
       }
     }
   }

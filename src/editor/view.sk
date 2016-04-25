@@ -116,6 +116,11 @@ namespace Editor {
       _invalidate(.RESET_CARET_BLINK_TIME)
     }
 
+    def destroy {
+      setModel(null)
+      _controller.removeObserver(self)
+    }
+
     def model Model {
       return _model
     }

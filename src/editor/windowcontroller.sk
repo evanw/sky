@@ -8,38 +8,24 @@ namespace Editor {
     const _window UI.Window
     const _observers List<WindowObserver> = []
     const _documentStore = DocumentStore.new
-    const _view View
+    const _views List<View> = []
+    var _currentView View = null
 
     def new(platform UI.Platform) {
       var window = platform.createWindow
-      window.setTitle("Untitled - Sky Text Editor")
       window.setTheme(.XCODE)
       window.setFont(.CODE_FONT, MONOSPACE_FONTS, 12, 16, 0)
       window.setFont(.MARGIN_FONT, MONOSPACE_FONTS, 10, 14, 0)
       window.setFont(.UI_FONT, SANS_SERIF_FONTS, 12, 16, 0)
+      window.setDelegate(self)
       _window = window
 
-      _view = View.new(self)
-      if BUILD != .TERMINAL {
-        _view.changePadding(5, 5, 5, 5)
-        _view.changeMarginPadding(15, 5)
-        _view.setLayout(.STRETCH, 0, 0, .STRETCH, TabsView.HEIGHT, 0)
-
-        var tabs = TabsView.new(self)
-        tabs.setLayout(.STRETCH, 0, 0, .MIN, 0, TabsView.HEIGHT)
-        tabs.appendTo(window.root)
-      } else {
-        _view.setScrollbarThickness(1)
-        _view.changePadding(0, 0, 1, 0) # Leave one character of padding on the right so the caret can be seen at the end of the line
-        _view.changeMarginPadding(1, 1)
-      }
-      _view.appendTo(window.root)
+      var tabs = TabsView.new(self)
+      tabs.setLayout(.STRETCH, 0, 0, .MIN, 0, TabsView.HEIGHT)
+      tabs.appendTo(window.root)
 
       _documentStore.addObserver(self)
       _documentStore.appendDocument(createNewDocument)
-
-      window.setDelegate(self)
-      window.focusView(_view)
     }
 
     def window UI.Window {
@@ -71,18 +57,63 @@ namespace Editor {
     }
 
     def triggerAction(action Action) {
-      for observer in _observers {
+      # Avoid issues with mutation during iteration if the
+      # list of observers changes while handling the action
+      for observer in _observers.clone {
         observer.handleAction(action)
       }
     }
 
-    def handleDocumentStoreChange(active Model, moved Model, from int, to int) {
-      _view.setModel(active)
+    def _createViewForDocument(document Model) View {
+      var view = View.new(self)
+
+      if BUILD != .TERMINAL {
+        view.changePadding(5, 5, 5, 5)
+        view.changeMarginPadding(15, 5)
+        view.setLayout(.STRETCH, 0, 0, .STRETCH, TabsView.HEIGHT, 0)
+      }
+
+      else {
+        view.setScrollbarThickness(1)
+        view.changePadding(0, 0, 1, 0) # Leave one character of padding on the right so the caret can be seen at the end of the line
+        view.changeMarginPadding(1, 1)
+      }
+
+      view.setModel(document)
+      return view
+    }
+
+    def handleDocumentStoreChange(moved Model, from int, to int) {
+      # Keep the list of views in sync with the list of documents
+      if moved != null {
+        if from == -1 { _views.insert(to, _createViewForDocument(moved)) }
+        else if to == -1 { _views.takeAt(from).destroy }
+        else { _views.insert(to, _views.takeAt(from)) }
+      }
+
+      # Make sure the active view reflects the active document
+      var view = _documentStore.activeIndex != -1 ? _views[_documentStore.activeIndex] : null
+      if view != _currentView {
+        if _currentView != null {
+          _currentView.removeFromParent
+        }
+        _currentView = view
+        if view != null {
+          view.appendTo(window.root)
+          window.focusView(view)
+          window.setTitle("\(view.model.name) - \(TITLE)")
+        } else {
+          window.setTitle(TITLE)
+        }
+      }
+
       _window.invalidate
     }
   }
 
   namespace WindowController {
+    const TITLE = "Sky Text Editor"
+
     const MONOSPACE_FONTS = [
       "Monaco",
       "Menlo",
