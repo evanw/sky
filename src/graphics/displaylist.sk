@@ -1,0 +1,181 @@
+namespace Graphics {
+  enum DisplayCommand {
+    NONE
+    BEGIN_PATH
+    LINE_TO
+    CURVE_TO
+    FILL_PATH
+    STROKE_PATH
+  }
+
+  class DisplayListIterator {
+    var _list List<double> = null
+    var _index = 0
+
+    def reset(list List<double>) {
+      _list = list
+      _index = 0
+    }
+
+    def peek DisplayCommand {
+      if _index == _list.count {
+        return .NONE
+      }
+
+      assert(
+        _list[_index] == DisplayCommand.BEGIN_PATH ||
+        _list[_index] == DisplayCommand.LINE_TO ||
+        _list[_index] == DisplayCommand.CURVE_TO ||
+        _list[_index] == DisplayCommand.FILL_PATH ||
+        _list[_index] == DisplayCommand.STROKE_PATH)
+
+      return _list[_index] as DisplayCommand
+    }
+
+    def advance {
+      switch peek {
+        case .BEGIN_PATH, .LINE_TO { _index += 3 }
+        case .CURVE_TO { _index += 7 }
+        case .FILL_PATH { _index += 5 }
+        case .STROKE_PATH { _index += 6 }
+      }
+      assert(_index <= _list.count)
+    }
+
+    def play(renderer UI.PixelRenderer) {
+      var tessellator PathTessellator = null
+
+      while true {
+        switch peek {
+          case .NONE {
+            break
+          }
+
+          case .BEGIN_PATH {
+            assert(tessellator == null)
+            tessellator = PathTessellator.new(beginPathX, beginPathY, renderer.pixelScale)
+          }
+
+          case .LINE_TO {
+            tessellator.lineTo(lineToX, lineToY)
+          }
+
+          case .CURVE_TO {
+            tessellator.curveTo(curveToX1, curveToY1, curveToX2, curveToY2, curveToX, curveToY)
+          }
+
+          case .FILL_PATH {
+            renderer.fillPolygon(tessellator.finish, RGBA.new(fillPathR, fillPathG, fillPathB, fillPathA))
+            tessellator = null
+          }
+
+          case .STROKE_PATH {
+            renderer.strokePolyline(tessellator.finish, RGBA.new(strokePathR, strokePathG, strokePathB, strokePathA), strokePathThickness)
+            tessellator = null
+          }
+        }
+
+        advance
+      }
+    }
+
+    def beginPathX double {
+      assert(peek == .BEGIN_PATH)
+      return _list[_index + 1]
+    }
+
+    def beginPathY double {
+      assert(peek == .BEGIN_PATH)
+      return _list[_index + 2]
+    }
+
+    def lineToX double {
+      assert(peek == .LINE_TO)
+      return _list[_index + 1]
+    }
+
+    def lineToY double {
+      assert(peek == .LINE_TO)
+      return _list[_index + 2]
+    }
+
+    def curveToX1 double {
+      assert(peek == .CURVE_TO)
+      return _list[_index + 1]
+    }
+
+    def curveToY1 double {
+      assert(peek == .CURVE_TO)
+      return _list[_index + 2]
+    }
+
+    def curveToX2 double {
+      assert(peek == .CURVE_TO)
+      return _list[_index + 3]
+    }
+
+    def curveToY2 double {
+      assert(peek == .CURVE_TO)
+      return _list[_index + 4]
+    }
+
+    def curveToX double {
+      assert(peek == .CURVE_TO)
+      return _list[_index + 5]
+    }
+
+    def curveToY double {
+      assert(peek == .CURVE_TO)
+      return _list[_index + 6]
+    }
+
+    def fillPathR int {
+      assert(peek == .FILL_PATH)
+      return _list[_index + 1] as int
+    }
+
+    def fillPathG int {
+      assert(peek == .FILL_PATH)
+      return _list[_index + 2] as int
+    }
+
+    def fillPathB int {
+      assert(peek == .FILL_PATH)
+      return _list[_index + 3] as int
+    }
+
+    def fillPathA int {
+      assert(peek == .FILL_PATH)
+      return _list[_index + 4] as int
+    }
+
+    def strokePathR int {
+      assert(peek == .STROKE_PATH)
+      return _list[_index + 1] as int
+    }
+
+    def strokePathG int {
+      assert(peek == .STROKE_PATH)
+      return _list[_index + 2] as int
+    }
+
+    def strokePathB int {
+      assert(peek == .STROKE_PATH)
+      return _list[_index + 3] as int
+    }
+
+    def strokePathA int {
+      assert(peek == .STROKE_PATH)
+      return _list[_index + 4] as int
+    }
+
+    def strokePathThickness double {
+      assert(peek == .STROKE_PATH)
+      return _list[_index + 4]
+    }
+  }
+
+  namespace DisplayListIterator {
+    const INSTANCE = new
+  }
+}

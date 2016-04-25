@@ -93,10 +93,18 @@ namespace Browser {
       _solidBatch.fillRoundedRect(x, y, width, height, color.premultiplied, radius)
     }
 
+    over fillPolygon(coordinates List<double>, color Graphics.RGBA) {
+      assert(_isRendering)
+      assert(coordinates.count % 2 == 0)
+
+      _glyphBatch.flush
+      _solidBatch.fillConvexPolygon(coordinates, color.premultiplied)
+    }
+
     over strokePolyline(coordinates List<double>, color Graphics.RGBA, thickness double) {
       assert(_isRendering)
-
       assert(coordinates.count % 2 == 0)
+
       _glyphBatch.flush
       _solidBatch.strokeNonOverlappingPolyline(coordinates, color.premultiplied, thickness, .OPEN)
     }

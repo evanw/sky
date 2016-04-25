@@ -10,6 +10,7 @@ namespace Editor {
     const _documentStore = DocumentStore.new
     const _views List<View> = []
     var _currentView View = null
+    var _nextUntitledID = 1
 
     def new(platform UI.Platform) {
       var window = platform.createWindow
@@ -37,8 +38,10 @@ namespace Editor {
     }
 
     def createNewDocument Model {
-      var document = Model.new("Untitled", window.platform, window.renderer.fontInstance(.CODE_FONT), 2)
+      var name = _nextUntitledID > 1 ? "Untitled \(_nextUntitledID)" : "Untitled"
+      var document = Model.new(name, window.platform, window.renderer.fontInstance(.CODE_FONT), 2)
       document.setLexer(.SKEW)
+      _nextUntitledID++
       return document
     }
 

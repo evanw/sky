@@ -23,7 +23,7 @@ namespace Editor {
         }
 
         case .ANIMATED {
-          if animationRemaining == 0 || targetLeft != endLeft && targetRight != endRight {
+          if animationRemaining == 0 || targetLeft != endLeft || targetRight != endRight {
             startLeft = left
             startRight = right
             endLeft = targetLeft

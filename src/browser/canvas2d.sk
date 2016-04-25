@@ -86,6 +86,20 @@ namespace Browser {
       context.fill()
     }
 
+    over fillPolygon(coordinates List<double>, color Graphics.RGBA) {
+      if color.alpha != 0 {
+        var context = _context
+        context.fillStyle = _colorToStyle(color)
+        context.beginPath()
+
+        for i = 0; i < coordinates.count; i += 2 {
+          context.lineTo(coordinates[i], coordinates[i + 1])
+        }
+
+        context.stroke()
+      }
+    }
+
     over strokePolyline(coordinates List<double>, color Graphics.RGBA, thickness double) {
       assert(_isRendering)
       assert(coordinates.count % 2 == 0)
