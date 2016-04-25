@@ -12,6 +12,7 @@ namespace UI {
     var _isInvalid = false
     var _isActive = true
     var _delegate WindowDelegate = null
+    var _theme Theme = null
 
     def new {
       _root = View.new(self)
@@ -44,6 +45,10 @@ namespace UI {
 
     def pixelScale double {
       return _pixelScale
+    }
+
+    def theme Theme {
+      return _theme
     }
 
     def invalidate {

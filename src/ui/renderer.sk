@@ -19,10 +19,11 @@ namespace UI {
 
     # Commands
     def renderCaret(x double, y double, color Color)
+    def renderDisplayList(list Graphics.DisplayList, originalWidth double, originalHeight double, x double, y double, width double, height double)
     def renderHorizontalLine(x1 double, x2 double, y double, color Color)
     def renderRect(x double, y double, width double, height double, color Color)
-    def renderShadow(x double, y double, width double, height double, direction Direction)
     def renderScrollbarThumb(x double, y double, width double, height double, color Color)
+    def renderShadow(x double, y double, width double, height double, direction Direction)
     def renderSquiggle(x double, y double, width double, height double, color Color)
     def renderText(x double, y double, text string, font Font, color Color, alpha int)
     def renderVerticalLine(x double, y1 double, y2 double, color Color)
@@ -83,6 +84,10 @@ namespace UI {
     def setTheme(theme Theme) {
       _theme = theme
       _renderer.setDefaultBackgroundColor(theme.findColor(.BACKGROUND_DEFAULT))
+    }
+
+    def renderDisplayList(list Graphics.DisplayList, originalWidth double, originalHeight double, x double, y double, width double, height double) {
+      list.run(_renderer, originalWidth, originalHeight, x, y, width, height)
     }
 
     def renderRect(x double, y double, width double, height double, color Color) {

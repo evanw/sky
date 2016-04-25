@@ -1,10 +1,10 @@
 namespace UI.Theme {
-  const MONOKAI = Theme.new({
+  const MONOKAI = Theme.new(null, null, null, {
     Color.BACKGROUND_DEFAULT:            Graphics.RGBA.hex(0x272822),
     Color.BACKGROUND_DIAGNOSTIC_ERROR:   Graphics.RGBA.hex(0xFF2211),
     Color.BACKGROUND_MARGIN_HIGHLIGHTED: Graphics.RGBA.hex(0x3E3D32),
     Color.BACKGROUND_SELECTED:           Graphics.RGBA.hex(0x49483E),
-    Color.BACKGROUND_TABS_INACTIVE:       Graphics.RGBA.hex(0x171814),
+    # Color.BACKGROUND_TABS_INACTIVE:       Graphics.RGBA.hex(0x171814),
     Color.FOREGROUND_CARET:              Graphics.RGBA.hex(0xF8F8F0),
     Color.FOREGROUND_COMMENT:            Graphics.RGBA.hex(0x75715E),
     Color.FOREGROUND_CONSTANT:           Graphics.RGBA.hex(0xAE81FF),

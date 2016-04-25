@@ -1,24 +1,49 @@
 namespace UI.Theme {
-  const XCODE = Theme.new({
-    Color.BACKGROUND_DEFAULT:       Graphics.RGBA.hex(0xFFFFFF),
-    Color.BACKGROUND_MARGIN:        Graphics.RGBA.hex(0xF7F7F7),
-    Color.BACKGROUND_SELECTED:      Graphics.RGBA.hex(0xABD6FF),
-    Color.BACKGROUND_TABS_ACTIVE:   Graphics.RGBA.hex(0xE5E5E5),
-    Color.BACKGROUND_TABS_INACTIVE: Graphics.RGBA.hex(0xD9D9D9),
-    Color.BORDER_MARGIN:            Graphics.RGBA.hex(0xBFBFBF, 0x5F),
-    Color.BORDER_TABS:              Graphics.RGBA.hex(0xBBBBBB),
-    Color.FOREGROUND_ANNOTATION:    Graphics.RGBA.hex(0x0E0EFF),
-    Color.FOREGROUND_COMMENT:       Graphics.RGBA.hex(0x007400),
-    Color.FOREGROUND_CONSTANT:      Graphics.RGBA.hex(0x25464A),
-    Color.FOREGROUND_DEFAULT:       Graphics.RGBA.hex(0x000000),
-    Color.FOREGROUND_DEFINITION:    Graphics.RGBA.hex(0x5B2599),
-    Color.FOREGROUND_KEYWORD:       Graphics.RGBA.hex(0xA90D91),
-    Color.FOREGROUND_MARGIN:        Graphics.RGBA.hex(0x929292),
-    Color.FOREGROUND_NUMBER:        Graphics.RGBA.hex(0x1C00CE),
-    Color.FOREGROUND_PREPROCESSOR:  Graphics.RGBA.hex(0x63381F),
-    Color.FOREGROUND_STRING:        Graphics.RGBA.hex(0xC41A15),
-    Color.FOREGROUND_TABS_ACTIVE:   Graphics.RGBA.hex(0x161616),
-    Color.FOREGROUND_TABS_INACTIVE: Graphics.RGBA.hex(0x626262),
-    Color.FOREGROUND_TYPE:          Graphics.RGBA.hex(0x3E6D74),
-  })
+  const XCODE = Theme.new(
+    Graphics.DisplayList.new([
+      Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0xD9D9D9) as int,
+      Graphics.DisplayCommand.BEGIN_PATH, 0, 99.5,
+      Graphics.DisplayCommand.LINE_TO, 100, 99.5,
+      Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0xBBBBBB) as int, 1]),
+
+    Graphics.DisplayList.new([
+      Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0xE5E5E5) as int,
+      Graphics.DisplayCommand.BEGIN_PATH, 0, 99.5,
+      Graphics.DisplayCommand.LINE_TO, 100, 99.5,
+      Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0xBBBBBB) as int, 1,
+      Graphics.DisplayCommand.BEGIN_PATH, -0.5, 0,
+      Graphics.DisplayCommand.LINE_TO, -0.5, 100,
+      Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0xBBBBBB) as int, 1,
+      Graphics.DisplayCommand.BEGIN_PATH, 99.5, 0,
+      Graphics.DisplayCommand.LINE_TO, 99.5, 100,
+      Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0xBBBBBB) as int, 1]),
+
+    Graphics.DisplayList.new([
+      Graphics.DisplayCommand.BEGIN_PATH, -0.5, 0,
+      Graphics.DisplayCommand.LINE_TO, -0.5, 100,
+      Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0xBBBBBB) as int, 1,
+      Graphics.DisplayCommand.BEGIN_PATH, 99.5, 0,
+      Graphics.DisplayCommand.LINE_TO, 99.5, 100,
+      Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0xBBBBBB) as int, 1]),
+
+    {
+      Color.BACKGROUND_DEFAULT:       Graphics.RGBA.hex(0xFFFFFF),
+      Color.BACKGROUND_MARGIN:        Graphics.RGBA.hex(0xF7F7F7),
+      Color.BACKGROUND_SELECTED:      Graphics.RGBA.hex(0xABD6FF),
+      Color.BORDER_MARGIN:            Graphics.RGBA.hex(0xBFBFBF, 0x5F),
+      Color.FOREGROUND_ANNOTATION:    Graphics.RGBA.hex(0x0E0EFF),
+      Color.FOREGROUND_COMMENT:       Graphics.RGBA.hex(0x007400),
+      Color.FOREGROUND_CONSTANT:      Graphics.RGBA.hex(0x25464A),
+      Color.FOREGROUND_DEFAULT:       Graphics.RGBA.hex(0x000000),
+      Color.FOREGROUND_DEFINITION:    Graphics.RGBA.hex(0x5B2599),
+      Color.FOREGROUND_KEYWORD:       Graphics.RGBA.hex(0xA90D91),
+      Color.FOREGROUND_MARGIN:        Graphics.RGBA.hex(0x929292),
+      Color.FOREGROUND_NUMBER:        Graphics.RGBA.hex(0x1C00CE),
+      Color.FOREGROUND_PREPROCESSOR:  Graphics.RGBA.hex(0x63381F),
+      Color.FOREGROUND_STRING:        Graphics.RGBA.hex(0xC41A15),
+      Color.FOREGROUND_TABS_ACTIVE:   Graphics.RGBA.hex(0x161616),
+      Color.FOREGROUND_TABS_INACTIVE: Graphics.RGBA.hex(0x626262),
+      Color.FOREGROUND_TYPE:          Graphics.RGBA.hex(0x3E6D74),
+    }
+  )
 }

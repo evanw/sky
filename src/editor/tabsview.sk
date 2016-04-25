@@ -74,12 +74,13 @@ namespace Editor {
       _controller = controller
       _documentStore = controller.documentStore
       _documentStore.addObserver(self)
-      _previousTime = _window.platform.nowInSeconds
+      _previousTime = window.platform.nowInSeconds
       assert(_documentStore.documents.isEmpty)
     }
 
     over render {
       var renderer = window.renderer
+      var theme = window.theme
       var width = bounds.width
       var height = bounds.height
       var font = renderer.fontInstance(.UI_FONT)
@@ -90,14 +91,17 @@ namespace Editor {
       advanceWidthIterator.setFont(font, 0)
 
       # View background
-      renderer.renderRect(0, 0, width, height, .BACKGROUND_TABS_INACTIVE)
+      if theme.tabArea != null {
+        renderer.renderDisplayList(theme.tabArea, DISPLAY_LIST_WIDTH, DISPLAY_LIST_HEIGHT, 0, 0, width, height)
+      }
 
-      # Tab backgrounds and borders
-      for i = tabs.count - 1; i >= 0; i-- {
-        var tab = tabs[i]
-        if i != activeIndex {
-          renderer.renderRect(tab.left - 1, 0, 1, height, .BORDER_TABS)
-          renderer.renderRect(tab.right - 1, 0, 1, height, .BORDER_TABS)
+      # Inactive tabs
+      if theme.inactiveTab != null {
+        for i = tabs.count - 1; i >= 0; i-- {
+          if i != activeIndex {
+            var tab = tabs[i]
+            renderer.renderDisplayList(theme.inactiveTab, DISPLAY_LIST_WIDTH, DISPLAY_LIST_HEIGHT, tab.left, 0, tab.right - tab.left, height)
+          }
         }
       }
 
@@ -115,17 +119,11 @@ namespace Editor {
         }
       }
 
-      # Do the active tab last so it comes on top
-      if activeIndex != -1 {
+      # # Do the active tab last so it comes on top
+      if activeIndex != -1 && theme.activeTab != null {
         var tab = tabs[activeIndex]
-        renderer.renderRect(tab.left, 0, tab.right - tab.left, height, .BACKGROUND_TABS_ACTIVE)
-        renderer.renderRect(tab.left, height - 2, tab.right - tab.left, 2, .BORDER_TABS_BASE)
-        renderer.renderRect(tab.left - 1, 0, 1, height, .BORDER_TABS)
-        renderer.renderRect(tab.right - 1, 0, 1, height, .BORDER_TABS)
+        renderer.renderDisplayList(theme.activeTab, DISPLAY_LIST_WIDTH, DISPLAY_LIST_HEIGHT, tab.left, 0, tab.right - tab.left, height)
       }
-
-      # Draw the bottom border in the same batch as the active tab geometry
-      renderer.renderRect(0, height - 1, width, 1, .BORDER_TABS)
 
       # Draw the active tab text last in its own batch
       if activeIndex != -1 {
@@ -301,8 +299,10 @@ namespace Editor {
   }
 
   namespace TabsView {
-    const MAX_TAB_WIDTH = 250.0
-    const NEW_TAB_WIDTH = 26
+    const DISPLAY_LIST_HEIGHT = 100
+    const DISPLAY_LIST_WIDTH = 100
     const HEIGHT = 27
+    const MAX_TAB_WIDTH = 250
+    const NEW_TAB_WIDTH = 26
   }
 }

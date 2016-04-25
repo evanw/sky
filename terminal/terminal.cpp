@@ -221,6 +221,7 @@ namespace Terminal {
     }
 
     virtual void setTheme(UI::Theme *theme) override {
+      _theme = theme;
     }
 
     virtual void setCursor(UI::Cursor cursor) override {

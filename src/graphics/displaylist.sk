@@ -1,6 +1,8 @@
+# Display lists are designed to be a space-efficient vector format for custom UI
 namespace Graphics {
   enum DisplayCommand {
     NONE
+    CLEAR
     BEGIN_PATH
     LINE_TO
     CURVE_TO
@@ -12,8 +14,8 @@ namespace Graphics {
     var _list List<double> = null
     var _index = 0
 
-    def reset(list List<double>) {
-      _list = list
+    def reset(list DisplayList) {
+      _list = list as List<double>
       _index = 0
     }
 
@@ -23,6 +25,7 @@ namespace Graphics {
       }
 
       assert(
+        _list[_index] == DisplayCommand.CLEAR ||
         _list[_index] == DisplayCommand.BEGIN_PATH ||
         _list[_index] == DisplayCommand.LINE_TO ||
         _list[_index] == DisplayCommand.CURVE_TO ||
@@ -34,49 +37,16 @@ namespace Graphics {
 
     def advance {
       switch peek {
-        case .BEGIN_PATH, .LINE_TO { _index += 3 }
+        case .CLEAR, .FILL_PATH { _index += 2 }
+        case .BEGIN_PATH, .LINE_TO, .STROKE_PATH { _index += 3 }
         case .CURVE_TO { _index += 7 }
-        case .FILL_PATH { _index += 5 }
-        case .STROKE_PATH { _index += 6 }
       }
       assert(_index <= _list.count)
     }
 
-    def play(renderer UI.PixelRenderer) {
-      var tessellator PathTessellator = null
-
-      while true {
-        switch peek {
-          case .NONE {
-            break
-          }
-
-          case .BEGIN_PATH {
-            assert(tessellator == null)
-            tessellator = PathTessellator.new(beginPathX, beginPathY, renderer.pixelScale)
-          }
-
-          case .LINE_TO {
-            tessellator.lineTo(lineToX, lineToY)
-          }
-
-          case .CURVE_TO {
-            tessellator.curveTo(curveToX1, curveToY1, curveToX2, curveToY2, curveToX, curveToY)
-          }
-
-          case .FILL_PATH {
-            renderer.fillPolygon(tessellator.finish, RGBA.new(fillPathR, fillPathG, fillPathB, fillPathA))
-            tessellator = null
-          }
-
-          case .STROKE_PATH {
-            renderer.strokePolyline(tessellator.finish, RGBA.new(strokePathR, strokePathG, strokePathB, strokePathA), strokePathThickness)
-            tessellator = null
-          }
-        }
-
-        advance
-      }
+    def clearColor RGBA {
+      assert(peek == .CLEAR)
+      return _list[_index + 1] as RGBA
     }
 
     def beginPathX double {
@@ -129,53 +99,97 @@ namespace Graphics {
       return _list[_index + 6]
     }
 
-    def fillPathR int {
+    def fillPathColor RGBA {
       assert(peek == .FILL_PATH)
-      return _list[_index + 1] as int
+      return _list[_index + 1] as RGBA
     }
 
-    def fillPathG int {
-      assert(peek == .FILL_PATH)
-      return _list[_index + 2] as int
-    }
-
-    def fillPathB int {
-      assert(peek == .FILL_PATH)
-      return _list[_index + 3] as int
-    }
-
-    def fillPathA int {
-      assert(peek == .FILL_PATH)
-      return _list[_index + 4] as int
-    }
-
-    def strokePathR int {
+    def strokePathColor RGBA {
       assert(peek == .STROKE_PATH)
-      return _list[_index + 1] as int
-    }
-
-    def strokePathG int {
-      assert(peek == .STROKE_PATH)
-      return _list[_index + 2] as int
-    }
-
-    def strokePathB int {
-      assert(peek == .STROKE_PATH)
-      return _list[_index + 3] as int
-    }
-
-    def strokePathA int {
-      assert(peek == .STROKE_PATH)
-      return _list[_index + 4] as int
+      return _list[_index + 1] as RGBA
     }
 
     def strokePathThickness double {
       assert(peek == .STROKE_PATH)
-      return _list[_index + 4]
+      return _list[_index + 2]
     }
   }
 
   namespace DisplayListIterator {
     const INSTANCE = new
+  }
+
+  type DisplayList : List<double> {
+    def run(renderer UI.PixelRenderer, originalWidth double, originalHeight double, finalX double, finalY double, finalWidth double, finalHeight double) {
+      var iterator = DisplayListIterator.INSTANCE
+      var tessellator PathTessellator = null
+      iterator.reset(self)
+
+      while true {
+        switch iterator.peek {
+          case .NONE {
+            break
+          }
+
+          case .CLEAR {
+            assert(tessellator == null)
+            renderer.fillRect(finalX, finalY, finalWidth, finalHeight, iterator.clearColor)
+          }
+
+          case .BEGIN_PATH {
+            assert(tessellator == null)
+            tessellator = PathTessellator.new(
+              finalX + _split(iterator.beginPathX, originalWidth, finalWidth),
+              finalY + _split(iterator.beginPathY, originalHeight, finalHeight),
+              renderer.pixelScale)
+          }
+
+          case .LINE_TO {
+            tessellator.lineTo(
+              finalX + _split(iterator.lineToX, originalWidth, finalWidth),
+              finalY + _split(iterator.lineToY, originalHeight, finalHeight))
+          }
+
+          case .CURVE_TO {
+            tessellator.curveTo(
+              finalX + _split(iterator.curveToX1, originalWidth, finalWidth),
+              finalY + _split(iterator.curveToY1, originalHeight, finalHeight),
+              finalX + _split(iterator.curveToX2, originalWidth, finalWidth),
+              finalY + _split(iterator.curveToY2, originalHeight, finalHeight),
+              finalX + _split(iterator.curveToX, originalWidth, finalWidth),
+              finalY + _split(iterator.curveToY, originalHeight, finalHeight))
+          }
+
+          case .FILL_PATH {
+            renderer.fillPolygon(
+              tessellator.finish,
+              iterator.fillPathColor)
+            tessellator = null
+          }
+
+          case .STROKE_PATH {
+            renderer.strokePolyline(
+              tessellator.finish,
+              iterator.strokePathColor,
+              iterator.strokePathThickness)
+            tessellator = null
+          }
+        }
+
+        iterator.advance
+      }
+
+      assert(tessellator == null)
+    }
+  }
+
+  namespace DisplayList {
+    def new(list List<double>) DisplayList {
+      return list as DisplayList
+    }
+
+    def _split(value double, original double, final double) double {
+      return original == 0 || value < original / 2 ? value : final - original + value
+    }
   }
 }

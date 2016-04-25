@@ -861,6 +861,7 @@ namespace OSX {
 
     virtual void setTheme(UI::Theme *theme) override {
       _translator->setTheme(theme);
+      _theme = theme;
     }
 
     virtual int width() override {

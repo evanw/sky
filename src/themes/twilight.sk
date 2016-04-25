@@ -1,14 +1,14 @@
 namespace UI.Theme {
-  const TWILIGHT = Theme.new({
+  const TWILIGHT = Theme.new(null, null, null, {
     Color.BACKGROUND_DEFAULT:            Graphics.RGBA.hex(0x202020),
     Color.BACKGROUND_DIAGNOSTIC_ERROR:   Graphics.RGBA.hex(0xFF2211),
     Color.BACKGROUND_MARGIN:             Graphics.RGBA.hex(0x3E3E40),
     Color.BACKGROUND_MARGIN_HIGHLIGHTED: Graphics.RGBA.hex(0x535255),
     Color.BACKGROUND_SELECTED:           Graphics.RGBA.hex(0x464A4C),
-    Color.BACKGROUND_TABS_ACTIVE:        Graphics.RGBA.hex(0xAFAFAF),
-    Color.BACKGROUND_TABS_INACTIVE:      Graphics.RGBA.hex(0x8A8A8A),
+    # Color.BACKGROUND_TABS_ACTIVE:        Graphics.RGBA.hex(0xAFAFAF),
+    # Color.BACKGROUND_TABS_INACTIVE:      Graphics.RGBA.hex(0x8A8A8A),
     Color.BORDER_MARGIN:                 Graphics.RGBA.hex(0x535255),
-    Color.BORDER_TABS:                   Graphics.RGBA.hex(0x535255),
+    # Color.BORDER_TABS:                   Graphics.RGBA.hex(0x535255),
     Color.FOREGROUND_CARET:              Graphics.RGBA.hex(0xA7A7A7),
     Color.FOREGROUND_COMMENT:            Graphics.RGBA.hex(0x746D73),
     Color.FOREGROUND_CONSTANT:           Graphics.RGBA.hex(0xB28349),
