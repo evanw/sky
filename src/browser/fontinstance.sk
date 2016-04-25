@@ -4,6 +4,7 @@ namespace Browser {
     const _names List<string>
     const _size double
     const _lineHeight double
+    const _flags UI.FontFlags
     const _advanceWidthCache IntMap<double> = {}
     const _context = document.createElement("canvas").getContext("2d")
     var _maskData Int32Array = null
@@ -11,11 +12,12 @@ namespace Browser {
     var _canvasText = ""
     var _canvasSize = 0
 
-    def new(font UI.Font, names List<string>, size double, lineHeight double, pixelScale double) {
+    def new(font UI.Font, names List<string>, size double, lineHeight double, flags UI.FontFlags, pixelScale double) {
       _font = font
       _names = names
       _size = size
       _lineHeight = lineHeight
+      _flags = flags
       changePixelScale(pixelScale)
     }
 
@@ -29,6 +31,10 @@ namespace Browser {
 
     def lineHeight double {
       return _lineHeight
+    }
+
+    def flags UI.FontFlags {
+      return _flags
     }
 
     def canvasText string {
@@ -52,8 +58,7 @@ namespace Browser {
       if pixelScale != _pixelScale {
         var fontSize = size * pixelScale
         _pixelScale = pixelScale
-        _canvasText = "\(fontSize)px \(", ".join(_names))"
-        _context.font = _canvasText
+        _canvasText = (.ITALIC in _flags ? "italic " : "") + (.BOLD in _flags ? "bold " : "") + "\(fontSize)px " + (", ".join(_names))
 
         # Assume glyphs won't ever grow extend out more than twice the font size.
         # Because the canvas text API is so terrible, we have no way of knowing
@@ -63,7 +68,7 @@ namespace Browser {
         _context.canvas.height = canvasSize
 
         # This must be set after resizing the canvas or it will be reset
-        _context.font = "\(fontSize)px " + ", ".join(_names)
+        _context.font = _canvasText
         _maskData = Int32Array.new(canvasSize * canvasSize)
         _canvasSize = canvasSize
       }

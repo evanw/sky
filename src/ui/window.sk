@@ -23,7 +23,7 @@ namespace UI {
     def setTitle(text string)
     def setTheme(theme Theme)
     def setCursor(cursor Cursor)
-    def setFont(font Font, names List<string>, size double, height double)
+    def setFont(font Font, names List<string>, size double, height double, flags FontFlags)
     def render
 
     def root View {

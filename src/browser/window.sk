@@ -124,11 +124,11 @@ namespace Browser {
       _input.style.transform = "translate(\(translator.lastCaretX)px, \(translator.lastCaretY)px)"
     }
 
-    over setFont(font UI.Font, names List<string>, size double, height double) {
+    over setFont(font UI.Font, names List<string>, size double, height double, flags UI.FontFlags) {
       if font == .CODE_FONT {
         _input.style.height = "\(height)px"
       }
-      _canvas.setFont(font, names, size, height)
+      _canvas.setFont(font, names, size, height, flags)
     }
 
     def element dynamic {

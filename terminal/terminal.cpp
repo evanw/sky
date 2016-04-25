@@ -73,6 +73,10 @@ namespace Terminal {
       return 1;
     }
 
+    virtual int flags() override {
+      return 0;
+    }
+
     // A single character can actually take up multiple cells in the terminal
     // (or no cells at all if libc decides it doesn't feel like printing it)
     virtual double advanceWidth(int codePoint) override {
@@ -210,7 +214,7 @@ namespace Terminal {
       return _fontInstances[(int)font] = new FontInstance(font);
     }
 
-    virtual void setFont(UI::Font font, Skew::List<Skew::string> *names, double size, double height) override {
+    virtual void setFont(UI::Font font, Skew::List<Skew::string> *names, double size, double height, int flags) override {
     }
 
     virtual void setTitle(Skew::string title) override {

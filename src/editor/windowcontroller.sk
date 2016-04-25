@@ -12,9 +12,9 @@ namespace Editor {
       var window = platform.createWindow
       window.setTitle("Untitled - Sky Text Editor")
       window.setTheme(.XCODE)
-      window.setFont(.CODE_FONT, MONOSPACE_FONTS, 12, 16)
-      window.setFont(.MARGIN_FONT, MONOSPACE_FONTS, 10, 14)
-      window.setFont(.UI_FONT, SANS_SERIF_FONTS, 12, 16)
+      window.setFont(.CODE_FONT, MONOSPACE_FONTS, 12, 16, 0)
+      window.setFont(.MARGIN_FONT, MONOSPACE_FONTS, 10, 14, 0)
+      window.setFont(.UI_FONT, SANS_SERIF_FONTS, 12, 16, 0)
       _window = window
 
       var model = Model.new("Untitled", platform, window.renderer.fontInstance(.CODE_FONT), 2)

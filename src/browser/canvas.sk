@@ -61,8 +61,8 @@ namespace Browser {
       return _fontContext
     }
 
-    def setFont(font UI.Font, names List<string>, size double, height double) {
-      _fontInstances[font] = FontInstance.new(font, names, size, height, _fontInstanceScale)
+    def setFont(font UI.Font, names List<string>, size double, height double, flags UI.FontFlags) {
+      _fontInstances[font] = FontInstance.new(font, names, size, height, flags, _fontInstanceScale)
     }
 
     def beginFrame {

@@ -5,6 +5,11 @@ namespace UI {
     UI_FONT
   }
 
+  flags FontFlags {
+    BOLD
+    ITALIC
+  }
+
   def roundUpToNextTabStop(value double, spacing double) double {
     return Math.floor(value / spacing + 1) * spacing
   }
@@ -13,6 +18,7 @@ namespace UI {
     def font Font
     def size double
     def lineHeight double
+    def flags FontFlags
     def advanceWidth(codePoint int) double # This assumes a 1:1 mapping between glyphs and code points
     def renderGlyph(codePoint int) Graphics.Glyph # This may return null
   }

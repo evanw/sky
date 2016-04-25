@@ -619,8 +619,8 @@ namespace OSX {
   ////////////////////////////////////////////////////////////////////////////////
 
   struct FontInstance : UI::FontInstance {
-    FontInstance(UI::Font font, Skew::List<Skew::string> *fontNames, double size, double lineHeight, double pixelScale)
-      : _font(font), _size(size), _lineHeight(lineHeight), _fontNames(fontNames) {
+    FontInstance(UI::Font font, Skew::List<Skew::string> *fontNames, double size, double lineHeight, int flags, double pixelScale)
+      : _font(font), _size(size), _lineHeight(lineHeight), _flags(flags), _fontNames(fontNames) {
       changePixelScale(pixelScale);
     }
 
@@ -634,6 +634,10 @@ namespace OSX {
 
     virtual double lineHeight() override {
       return _lineHeight;
+    }
+
+    virtual int flags() override {
+      return _flags;
     }
 
     void changePixelScale(double pixelScale) {
@@ -740,12 +744,24 @@ namespace OSX {
   private:
     bool _addFont(const char *name, double fontSize) {
       CFPtr<CFStringRef> holder(CFStringCreateWithCString(kCFAllocatorDefault, name, kCFStringEncodingUTF8));
-      _fonts.emplace_back(CTFontCreateWithName(holder.get(), fontSize, nullptr));
-      if (_fonts.back() != nullptr) {
-        return true;
+      CFPtr<CTFontRef> font(CTFontCreateWithName(holder.get(), fontSize, nullptr));
+
+      if (!font) {
+        return false;
       }
-      _fonts.pop_back();
-      return false;
+
+      if (_flags & UI::FontFlags::BOLD) {
+        CFPtr<CTFontRef> copy(CTFontCreateCopyWithSymbolicTraits(font.get(), 0, nullptr, kCTFontBoldTrait, kCTFontBoldTrait));
+        if (copy) font = std::move(copy);
+      }
+
+      if (_flags & UI::FontFlags::ITALIC) {
+        CFPtr<CTFontRef> copy(CTFontCreateCopyWithSymbolicTraits(font.get(), 0, nullptr, kCTFontItalicTrait, kCTFontItalicTrait));
+        if (copy) font = std::move(copy);
+      }
+
+      _fonts.emplace_back(std::move(font));
+      return true;
     }
 
     void _findCodePoint(int codePoint) {
@@ -788,6 +804,7 @@ namespace OSX {
     double _size = 0;
     double _lineHeight = 0;
     double _pixelScale = 0;
+    int _flags = 0;
     std::unordered_map<int, double> _advanceWidths;
 
     // Stuff for rendering
@@ -873,8 +890,8 @@ namespace OSX {
       }
     }
 
-    virtual void setFont(UI::Font font, Skew::List<Skew::string> *names, double size, double height) override {
-      _fontInstances[(int)font] = new FontInstance(font, names, size, height, _pixelScale);
+    virtual void setFont(UI::Font font, Skew::List<Skew::string> *names, double size, double height, int flags) override {
+      _fontInstances[(int)font] = new FontInstance(font, names, size, height, flags, _pixelScale);
     }
 
     virtual void render() override;
