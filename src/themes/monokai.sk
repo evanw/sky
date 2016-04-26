@@ -1,13 +1,16 @@
 namespace UI.Theme {
-  const MONOKAI = Theme.new(28, 34,
-    Graphics.DisplayList.new([
+  const MONOKAI = <Theme
+    tabHeight = 28
+    tabAreaHeight = 34
+
+    tabArea = Graphics.DisplayList.new([
       Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0x171814) as int,
       Graphics.DisplayCommand.BEGIN_PATH, 0, 99.5,
       Graphics.DisplayCommand.LINE_TO, 100, 99.5,
       Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0x3C3E38) as int, 1,
-    ]),
+    ])
 
-    Graphics.DisplayList.new([
+    activeTab = Graphics.DisplayList.new([
       Graphics.DisplayCommand.BEGIN_PATH, 0, 100,
       Graphics.DisplayCommand.CURVE_TO, 15, 100, 10, 0, 25, 0,
       Graphics.DisplayCommand.LINE_TO, 75, 0,
@@ -19,9 +22,9 @@ namespace UI.Theme {
       Graphics.DisplayCommand.LINE_TO, 75, 0.5,
       Graphics.DisplayCommand.CURVE_TO, 90, 0.5, 85, 99.5, 100, 99.5,
       Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0x3C3E38) as int, 1,
-    ]),
+    ])
 
-    Graphics.DisplayList.new([
+    inactiveTab = Graphics.DisplayList.new([
       Graphics.DisplayCommand.BEGIN_PATH, 0, 100,
       Graphics.DisplayCommand.CURVE_TO, 15, 100, 10, 0, 25, 0,
       Graphics.DisplayCommand.LINE_TO, 75, 0,
@@ -33,9 +36,9 @@ namespace UI.Theme {
       Graphics.DisplayCommand.LINE_TO, 75, 0.5,
       Graphics.DisplayCommand.CURVE_TO, 90, 0.5, 85, 99.5, 100, 99.5,
       Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0x555555) as int, 1,
-    ]),
+    ])
 
-    {
+    colors = {
       Color.BACKGROUND_DEFAULT:            Graphics.RGBA.hex(0x272822),
       Color.BACKGROUND_DIAGNOSTIC_ERROR:   Graphics.RGBA.hex(0xFF2211),
       Color.BACKGROUND_MARGIN_HIGHLIGHTED: Graphics.RGBA.hex(0x3E3D32),
@@ -55,5 +58,5 @@ namespace UI.Theme {
       Color.FOREGROUND_TABS_ACTIVE:        Graphics.RGBA.hex(0xE7E7E7),
       Color.FOREGROUND_TYPE:               Graphics.RGBA.hex(0x66D9EF),
     }
-  )
+  />
 }

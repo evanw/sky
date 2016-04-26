@@ -1,13 +1,16 @@
 namespace UI.Theme {
-  const ATOM = Theme.new(36, 42,
-    Graphics.DisplayList.new([
+  const ATOM = <Theme
+    tabHeight = 36
+    tabAreaHeight = 42
+
+    tabArea = Graphics.DisplayList.new([
       Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0x21252B) as int,
       Graphics.DisplayCommand.BEGIN_PATH, 0, 99.5,
       Graphics.DisplayCommand.LINE_TO, 100, 99.5,
       Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0x181A1F) as int, 1,
-    ]),
+    ])
 
-    Graphics.DisplayList.new([
+    activeTab = Graphics.DisplayList.new([
       # Base fill
       Graphics.DisplayCommand.BEGIN_PATH, -0.5, 100,
       Graphics.DisplayCommand.LINE_TO, -0.5, 3.5,
@@ -39,18 +42,18 @@ namespace UI.Theme {
       Graphics.DisplayCommand.CURVE_TO, 98.5, 0.5, 99.5, 1.5, 99.5, 3.5,
       Graphics.DisplayCommand.LINE_TO, 99.5, 100,
       Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0x181A1F) as int, 1,
-    ]),
+    ])
 
-    Graphics.DisplayList.new([
+    inactiveTab = Graphics.DisplayList.new([
       Graphics.DisplayCommand.BEGIN_PATH, -0.5, 3.5,
       Graphics.DisplayCommand.LINE_TO, -0.5, 100,
       Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0x181A1F) as int, 1,
       Graphics.DisplayCommand.BEGIN_PATH, 99.5, 3.5,
       Graphics.DisplayCommand.LINE_TO, 99.5, 100,
       Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0x181A1F) as int, 1,
-    ]),
+    ])
 
-    {
+    colors = {
       Color.BACKGROUND_DEFAULT:            Graphics.RGBA.hex(0x282C34),
       Color.BACKGROUND_SELECTED:           Graphics.RGBA.hex(0x3E4451),
       Color.FOREGROUND_COMMENT:            Graphics.RGBA.hex(0x5C6370),
@@ -69,5 +72,5 @@ namespace UI.Theme {
       Color.FOREGROUND_TABS_INACTIVE:      Graphics.RGBA.hex(0x69707B),
       Color.FOREGROUND_TYPE:               Graphics.RGBA.hex(0xE5C07B),
     }
-  )
+  />
 }

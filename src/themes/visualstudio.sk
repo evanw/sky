@@ -1,19 +1,20 @@
 namespace UI.Theme {
-  const VISUAL_STUDIO_DARK = Theme.new(25, 25,
-    Graphics.DisplayList.new([
+  const VISUAL_STUDIO_DARK = <Theme
+    tabHeight = 25
+    tabAreaHeight = 25
+
+    tabArea = Graphics.DisplayList.new([
       Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0x333333) as int,
       Graphics.DisplayCommand.BEGIN_PATH, 0, 98.5,
       Graphics.DisplayCommand.LINE_TO, 100, 98.5,
       Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0x007ACC) as int, 3,
-    ]),
+    ])
 
-    Graphics.DisplayList.new([
+    activeTab = Graphics.DisplayList.new([
       Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0x007ACC) as int,
-    ]),
+    ])
 
-    null,
-
-    {
+    colors = {
       Color.BACKGROUND_DEFAULT:            Graphics.RGBA.hex(0x1E1E1E),
       Color.BACKGROUND_DIAGNOSTIC_ERROR:   Graphics.RGBA.hex(0xFF2211),
       Color.BACKGROUND_MARGIN_HIGHLIGHTED: Graphics.RGBA.hex(0x0F0F0F),
@@ -31,23 +32,24 @@ namespace UI.Theme {
       Color.FOREGROUND_TABS_INACTIVE:      Graphics.RGBA.hex(0xADADAD),
       Color.FOREGROUND_TYPE:               Graphics.RGBA.hex(0x4EC9B0),
     }
-  )
+  />
 
-  const VISUAL_STUDIO_LIGHT = Theme.new(25, 25,
-    Graphics.DisplayList.new([
+  const VISUAL_STUDIO_LIGHT = <Theme
+    tabHeight = 25
+    tabAreaHeight = 25
+
+    tabArea = Graphics.DisplayList.new([
       Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0xF3F3F3) as int,
       Graphics.DisplayCommand.BEGIN_PATH, 0, 98.5,
       Graphics.DisplayCommand.LINE_TO, 100, 98.5,
       Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0x007ACC) as int, 3,
-    ]),
+    ])
 
-    Graphics.DisplayList.new([
+    activeTab = Graphics.DisplayList.new([
       Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0x007ACC) as int,
-    ]),
+    ])
 
-    null,
-
-    {
+    colors = {
       Color.BACKGROUND_DEFAULT:       Graphics.RGBA.hex(0xFFFFFF),
       Color.BACKGROUND_SELECTED:      Graphics.RGBA.hex(0xADD6FF),
       Color.FOREGROUND_COMMENT:       Graphics.RGBA.hex(0x008000),
@@ -61,5 +63,5 @@ namespace UI.Theme {
       Color.FOREGROUND_TABS_INACTIVE: Graphics.RGBA.hex(0x333333),
       Color.FOREGROUND_TYPE:          Graphics.RGBA.hex(0x2B91AF),
     }
-  )
+  />
 }

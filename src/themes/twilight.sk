@@ -1,13 +1,16 @@
 namespace UI.Theme {
-  const TWILIGHT = Theme.new(27, 27,
-    Graphics.DisplayList.new([
+  const TWILIGHT = <Theme
+    tabHeight = 27
+    tabAreaHeight = 27
+
+    tabArea = Graphics.DisplayList.new([
       Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0xD9D9D9) as int,
       Graphics.DisplayCommand.BEGIN_PATH, 0, 99.5,
       Graphics.DisplayCommand.LINE_TO, 100, 99.5,
       Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0xBBBBBB) as int, 1,
-    ]),
+    ])
 
-    Graphics.DisplayList.new([
+    activeTab = Graphics.DisplayList.new([
       Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0xE5E5E5) as int,
       Graphics.DisplayCommand.BEGIN_PATH, 0, 99.5,
       Graphics.DisplayCommand.LINE_TO, 100, 99.5,
@@ -18,18 +21,18 @@ namespace UI.Theme {
       Graphics.DisplayCommand.BEGIN_PATH, 99.5, 0,
       Graphics.DisplayCommand.LINE_TO, 99.5, 100,
       Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0xBBBBBB) as int, 1,
-    ]),
+    ])
 
-    Graphics.DisplayList.new([
+    inactiveTab = Graphics.DisplayList.new([
       Graphics.DisplayCommand.BEGIN_PATH, -0.5, 0,
       Graphics.DisplayCommand.LINE_TO, -0.5, 100,
       Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0xBBBBBB) as int, 1,
       Graphics.DisplayCommand.BEGIN_PATH, 99.5, 0,
       Graphics.DisplayCommand.LINE_TO, 99.5, 100,
       Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0xBBBBBB) as int, 1,
-    ]),
+    ])
 
-    {
+    colors = {
       Color.BACKGROUND_DEFAULT:            Graphics.RGBA.hex(0x202020),
       Color.BACKGROUND_DIAGNOSTIC_ERROR:   Graphics.RGBA.hex(0xFF2211),
       Color.BACKGROUND_MARGIN:             Graphics.RGBA.hex(0x3E3E40),
@@ -52,5 +55,5 @@ namespace UI.Theme {
       Color.FOREGROUND_TABS_INACTIVE:      Graphics.RGBA.hex(0x626262),
       Color.FOREGROUND_TYPE:               Graphics.RGBA.hex(0xB195AD),
     }
-  )
+  />
 }

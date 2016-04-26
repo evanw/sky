@@ -12,7 +12,7 @@ namespace UI {
     var _isInvalid = false
     var _isActive = true
     var _delegate WindowDelegate = null
-    var _theme Theme = null
+    var _theme Theme = .FALLBACK
 
     def new {
       _root = View.new(self)
