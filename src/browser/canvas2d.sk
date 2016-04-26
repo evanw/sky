@@ -86,27 +86,27 @@ namespace Browser {
       context.fill()
     }
 
-    over fillPolygon(coordinates List<double>, color Graphics.RGBA) {
-      if color.alpha != 0 {
+    over fillPolygon(coordinates List<double>, colorA Graphics.RGBA, colorB Graphics.RGBA, orientation Graphics.GradientOrientation) {
+      if colorA.alpha != 0 || colorB.alpha != 0 {
         var context = _context
-        context.fillStyle = _colorToStyle(color)
+        context.fillStyle = _gradientToStyle(coordinates, colorA, colorB, orientation)
         context.beginPath()
 
         for i = 0; i < coordinates.count; i += 2 {
           context.lineTo(coordinates[i], coordinates[i + 1])
         }
 
-        context.stroke()
+        context.fill()
       }
     }
 
-    over strokePolyline(coordinates List<double>, color Graphics.RGBA, thickness double) {
+    over strokePolyline(coordinates List<double>, colorA Graphics.RGBA, colorB Graphics.RGBA, orientation Graphics.GradientOrientation, thickness double) {
       assert(_isRendering)
       assert(coordinates.count % 2 == 0)
 
-      if color.alpha != 0 {
+      if colorA.alpha != 0 || colorB.alpha != 0 {
         var context = _context
-        context.strokeStyle = _colorToStyle(color)
+        context.strokeStyle = _gradientToStyle(coordinates, colorA, colorB, orientation)
         context.lineWidth = thickness
         context.beginPath()
 
@@ -168,6 +168,24 @@ namespace Browser {
         style = "rgba(\(color.red),\(color.green),\(color.blue),\(color.alpha / 255.0))"
         _cachedStyles[color as int] = style
       }
+      return style
+    }
+
+    def _gradientToStyle(coordinates List<double>, colorA Graphics.RGBA, colorB Graphics.RGBA, orientation Graphics.GradientOrientation) string {
+      var min = Math.INFINITY
+      var max = -Math.INFINITY
+      var n = coordinates.count
+      assert(n % 2 == 0)
+
+      for i = orientation as int; i < n; i += 2 {
+        var value = coordinates[i]
+        if value < min { min = value }
+        if value > max { max = value }
+      }
+
+      var style = _context.createLinearGradient(min, min, orientation == .HORIZONTAL ? max : min, orientation == .HORIZONTAL ? min : max)
+      style.addColorStop(0, _colorToStyle(colorA))
+      style.addColorStop(1, _colorToStyle(colorB))
       return style
     }
   }

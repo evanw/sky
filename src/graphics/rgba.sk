@@ -72,5 +72,13 @@ namespace Graphics {
       assert(alpha >= 0 && alpha <= 0xFF)
       return (rgb | alpha << 24) as RGBA
     }
+
+    def blend(left RGBA, right RGBA, t double) RGBA {
+      return t <= 0 ? left : t >= 1 ? right : new(
+        Math.round(left.red + (right.red - left.red) * t) as int,
+        Math.round(left.green + (right.green - left.green) * t) as int,
+        Math.round(left.blue + (right.blue - left.blue) * t) as int,
+        Math.round(left.alpha + (right.alpha - left.alpha) * t) as int)
+    }
   }
 }

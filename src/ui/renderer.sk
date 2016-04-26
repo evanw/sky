@@ -45,8 +45,10 @@ namespace UI {
     def setDefaultBackgroundColor(color Graphics.RGBA)
     def fillRect(x double, y double, width double, height double, color Graphics.RGBA)
     def fillRoundedRect(x double, y double, width double, height double, color Graphics.RGBA, radius double)
-    def fillPolygon(coordinates List<double>, color Graphics.RGBA)
-    def strokePolyline(coordinates List<double>, color Graphics.RGBA, thickness double)
+    def fillPolygon(coordinates List<double>, color Graphics.RGBA) { fillPolygon(coordinates, color, color, .HORIZONTAL) }
+    def fillPolygon(coordinates List<double>, colorA Graphics.RGBA, colorB Graphics.RGBA, orientation Graphics.GradientOrientation)
+    def strokePolyline(coordinates List<double>, color Graphics.RGBA, thickness double) { strokePolyline(coordinates, color, color, .HORIZONTAL, thickness) }
+    def strokePolyline(coordinates List<double>, colorA Graphics.RGBA, colorB Graphics.RGBA, orientation Graphics.GradientOrientation, thickness double)
     def renderText(x double, y double, text string, font Font, color Graphics.RGBA)
     def renderRectShadow(
       rectX double, rectY double, rectWidth double, rectHeight double,

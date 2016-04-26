@@ -93,20 +93,20 @@ namespace Browser {
       _solidBatch.fillRoundedRect(x, y, width, height, color.premultiplied, radius)
     }
 
-    over fillPolygon(coordinates List<double>, color Graphics.RGBA) {
+    over fillPolygon(coordinates List<double>, colorA Graphics.RGBA, colorB Graphics.RGBA, orientation Graphics.GradientOrientation) {
       assert(_isRendering)
       assert(coordinates.count % 2 == 0)
 
       _glyphBatch.flush
-      _solidBatch.fillConvexPolygon(coordinates, color.premultiplied)
+      _solidBatch.fillConvexPolygon(coordinates, colorA.premultiplied, colorB.premultiplied, orientation)
     }
 
-    over strokePolyline(coordinates List<double>, color Graphics.RGBA, thickness double) {
+    over strokePolyline(coordinates List<double>, colorA Graphics.RGBA, colorB Graphics.RGBA, orientation Graphics.GradientOrientation, thickness double) {
       assert(_isRendering)
       assert(coordinates.count % 2 == 0)
 
       _glyphBatch.flush
-      _solidBatch.strokeNonOverlappingPolyline(coordinates, color.premultiplied, thickness, .OPEN)
+      _solidBatch.strokeNonOverlappingPolyline(coordinates, colorA.premultiplied, colorB.premultiplied, orientation, thickness, .OPEN)
     }
 
     over renderRectShadow(

@@ -26,8 +26,8 @@ namespace Browser {
     def setDefaultBackgroundColor(color Graphics.RGBA)
     def fillRect(x double, y double, width double, height double, color Graphics.RGBA)
     def fillRoundedRect(x double, y double, width double, height double, color Graphics.RGBA, radius double)
-    def fillPolygon(coordinates List<double>, color Graphics.RGBA)
-    def strokePolyline(coordinates List<double>, color Graphics.RGBA, thickness double)
+    def fillPolygon(coordinates List<double>, colorA Graphics.RGBA, colorB Graphics.RGBA, orientation Graphics.GradientOrientation)
+    def strokePolyline(coordinates List<double>, colorA Graphics.RGBA, colorB Graphics.RGBA, orientation Graphics.GradientOrientation, thickness double)
     def renderText(x double, y double, text string, font UI.Font, color Graphics.RGBA)
     def renderRectShadow(
       boxX double, boxY double, boxWidth double, boxHeight double,

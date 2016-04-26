@@ -940,20 +940,21 @@ namespace OSX {
       _solidBatch->fillRoundedRect(x, y, width, height, Graphics::RGBA::premultiplied(color), radius);
     }
 
-    virtual void fillPolygon(Skew::List<double> *coordinates, int color) override {
+    virtual void fillPolygon(Skew::List<double> *coordinates, int colorA, int colorB, Graphics::GradientOrientation orientation) override {
       assert(_isRendering);
       assert(coordinates->count() % 2 == 0);
 
       _glyphBatch->flush();
-      _solidBatch->fillConvexPolygon(coordinates, Graphics::RGBA::premultiplied(color));
+      _solidBatch->fillConvexPolygon(coordinates, Graphics::RGBA::premultiplied(colorA), Graphics::RGBA::premultiplied(colorB), orientation);
     }
 
-    virtual void strokePolyline(Skew::List<double> *coordinates, int color, double thickness) override {
+    virtual void strokePolyline(Skew::List<double> *coordinates, int colorA, int colorB, Graphics::GradientOrientation orientation, double thickness) override {
       assert(_isRendering);
       assert(coordinates->count() % 2 == 0);
 
       _glyphBatch->flush();
-      _solidBatch->strokeNonOverlappingPolyline(coordinates, Graphics::RGBA::premultiplied(color), thickness, Graphics::StrokeCap::OPEN);
+      _solidBatch->strokeNonOverlappingPolyline(coordinates, Graphics::RGBA::premultiplied(colorA), Graphics::RGBA::premultiplied(colorB),
+        orientation, thickness, Graphics::StrokeCap::OPEN);
     }
 
     virtual void renderText(double x, double y, Skew::string text, UI::Font font, int color) override {
