@@ -1,40 +1,52 @@
 namespace UI.Theme {
   const MONOKAI = <Theme
     tabHeight = 28
+    tabMaxWidth = 200
     tabAreaHeight = 34
+    tabOverlap = 25
 
     tabArea = Graphics.DisplayList.new([
       Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0x171814) as int,
-      Graphics.DisplayCommand.BEGIN_PATH, 0, 99.5,
-      Graphics.DisplayCommand.LINE_TO, 100, 99.5,
-      Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0x3C3E38) as int, 1,
     ])
 
     activeTab = Graphics.DisplayList.new([
+      Graphics.DisplayCommand.BEGIN_PATH, -9999, 99.5,
+      Graphics.DisplayCommand.LINE_TO, 0, 99.5,
+      Graphics.DisplayCommand.CURVE_TO, 15, 99.5, 10, 0.5, 25, 0.5,
+      Graphics.DisplayCommand.LINE_TO, 75, 0.5,
+      Graphics.DisplayCommand.CURVE_TO, 90, 0.5, 85, 99.5, 100, 99.5,
+      Graphics.DisplayCommand.LINE_TO, 9999, 99.5,
+      Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0x000000, 31) as int, 3,
+      Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0x000000, 31) as int, 5,
+
       Graphics.DisplayCommand.BEGIN_PATH, 0, 100,
       Graphics.DisplayCommand.CURVE_TO, 15, 100, 10, 0, 25, 0,
       Graphics.DisplayCommand.LINE_TO, 75, 0,
       Graphics.DisplayCommand.CURVE_TO, 90, 0, 85, 100, 100, 100,
       Graphics.DisplayCommand.FILL_PATH, Graphics.RGBA.hex(0x272822) as int,
 
-      Graphics.DisplayCommand.BEGIN_PATH, 0, 99.5,
+      Graphics.DisplayCommand.BEGIN_PATH, -9999, 99.5,
+      Graphics.DisplayCommand.LINE_TO, 0, 99.5,
       Graphics.DisplayCommand.CURVE_TO, 15, 99.5, 10, 0.5, 25, 0.5,
       Graphics.DisplayCommand.LINE_TO, 75, 0.5,
       Graphics.DisplayCommand.CURVE_TO, 90, 0.5, 85, 99.5, 100, 99.5,
+      Graphics.DisplayCommand.LINE_TO, 9999, 99.5,
       Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0x3C3E38) as int, 1,
     ])
 
     inactiveTab = Graphics.DisplayList.new([
-      Graphics.DisplayCommand.BEGIN_PATH, 0, 100,
-      Graphics.DisplayCommand.CURVE_TO, 15, 100, 10, 0, 25, 0,
-      Graphics.DisplayCommand.LINE_TO, 75, 0,
-      Graphics.DisplayCommand.CURVE_TO, 90, 0, 85, 100, 100, 100,
-      Graphics.DisplayCommand.FILL_PATH, Graphics.RGBA.hex(0x3D3D3B) as int,
+      Graphics.DisplayCommand.BEGIN_PATH, -4, 101.5,
+      Graphics.DisplayCommand.CURVE_TO, 15, 101.5, 10, 0.5, 25, 0.5,
+      Graphics.DisplayCommand.LINE_TO, 75, 0.5,
+      Graphics.DisplayCommand.CURVE_TO, 90, 0.5, 85, 101.5, 104, 101.5,
+      Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0x000000, 47) as int, 3,
+      Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0x000000, 47) as int, 5,
 
       Graphics.DisplayCommand.BEGIN_PATH, 0, 99.5,
       Graphics.DisplayCommand.CURVE_TO, 15, 99.5, 10, 0.5, 25, 0.5,
       Graphics.DisplayCommand.LINE_TO, 75, 0.5,
       Graphics.DisplayCommand.CURVE_TO, 90, 0.5, 85, 99.5, 100, 99.5,
+      Graphics.DisplayCommand.FILL_PATH, Graphics.RGBA.hex(0x3D3D3B) as int,
       Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0x555555) as int, 1,
     ])
 

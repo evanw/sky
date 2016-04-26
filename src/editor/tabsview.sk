@@ -194,17 +194,18 @@ namespace Editor {
 
         case .MOUSE_MOVE {
           if _draggingIndex != -1 {
+            var theme = window.theme
             var tabCount = _tabs.count
             var location = event.mouseEvent.locationInView(self)
-            var trackWidth = bounds.width - NEW_TAB_WIDTH
-            var tabWidth = Math.min(trackWidth / tabCount, MAX_TAB_WIDTH)
+            var trackWidth = bounds.width - NEW_TAB_WIDTH - theme.tabOverlap
+            var tabWidth = Math.min(trackWidth / tabCount, theme.tabMaxWidth - theme.tabOverlap)
             var left = Math.clamp(location.x - _draggingOffset, 0, trackWidth - tabWidth)
             var oldIndex = _draggingIndex
             var tab = _tabs[oldIndex]
             var newIndex = Math.clamp(Math.round(left / tabWidth), 0, tabCount - 1) as int
             _documentStore.moveDocument(oldIndex, newIndex)
             _draggingIndex = newIndex
-            tab.moveTo(Math.round(left), Math.round(left + tabWidth), .IMMEDIATE)
+            tab.moveTo(Math.round(left), Math.round(left + tabWidth + theme.tabOverlap), .IMMEDIATE)
             _window.invalidate
           }
         }
@@ -267,7 +268,7 @@ namespace Editor {
     def _createTabForDocument(document Model) TabInfo {
       var tab = TabInfo.new(document)
       if !_tabs.isEmpty {
-        tab.left = tab.right = _tabs.last.right
+        tab.left = tab.right = _tabs.last.right - window.theme.tabOverlap
       }
       return tab
     }
@@ -292,10 +293,14 @@ namespace Editor {
     def updateTabTargets(mode TabMove) {
       var tabs = _tabs
       var count = tabs.count
-      var scale = Math.min((bounds.width - NEW_TAB_WIDTH) / count, MAX_TAB_WIDTH)
+      var theme = window.theme
+      var scale = Math.min((bounds.width - NEW_TAB_WIDTH - theme.tabOverlap) / count, theme.tabMaxWidth - theme.tabOverlap)
 
       for i in 0..count {
-        tabs[i].moveTo(Math.round(i * scale), Math.round((i + 1) * scale), mode)
+        tabs[i].moveTo(
+          Math.round(i * scale),
+          Math.round((i + 1) * scale + theme.tabOverlap),
+          mode)
       }
     }
   }
@@ -303,7 +308,6 @@ namespace Editor {
   namespace TabsView {
     const DISPLAY_LIST_HEIGHT = 100
     const DISPLAY_LIST_WIDTH = 100
-    const MAX_TAB_WIDTH = 250
     const NEW_TAB_WIDTH = 26
   }
 }

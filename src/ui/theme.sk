@@ -4,7 +4,10 @@ namespace UI {
   # being substituted with another identifier that has a fallback color.
   class Theme {
     var tabHeight = 0.0
+    var tabMaxWidth = 250.0
     var tabAreaHeight = 0.0
+    var tabOverlap = 0.0
+
     var tabArea Graphics.DisplayList = null
     var activeTab Graphics.DisplayList = null
     var inactiveTab Graphics.DisplayList = null

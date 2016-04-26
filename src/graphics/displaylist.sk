@@ -123,6 +123,7 @@ namespace Graphics {
     def run(renderer UI.PixelRenderer, originalWidth double, originalHeight double, finalX double, finalY double, finalWidth double, finalHeight double) {
       var iterator = DisplayListIterator.INSTANCE
       var tessellator PathTessellator = null
+      var path List<double> = null
       iterator.reset(self)
 
       while true {
@@ -133,11 +134,13 @@ namespace Graphics {
 
           case .CLEAR {
             assert(tessellator == null)
+            assert(path == null)
             renderer.fillRect(finalX, finalY, finalWidth, finalHeight, iterator.clearColor)
           }
 
           case .BEGIN_PATH {
             assert(tessellator == null)
+            path = null
             tessellator = PathTessellator.new(
               finalX + _split(iterator.beginPathX, originalWidth, finalWidth),
               finalY + _split(iterator.beginPathY, originalHeight, finalHeight),
@@ -161,17 +164,14 @@ namespace Graphics {
           }
 
           case .FILL_PATH {
-            renderer.fillPolygon(
-              tessellator.finish,
-              iterator.fillPathColor)
+            path ?= tessellator.finish
+            renderer.fillPolygon(path, iterator.fillPathColor)
             tessellator = null
           }
 
           case .STROKE_PATH {
-            renderer.strokePolyline(
-              tessellator.finish,
-              iterator.strokePathColor,
-              iterator.strokePathThickness)
+            path ?= tessellator.finish
+            renderer.strokePolyline(path, iterator.strokePathColor, iterator.strokePathThickness)
             tessellator = null
           }
         }
