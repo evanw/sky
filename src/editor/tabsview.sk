@@ -63,16 +63,18 @@ namespace Editor {
   class TabsView : UI.View :: WindowObserver, DocumentStoreObserver {
     const _documentStore DocumentStore
     const _controller WindowController
+    const _theme UI.Theme
     const _tabs List<TabInfo> = []
     var _previousTime double
     var _draggingOffset = 0.0
     var _draggingIndex = -1
     var _hoveredIndex = -1
 
-    def new(controller WindowController) {
+    def new(controller WindowController, theme UI.Theme) {
       super(controller.window)
       controller.addObserver(self)
       _controller = controller
+      _theme = theme
       _documentStore = controller.documentStore
       _documentStore.addObserver(self)
       _previousTime = window.platform.nowInSeconds
@@ -81,7 +83,7 @@ namespace Editor {
 
     over render {
       var renderer = window.renderer
-      var theme = window.theme
+      var theme = _theme
       var width = bounds.width + BORDER_ADJUSTMENT
       var height = bounds.height
       var font = renderer.fontInstance(.UI_FONT)
@@ -127,11 +129,12 @@ namespace Editor {
     }
 
     def _renderTabText(tab TabInfo, font UI.FontInstance, advanceWidthIterator UI.AdvanceWidthIterator, unicodeIterator Unicode.StringIterator, isActive bool, isHovered bool) {
-      var theme = window.theme
+      var theme = _theme
       var text = tab.document.name
       advanceWidthIterator.reset(text)
       advanceWidthIterator.seekToIndex(text.count)
       assert(theme.tabTextAlignment != .RIGHT)
+      assert(theme.closeButtonAlignment != .CENTER)
 
       # Truncate text to fit
       var padding = theme.tabOverlap + theme.tabTextPadding
@@ -168,6 +171,17 @@ namespace Editor {
         renderer.renderDisplayList(theme.closeButton, DISPLAY_LIST_WIDTH, DISPLAY_LIST_HEIGHT,
           tab.left + padding, y, tab.right - tab.left - 2 * padding, tabHeight)
       }
+
+      # # Render the close button hit target for debugging
+      # if theme.closeButtonAlignment == .LEFT {
+      #   renderer.renderDisplayList(Graphics.DisplayList.new([
+      #     Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0xFF0000, 127) as int,
+      #   ]), 9999, 9999, tab.left + theme.tabOverlap, y, theme.closeButtonWidth, tabHeight)
+      # } else {
+      #   renderer.renderDisplayList(Graphics.DisplayList.new([
+      #     Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0xFF0000, 127) as int,
+      #   ]), 9999, 9999, tab.right - theme.closeButtonWidth - theme.tabOverlap, y, theme.closeButtonWidth, tabHeight)
+      # }
     }
 
     def _indexOfTabForEvent(event UI.MouseEvent) int {
@@ -212,7 +226,7 @@ namespace Editor {
 
         case .MOUSE_MOVE {
           if _draggingIndex != -1 {
-            var theme = window.theme
+            var theme = _theme
             var tabCount = _tabs.count
             var location = event.mouseEvent.locationInView(self)
             var trackWidth = bounds.width + BORDER_ADJUSTMENT - theme.tabOverlap
@@ -254,32 +268,7 @@ namespace Editor {
       }
     }
 
-    def _changeActiveIndex(index int) {
-      if index >= 0 && index < _documentStore.documents.count {
-        _documentStore.setActiveIndex(index)
-      }
-    }
-
     def handleAction(action Action) {
-      var count = _documentStore.documents.count
-      var activeIndex = _documentStore.activeIndex
-
-      switch action {
-        case .NEW_DOCUMENT { _documentStore.appendDocument(_controller.createNewDocument) }
-        case .CLOSE_DOCUMENT { if activeIndex != -1 { _documentStore.removeDocument(activeIndex) } }
-
-        case .TABS_PREVIOUS { _changeActiveIndex((activeIndex - 1) %% count) }
-        case .TABS_NEXT { _changeActiveIndex((activeIndex + 1) % count) }
-        case .TABS_1 { _changeActiveIndex(0) }
-        case .TABS_2 { _changeActiveIndex(1) }
-        case .TABS_3 { _changeActiveIndex(2) }
-        case .TABS_4 { _changeActiveIndex(3) }
-        case .TABS_5 { _changeActiveIndex(4) }
-        case .TABS_6 { _changeActiveIndex(5) }
-        case .TABS_7 { _changeActiveIndex(6) }
-        case .TABS_8 { _changeActiveIndex(7) }
-        case .TABS_LAST { _changeActiveIndex(count - 1) }
-      }
     }
 
     def handleFrame {
@@ -303,7 +292,7 @@ namespace Editor {
     def _createTabForDocument(document Model) TabInfo {
       var tab = TabInfo.new(document)
       if !_tabs.isEmpty {
-        tab.left = tab.right = _tabs.last.right - window.theme.tabOverlap
+        tab.left = tab.right = _tabs.last.right - _theme.tabOverlap
       }
       return tab
     }
@@ -328,7 +317,7 @@ namespace Editor {
     def updateTabTargets(mode TabMove) {
       var tabs = _tabs
       var count = tabs.count
-      var theme = window.theme
+      var theme = _theme
       var scale = Math.min((bounds.width + BORDER_ADJUSTMENT - theme.tabOverlap) / count, theme.tabMaxWidth - theme.tabOverlap)
 
       for i in 0..count {

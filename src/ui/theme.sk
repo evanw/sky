@@ -16,8 +16,9 @@ namespace UI {
     var textShadowOffsetX = 0.0
     var textShadowOffsetY = 0.0
     var tabTextPadding = 8.0
-    var closeButtonWidth = 0.0
     var tabTextAlignment = Align.CENTER
+    var closeButtonWidth = 0.0
+    var closeButtonAlignment = Align.RIGHT
     var onlyShowCloseButtonOnHover = true
 
     var tabArea Graphics.DisplayList = null

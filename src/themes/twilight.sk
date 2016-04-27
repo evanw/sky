@@ -3,6 +3,7 @@ namespace UI.Theme {
     tabHeight = 27
     tabAreaHeight = 27
     closeButtonWidth = 20
+    closeButtonAlignment = .LEFT
 
     tabArea = Graphics.DisplayList.new([
       Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0xD9D9D9) as int,

@@ -11,6 +11,7 @@ namespace Editor {
     const _views List<View> = []
     var _currentView View = null
     var _nextUntitledID = 1
+    var _viewY = 0.0
 
     def new(platform UI.Platform) {
       var window = platform.createWindow
@@ -21,9 +22,24 @@ namespace Editor {
       window.setDelegate(self)
       _window = window
 
-      var tabs = TabsView.new(self)
-      tabs.setLayout(.STRETCH, 0, 0, .MIN, 0, window.theme.tabAreaHeight)
-      tabs.appendTo(window.root)
+      var themes List<UI.Theme> = [
+        .ATOM,
+        .BRACKETS_DARK,
+        .BRACKETS_LIGHT,
+        .EARTHSONG,
+        .IDLE,
+        .MONOKAI,
+        .TWILIGHT,
+        .VISUAL_STUDIO_DARK,
+        .VISUAL_STUDIO_LIGHT,
+        .XCODE,
+      ]
+      for theme in themes {
+        var tabs = TabsView.new(self, theme)
+        tabs.setLayout(.STRETCH, 0, 0, .MIN, _viewY, _viewY + theme.tabAreaHeight)
+        _viewY += theme.tabAreaHeight
+        tabs.appendTo(window.root)
+      }
 
       _documentStore.addObserver(self)
       _documentStore.appendDocument(createNewDocument)
@@ -60,10 +76,41 @@ namespace Editor {
     }
 
     def triggerAction(action Action) {
+      _handleAction(action)
+
       # Avoid issues with mutation during iteration if the
       # list of observers changes while handling the action
       for observer in _observers.clone {
         observer.handleAction(action)
+      }
+    }
+
+    def _changeActiveIndex(index int) {
+      if index >= 0 && index < _documentStore.documents.count {
+        _documentStore.setActiveIndex(index)
+      }
+    }
+
+    def _handleAction(action Action) {
+      var count = _documentStore.documents.count
+      var activeIndex = _documentStore.activeIndex
+
+      switch action {
+        case .NEW_DOCUMENT { _documentStore.appendDocument(createNewDocument) }
+        case .CLOSE_DOCUMENT { if activeIndex != -1 { _documentStore.removeDocument(activeIndex) } }
+
+        # Tab navigation actions
+        case .TABS_PREVIOUS { _changeActiveIndex((activeIndex - 1) %% count) }
+        case .TABS_NEXT { _changeActiveIndex((activeIndex + 1) % count) }
+        case .TABS_1 { _changeActiveIndex(0) }
+        case .TABS_2 { _changeActiveIndex(1) }
+        case .TABS_3 { _changeActiveIndex(2) }
+        case .TABS_4 { _changeActiveIndex(3) }
+        case .TABS_5 { _changeActiveIndex(4) }
+        case .TABS_6 { _changeActiveIndex(5) }
+        case .TABS_7 { _changeActiveIndex(6) }
+        case .TABS_8 { _changeActiveIndex(7) }
+        case .TABS_LAST { _changeActiveIndex(count - 1) }
       }
     }
 
@@ -73,7 +120,7 @@ namespace Editor {
       if BUILD != .TERMINAL {
         view.changePadding(5, 5, 5, 5)
         view.changeMarginPadding(15, 5)
-        view.setLayout(.STRETCH, 0, 0, .STRETCH, window.theme.tabAreaHeight, 0)
+        view.setLayout(.STRETCH, 0, 0, .STRETCH, _viewY, 0)
       }
 
       else {
