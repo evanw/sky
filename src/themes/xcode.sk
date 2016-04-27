@@ -5,6 +5,8 @@ namespace UI.Theme {
 
     tabArea = Graphics.DisplayList.new([
       Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0xD9D9D9) as int,
+
+      # Border
       Graphics.DisplayCommand.BEGIN_PATH, 0, 99.5,
       Graphics.DisplayCommand.LINE_TO, 100, 99.5,
       Graphics.DisplayCommand.STROKE_PATH, 1, Graphics.RGBA.hex(0xBBBBBB) as int,
@@ -12,21 +14,30 @@ namespace UI.Theme {
 
     activeTab = Graphics.DisplayList.new([
       Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0xE5E5E5) as int,
+
+      # Bottom border
       Graphics.DisplayCommand.BEGIN_PATH, 0, 99.5,
       Graphics.DisplayCommand.LINE_TO, 100, 99.5,
       Graphics.DisplayCommand.STROKE_PATH, 1, Graphics.RGBA.hex(0xBBBBBB) as int,
+
+      # Left border
       Graphics.DisplayCommand.BEGIN_PATH, -0.5, 0,
       Graphics.DisplayCommand.LINE_TO, -0.5, 100,
       Graphics.DisplayCommand.STROKE_PATH, 1, Graphics.RGBA.hex(0xBBBBBB) as int,
+
+      # Right border
       Graphics.DisplayCommand.BEGIN_PATH, 99.5, 0,
       Graphics.DisplayCommand.LINE_TO, 99.5, 100,
       Graphics.DisplayCommand.STROKE_PATH, 1, Graphics.RGBA.hex(0xBBBBBB) as int,
     ])
 
     inactiveTab = Graphics.DisplayList.new([
+      # Left border
       Graphics.DisplayCommand.BEGIN_PATH, -0.5, 0,
       Graphics.DisplayCommand.LINE_TO, -0.5, 100,
       Graphics.DisplayCommand.STROKE_PATH, 1, Graphics.RGBA.hex(0xBBBBBB) as int,
+
+      # Right border
       Graphics.DisplayCommand.BEGIN_PATH, 99.5, 0,
       Graphics.DisplayCommand.LINE_TO, 99.5, 100,
       Graphics.DisplayCommand.STROKE_PATH, 1, Graphics.RGBA.hex(0xBBBBBB) as int,

@@ -1,7 +1,6 @@
 namespace UI.Theme {
   const MONOKAI = <Theme
     tabHeight = 28
-    tabMaxWidth = 200
     tabAreaHeight = 34
     tabOverlap = 25
     textShadowOffsetY = -1

@@ -5,6 +5,8 @@ namespace UI.Theme {
 
     tabArea = Graphics.DisplayList.new([
       Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0x333333) as int,
+
+      # Bottom border
       Graphics.DisplayCommand.BEGIN_PATH, 0, 98.5,
       Graphics.DisplayCommand.LINE_TO, 100, 98.5,
       Graphics.DisplayCommand.STROKE_PATH, 3, Graphics.RGBA.hex(0x007ACC) as int,
@@ -40,6 +42,8 @@ namespace UI.Theme {
 
     tabArea = Graphics.DisplayList.new([
       Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0xF3F3F3) as int,
+
+      # Bottom border
       Graphics.DisplayCommand.BEGIN_PATH, 0, 98.5,
       Graphics.DisplayCommand.LINE_TO, 100, 98.5,
       Graphics.DisplayCommand.STROKE_PATH, 3, Graphics.RGBA.hex(0x007ACC) as int,

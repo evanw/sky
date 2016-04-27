@@ -5,10 +5,79 @@ namespace UI.Theme {
 
     tabArea = Graphics.DisplayList.new([
       Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0x272420) as int,
+
+      # Bottom border
+      Graphics.DisplayCommand.BEGIN_PATH, 0, 99.5,
+      Graphics.DisplayCommand.LINE_TO, 100, 99.5,
+      Graphics.DisplayCommand.STROKE_PATH, 1, Graphics.RGBA.hex(0x201D1A) as int,
+
+      # Shadow bottom
+      Graphics.DisplayCommand.BEGIN_PATH, 0, 100,
+      Graphics.DisplayCommand.LINE_TO, 100, 100,
+      Graphics.DisplayCommand.LINE_TO, 100, 90,
+      Graphics.DisplayCommand.LINE_TO, 0, 90,
+      Graphics.DisplayCommand.FILL_PATH_GRADIENT, 0, Graphics.RGBA.hex(0x000000, 15) as int, Graphics.GradientOrientation.VERTICAL,
+
+      # Shadow bottom 2
+      Graphics.DisplayCommand.BEGIN_PATH, 0, 100,
+      Graphics.DisplayCommand.LINE_TO, 100, 100,
+      Graphics.DisplayCommand.LINE_TO, 100, 95,
+      Graphics.DisplayCommand.LINE_TO, 0, 95,
+      Graphics.DisplayCommand.FILL_PATH_GRADIENT, 0, Graphics.RGBA.hex(0x000000, 31) as int, Graphics.GradientOrientation.VERTICAL,
     ])
 
     activeTab = Graphics.DisplayList.new([
       Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0x36312C) as int,
+
+      # Left border
+      Graphics.DisplayCommand.BEGIN_PATH, -0.5, 0,
+      Graphics.DisplayCommand.LINE_TO, -0.5, 100,
+      Graphics.DisplayCommand.STROKE_PATH, 1, Graphics.RGBA.hex(0x201D1A) as int,
+
+      # Right border
+      Graphics.DisplayCommand.BEGIN_PATH, 99.5, 0,
+      Graphics.DisplayCommand.LINE_TO, 99.5, 100,
+      Graphics.DisplayCommand.STROKE_PATH, 1, Graphics.RGBA.hex(0x201D1A) as int,
+
+      # Shadow left
+      Graphics.DisplayCommand.BEGIN_PATH, -10, 100,
+      Graphics.DisplayCommand.LINE_TO, 0, 100,
+      Graphics.DisplayCommand.LINE_TO, 0, 0,
+      Graphics.DisplayCommand.LINE_TO, -10, 0,
+      Graphics.DisplayCommand.FILL_PATH_GRADIENT, 0, Graphics.RGBA.hex(0x000000, 15) as int, Graphics.GradientOrientation.HORIZONTAL,
+
+      # Shadow left 2
+      Graphics.DisplayCommand.BEGIN_PATH, -5, 100,
+      Graphics.DisplayCommand.LINE_TO, 0, 100,
+      Graphics.DisplayCommand.LINE_TO, 0, 0,
+      Graphics.DisplayCommand.LINE_TO, -5, 0,
+      Graphics.DisplayCommand.FILL_PATH_GRADIENT, 0, Graphics.RGBA.hex(0x000000, 31) as int, Graphics.GradientOrientation.HORIZONTAL,
+
+      # Shadow right
+      Graphics.DisplayCommand.BEGIN_PATH, 99, 100,
+      Graphics.DisplayCommand.LINE_TO, 99, 0,
+      Graphics.DisplayCommand.LINE_TO, 109, 0,
+      Graphics.DisplayCommand.LINE_TO, 109, 100,
+      Graphics.DisplayCommand.FILL_PATH_GRADIENT, Graphics.RGBA.hex(0x000000, 15) as int, 0, Graphics.GradientOrientation.HORIZONTAL,
+
+      # Shadow right 2
+      Graphics.DisplayCommand.BEGIN_PATH, 99, 100,
+      Graphics.DisplayCommand.LINE_TO, 99, 0,
+      Graphics.DisplayCommand.LINE_TO, 104, 0,
+      Graphics.DisplayCommand.LINE_TO, 104, 100,
+      Graphics.DisplayCommand.FILL_PATH_GRADIENT, Graphics.RGBA.hex(0x000000, 31) as int, 0, Graphics.GradientOrientation.HORIZONTAL,
+    ])
+
+    inactiveTab = Graphics.DisplayList.new([
+      # Left border
+      Graphics.DisplayCommand.BEGIN_PATH, -0.5, 0,
+      Graphics.DisplayCommand.LINE_TO, -0.5, 100,
+      Graphics.DisplayCommand.STROKE_PATH, 1, Graphics.RGBA.hex(0x201D1A) as int,
+
+      # Right border
+      Graphics.DisplayCommand.BEGIN_PATH, 99.5, 0,
+      Graphics.DisplayCommand.LINE_TO, 99.5, 100,
+      Graphics.DisplayCommand.STROKE_PATH, 1, Graphics.RGBA.hex(0x201D1A) as int,
     ])
 
     colors = {

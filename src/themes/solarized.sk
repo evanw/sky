@@ -1,12 +1,33 @@
 namespace UI.Theme {
   const SOLARIZED = <Theme
+    tabHeight = 30
+    tabAreaHeight = 30
+
+    tabArea = Graphics.DisplayList.new([
+      Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0xEEE8D5) as int,
+    ])
+
+    activeTab = Graphics.DisplayList.new([
+      Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0xFDF6E3) as int,
+    ])
+
+    inactiveTab = Graphics.DisplayList.new([
+      # Left border
+      Graphics.DisplayCommand.BEGIN_PATH, -0.5, 0,
+      Graphics.DisplayCommand.LINE_TO, -0.5, 100,
+      Graphics.DisplayCommand.STROKE_PATH, 1, Graphics.RGBA.hex(0xFDF6E3) as int,
+
+      # Right border
+      Graphics.DisplayCommand.BEGIN_PATH, 99.5, 0,
+      Graphics.DisplayCommand.LINE_TO, 99.5, 100,
+      Graphics.DisplayCommand.STROKE_PATH, 1, Graphics.RGBA.hex(0xFDF6E3) as int,
+    ])
+
     colors = {
       Color.BACKGROUND_DEFAULT:            Graphics.RGBA.hex(0xFDF6E3),
       Color.BACKGROUND_DIAGNOSTIC_ERROR:   Graphics.RGBA.hex(0xF1A680),
       Color.BACKGROUND_DIAGNOSTIC_WARNING: Graphics.RGBA.hex(0xE4D964),
-      Color.BACKGROUND_MARGIN:             Graphics.RGBA.hex(0xEEE8D5),
       Color.BACKGROUND_SELECTED:           Graphics.RGBA.hex(0xEEE8D5),
-      # Color.BACKGROUND_TABS_INACTIVE:      Graphics.RGBA.hex(0xEEE8D5),
       Color.FOREGROUND_CARET:              Graphics.RGBA.hex(0x000000),
       Color.FOREGROUND_COMMENT:            Graphics.RGBA.hex(0x93A1A1),
       Color.FOREGROUND_CONSTANT:           Graphics.RGBA.hex(0xCB4B16),

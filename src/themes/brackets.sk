@@ -1,10 +1,31 @@
 namespace UI.Theme {
   const BRACKETS_LIGHT = <Theme
+    tabHeight = 30
+    tabAreaHeight = 30
+
+    tabArea = Graphics.DisplayList.new([
+      Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0xF8F8F8) as int,
+
+      Graphics.DisplayCommand.BEGIN_PATH, 0, 99.5,
+      Graphics.DisplayCommand.LINE_TO, 100, 99.5,
+      Graphics.DisplayCommand.STROKE_PATH, 1, Graphics.RGBA.hex(0xD3D3D3) as int,
+    ])
+
+    activeTab = Graphics.DisplayList.new([
+      Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0xF8F8F8) as int,
+
+      Graphics.DisplayCommand.BEGIN_PATH, -0.5, 100,
+      Graphics.DisplayCommand.LINE_TO, -0.5, 0,
+      Graphics.DisplayCommand.STROKE_PATH, 1, Graphics.RGBA.hex(0xD3D3D3) as int,
+
+      Graphics.DisplayCommand.BEGIN_PATH, 99.5, 100,
+      Graphics.DisplayCommand.LINE_TO, 99.5, 0,
+      Graphics.DisplayCommand.STROKE_PATH, 1, Graphics.RGBA.hex(0xD3D3D3) as int,
+    ])
+
     colors = {
       Color.BACKGROUND_DEFAULT:            Graphics.RGBA.hex(0xF8F8F8),
       Color.BACKGROUND_SELECTED:           Graphics.RGBA.hex(0xABDFFA),
-      # Color.BACKGROUND_TABS_ACTIVE:        Graphics.RGBA.hex(0x5D5F60),
-      # Color.BACKGROUND_TABS_INACTIVE:      Graphics.RGBA.hex(0x47484B),
       Color.FOREGROUND_COMMENT:            Graphics.RGBA.hex(0x949494),
       Color.FOREGROUND_DEFAULT:            Graphics.RGBA.hex(0x535353),
       Color.FOREGROUND_DEFINITION:         Graphics.RGBA.hex(0x8757AD),
@@ -13,17 +34,38 @@ namespace UI.Theme {
       Color.FOREGROUND_MARGIN:             Graphics.RGBA.hex(0x949494),
       Color.FOREGROUND_NUMBER:             Graphics.RGBA.hex(0x6D8600),
       Color.FOREGROUND_STRING:             Graphics.RGBA.hex(0xE88501),
-      Color.FOREGROUND_TABS_ACTIVE:        Graphics.RGBA.hex(0xF7F7F7),
-      Color.FOREGROUND_TABS_INACTIVE:      Graphics.RGBA.hex(0x949494),
-      Color.FOREGROUND_TABS_SHADOW:        Graphics.RGBA.hex(0x000000, 127),
+      Color.FOREGROUND_TABS_ACTIVE:        Graphics.RGBA.hex(0x000000),
+      Color.FOREGROUND_TABS_INACTIVE:      Graphics.RGBA.hex(0x717171),
     }
   />
 
   const BRACKETS_DARK = <Theme
+    tabHeight = 30
+    tabAreaHeight = 30
+
+    tabArea = Graphics.DisplayList.new([
+      Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0x141517) as int,
+
+      Graphics.DisplayCommand.BEGIN_PATH, 0, 99.5,
+      Graphics.DisplayCommand.LINE_TO, 100, 99.5,
+      Graphics.DisplayCommand.STROKE_PATH, 1, Graphics.RGBA.hex(0x27292B) as int,
+    ])
+
+    activeTab = Graphics.DisplayList.new([
+      Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0x1D1F21) as int,
+
+      Graphics.DisplayCommand.BEGIN_PATH, -0.5, 100,
+      Graphics.DisplayCommand.LINE_TO, -0.5, 0,
+      Graphics.DisplayCommand.STROKE_PATH, 1, Graphics.RGBA.hex(0x27292B) as int,
+
+      Graphics.DisplayCommand.BEGIN_PATH, 99.5, 100,
+      Graphics.DisplayCommand.LINE_TO, 99.5, 0,
+      Graphics.DisplayCommand.STROKE_PATH, 1, Graphics.RGBA.hex(0x27292B) as int,
+    ])
+
     colors = {
       Color.BACKGROUND_DEFAULT:            Graphics.RGBA.hex(0x1D1F21),
       Color.BACKGROUND_SELECTED:           Graphics.RGBA.hex(0x0050A0),
-      # Color.BACKGROUND_TABS_INACTIVE:      Graphics.RGBA.hex(0x2D2E30),
       Color.FOREGROUND_COMMENT:            Graphics.RGBA.hex(0x767676),
       Color.FOREGROUND_DEFAULT:            Graphics.RGBA.hex(0xDDDDDD),
       Color.FOREGROUND_DEFINITION:         Graphics.RGBA.hex(0xB77FDB),
@@ -32,9 +74,8 @@ namespace UI.Theme {
       Color.FOREGROUND_MARGIN:             Graphics.RGBA.hex(0x767676),
       Color.FOREGROUND_NUMBER:             Graphics.RGBA.hex(0x85A300),
       Color.FOREGROUND_STRING:             Graphics.RGBA.hex(0xD89333),
-      Color.FOREGROUND_TABS_ACTIVE:        Graphics.RGBA.hex(0x8FDDFF),
-      Color.FOREGROUND_TABS_INACTIVE:      Graphics.RGBA.hex(0x949494),
-      Color.FOREGROUND_TABS_SHADOW:        Graphics.RGBA.hex(0x000000, 191),
+      Color.FOREGROUND_TABS_ACTIVE:        Graphics.RGBA.hex(0xFFFFFF),
+      Color.FOREGROUND_TABS_INACTIVE:      Graphics.RGBA.hex(0x8F8F8F),
     }
   />
 }
