@@ -2,8 +2,10 @@ namespace UI.Theme {
   const MONOKAI = <Theme
     tabHeight = 28
     tabAreaHeight = 34
-    tabOverlap = 25
+    tabOverlap = 20
+    tabTextPadding = 6
     textShadowOffsetY = -1
+    tabTextAlignment = .LEFT
 
     tabArea = Graphics.DisplayList.new([
       Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0x171814) as int,

@@ -1,4 +1,10 @@
 namespace UI {
+  enum Align {
+    LEFT
+    CENTER
+    RIGHT
+  }
+
   # A theme defines a color map for the view. All color identifiers have
   # default values either by having a theme fallback color directly or by
   # being substituted with another identifier that has a fallback color.
@@ -9,6 +15,8 @@ namespace UI {
     var tabOverlap = 0.0
     var textShadowOffsetX = 0.0
     var textShadowOffsetY = 0.0
+    var tabTextPadding = 8.0
+    var tabTextAlignment = Align.CENTER
 
     var tabArea Graphics.DisplayList = null
     var activeTab Graphics.DisplayList = null

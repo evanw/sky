@@ -132,7 +132,8 @@ namespace Editor {
       advanceWidthIterator.seekToIndex(text.count)
 
       # Truncate text to fit
-      var maxWidth = tab.right - tab.left - theme.tabOverlap - 10
+      var padding = theme.tabOverlap + theme.tabTextPadding
+      var maxWidth = tab.right - tab.left - 2 * padding
       var textWidth = advanceWidthIterator.advanceWidthFromLeft
       if textWidth > maxWidth {
         var ellipsisAdvanceWidth = font.advanceWidth('…')
@@ -149,11 +150,14 @@ namespace Editor {
         text = text.slice(0, advanceWidthIterator.currentIndex) + "…"
       }
 
-      var x = (tab.left + tab.right - textWidth) / 2
+      var x =
+        theme.tabTextAlignment == .LEFT ? tab.left + padding :
+        theme.tabTextAlignment == .RIGHT ? tab.right - padding - textWidth :
+        (tab.left + tab.right - textWidth) / 2
       var tabHeight = theme.tabHeight
       var offset = Math.round((tabHeight - font.lineHeight) / 2)
-      var renderer = window.renderer
       var y = offset + bounds.height - tabHeight
+      var renderer = window.renderer
       renderer.renderText(x + theme.textShadowOffsetX, y + theme.textShadowOffsetY, text, .UI_FONT, .FOREGROUND_TABS_SHADOW, 255)
       renderer.renderText(x, y, text, .UI_FONT, isActive ? .FOREGROUND_TABS_ACTIVE : .FOREGROUND_TABS_INACTIVE, 255)
     }
