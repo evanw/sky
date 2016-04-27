@@ -7,6 +7,8 @@ namespace UI {
     var tabMaxWidth = 250.0
     var tabAreaHeight = 0.0
     var tabOverlap = 0.0
+    var textShadowOffsetX = 0.0
+    var textShadowOffsetY = 0.0
 
     var tabArea Graphics.DisplayList = null
     var activeTab Graphics.DisplayList = null

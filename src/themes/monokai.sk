@@ -4,50 +4,76 @@ namespace UI.Theme {
     tabMaxWidth = 200
     tabAreaHeight = 34
     tabOverlap = 25
+    textShadowOffsetY = -1
 
     tabArea = Graphics.DisplayList.new([
       Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0x171814) as int,
     ])
 
     activeTab = Graphics.DisplayList.new([
-      Graphics.DisplayCommand.BEGIN_PATH, -9999, 99.5,
-      Graphics.DisplayCommand.LINE_TO, 0, 99.5,
-      Graphics.DisplayCommand.CURVE_TO, 15, 99.5, 10, 0.5, 25, 0.5,
+      # Shadow below active tab and above inactive tabs
+      Graphics.DisplayCommand.BEGIN_PATH, -9999, 100,
+      Graphics.DisplayCommand.LINE_TO, 0, 100,
+      Graphics.DisplayCommand.CURVE_TO, 15, 100, 10, 0.5, 25, 0.5,
       Graphics.DisplayCommand.LINE_TO, 75, 0.5,
-      Graphics.DisplayCommand.CURVE_TO, 90, 0.5, 85, 99.5, 100, 99.5,
-      Graphics.DisplayCommand.LINE_TO, 9999, 99.5,
-      Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0x000000, 31) as int, 3,
-      Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0x000000, 31) as int, 5,
+      Graphics.DisplayCommand.CURVE_TO, 90, 0.5, 85, 100, 100, 100,
+      Graphics.DisplayCommand.LINE_TO, 9999, 100,
+      Graphics.DisplayCommand.STROKE_PATH, 3, Graphics.RGBA.hex(0x000000, 47) as int,
+      Graphics.DisplayCommand.STROKE_PATH, 5, Graphics.RGBA.hex(0x000000, 47) as int,
 
+      # Tab background
       Graphics.DisplayCommand.BEGIN_PATH, 0, 100,
       Graphics.DisplayCommand.CURVE_TO, 15, 100, 10, 0, 25, 0,
       Graphics.DisplayCommand.LINE_TO, 75, 0,
       Graphics.DisplayCommand.CURVE_TO, 90, 0, 85, 100, 100, 100,
       Graphics.DisplayCommand.FILL_PATH, Graphics.RGBA.hex(0x272822) as int,
 
+      # Tab background gradient
+      Graphics.DisplayCommand.BEGIN_PATH, 12.5, 14,
+      Graphics.DisplayCommand.CURVE_TO, 15, 7, 17.5, 0, 25, 0,
+      Graphics.DisplayCommand.LINE_TO, 75, 0,
+      Graphics.DisplayCommand.CURVE_TO, 82.5, 0, 85, 7, 87.5, 14,
+      Graphics.DisplayCommand.FILL_PATH_GRADIENT, Graphics.RGBA.hex(0x363731) as int, Graphics.RGBA.hex(0x272822) as int, Graphics.GradientOrientation.VERTICAL,
+
+      # Tab border above inactive tabs
       Graphics.DisplayCommand.BEGIN_PATH, -9999, 99.5,
       Graphics.DisplayCommand.LINE_TO, 0, 99.5,
       Graphics.DisplayCommand.CURVE_TO, 15, 99.5, 10, 0.5, 25, 0.5,
       Graphics.DisplayCommand.LINE_TO, 75, 0.5,
       Graphics.DisplayCommand.CURVE_TO, 90, 0.5, 85, 99.5, 100, 99.5,
       Graphics.DisplayCommand.LINE_TO, 9999, 99.5,
-      Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0x3C3E38) as int, 1,
+      Graphics.DisplayCommand.STROKE_PATH_GRADIENT, 1, Graphics.RGBA.hex(0x474842) as int, Graphics.RGBA.hex(0x3C3E38) as int, Graphics.GradientOrientation.VERTICAL,
     ])
 
     inactiveTab = Graphics.DisplayList.new([
+      # Shadow below tab
       Graphics.DisplayCommand.BEGIN_PATH, -4, 101.5,
       Graphics.DisplayCommand.CURVE_TO, 15, 101.5, 10, 0.5, 25, 0.5,
       Graphics.DisplayCommand.LINE_TO, 75, 0.5,
       Graphics.DisplayCommand.CURVE_TO, 90, 0.5, 85, 101.5, 104, 101.5,
-      Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0x000000, 47) as int, 3,
-      Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0x000000, 47) as int, 5,
+      Graphics.DisplayCommand.STROKE_PATH, 3, Graphics.RGBA.hex(0x000000, 47) as int,
+      Graphics.DisplayCommand.STROKE_PATH, 5, Graphics.RGBA.hex(0x000000, 47) as int,
 
+      # Tab background
       Graphics.DisplayCommand.BEGIN_PATH, 0, 99.5,
       Graphics.DisplayCommand.CURVE_TO, 15, 99.5, 10, 0.5, 25, 0.5,
       Graphics.DisplayCommand.LINE_TO, 75, 0.5,
       Graphics.DisplayCommand.CURVE_TO, 90, 0.5, 85, 99.5, 100, 99.5,
       Graphics.DisplayCommand.FILL_PATH, Graphics.RGBA.hex(0x3D3D3B) as int,
-      Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0x555555) as int, 1,
+
+      # Tab background gradient
+      Graphics.DisplayCommand.BEGIN_PATH, 12.5, 14,
+      Graphics.DisplayCommand.CURVE_TO, 15, 7, 17.5, 0, 25, 0,
+      Graphics.DisplayCommand.LINE_TO, 75, 0,
+      Graphics.DisplayCommand.CURVE_TO, 82.5, 0, 85, 7, 87.5, 14,
+      Graphics.DisplayCommand.FILL_PATH_GRADIENT, Graphics.RGBA.hex(0x50504E) as int, Graphics.RGBA.hex(0x3D3D3B) as int, Graphics.GradientOrientation.VERTICAL,
+
+      # Tab border
+      Graphics.DisplayCommand.BEGIN_PATH, 0, 99.5,
+      Graphics.DisplayCommand.CURVE_TO, 15, 99.5, 10, 0.5, 25, 0.5,
+      Graphics.DisplayCommand.LINE_TO, 75, 0.5,
+      Graphics.DisplayCommand.CURVE_TO, 90, 0.5, 85, 99.5, 100, 99.5,
+      Graphics.DisplayCommand.STROKE_PATH_GRADIENT, 1, Graphics.RGBA.hex(0x666664) as int, Graphics.RGBA.hex(0x4F4F4D) as int, Graphics.GradientOrientation.VERTICAL,
     ])
 
     colors = {
@@ -66,8 +92,9 @@ namespace UI.Theme {
       Color.FOREGROUND_NUMBER:             Graphics.RGBA.hex(0xAE81FF),
       Color.FOREGROUND_PREPROCESSOR:       Graphics.RGBA.hex(0xFD971F),
       Color.FOREGROUND_STRING:             Graphics.RGBA.hex(0xE6DB74),
-      Color.FOREGROUND_TABS_INACTIVE:      Graphics.RGBA.hex(0xA7A7A7),
       Color.FOREGROUND_TABS_ACTIVE:        Graphics.RGBA.hex(0xE7E7E7),
+      Color.FOREGROUND_TABS_INACTIVE:      Graphics.RGBA.hex(0xA7A7A7),
+      Color.FOREGROUND_TABS_SHADOW:        Graphics.RGBA.hex(0x000000),
       Color.FOREGROUND_TYPE:               Graphics.RGBA.hex(0x66D9EF),
     }
   />

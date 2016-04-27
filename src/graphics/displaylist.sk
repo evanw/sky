@@ -7,7 +7,9 @@ namespace Graphics {
     LINE_TO
     CURVE_TO
     FILL_PATH
+    FILL_PATH_GRADIENT
     STROKE_PATH
+    STROKE_PATH_GRADIENT
   }
 
   class DisplayListIterator {
@@ -30,7 +32,9 @@ namespace Graphics {
         _list[_index] == DisplayCommand.LINE_TO ||
         _list[_index] == DisplayCommand.CURVE_TO ||
         _list[_index] == DisplayCommand.FILL_PATH ||
-        _list[_index] == DisplayCommand.STROKE_PATH)
+        _list[_index] == DisplayCommand.FILL_PATH_GRADIENT ||
+        _list[_index] == DisplayCommand.STROKE_PATH ||
+        _list[_index] == DisplayCommand.STROKE_PATH_GRADIENT)
 
       return _list[_index] as DisplayCommand
     }
@@ -38,7 +42,9 @@ namespace Graphics {
     def advance {
       switch peek {
         case .CLEAR, .FILL_PATH { _index += 2 }
+        case .FILL_PATH_GRADIENT { _index += 4 }
         case .BEGIN_PATH, .LINE_TO, .STROKE_PATH { _index += 3 }
+        case .STROKE_PATH_GRADIENT { _index += 5 }
         case .CURVE_TO { _index += 7 }
       }
       assert(_index <= _list.count)
@@ -100,18 +106,38 @@ namespace Graphics {
     }
 
     def fillPathColor RGBA {
-      assert(peek == .FILL_PATH)
+      assert(peek == .FILL_PATH || peek == .FILL_PATH_GRADIENT)
       return _list[_index + 1] as RGBA
     }
 
-    def strokePathColor RGBA {
-      assert(peek == .STROKE_PATH)
-      return _list[_index + 1] as RGBA
+    def fillPathColor2 RGBA {
+      assert(peek == .FILL_PATH_GRADIENT)
+      return _list[_index + 2] as RGBA
+    }
+
+    def fillPathGradientOrientation GradientOrientation {
+      assert(peek == .FILL_PATH_GRADIENT)
+      return _list[_index + 3] as GradientOrientation
     }
 
     def strokePathThickness double {
-      assert(peek == .STROKE_PATH)
-      return _list[_index + 2]
+      assert(peek == .STROKE_PATH || peek == .STROKE_PATH_GRADIENT)
+      return _list[_index + 1]
+    }
+
+    def strokePathColor RGBA {
+      assert(peek == .STROKE_PATH || peek == .STROKE_PATH_GRADIENT)
+      return _list[_index + 2] as RGBA
+    }
+
+    def strokePathColor2 RGBA {
+      assert(peek == .STROKE_PATH_GRADIENT)
+      return _list[_index + 3] as RGBA
+    }
+
+    def strokePathGradientOrientation GradientOrientation {
+      assert(peek == .STROKE_PATH_GRADIENT)
+      return _list[_index + 4] as GradientOrientation
     }
   }
 
@@ -169,9 +195,21 @@ namespace Graphics {
             tessellator = null
           }
 
+          case .FILL_PATH_GRADIENT {
+            path ?= tessellator.finish
+            renderer.fillPolygon(path, iterator.fillPathColor, iterator.fillPathColor2, iterator.fillPathGradientOrientation)
+            tessellator = null
+          }
+
           case .STROKE_PATH {
             path ?= tessellator.finish
             renderer.strokePolyline(path, iterator.strokePathColor, iterator.strokePathThickness)
+            tessellator = null
+          }
+
+          case .STROKE_PATH_GRADIENT {
+            path ?= tessellator.finish
+            renderer.strokePolyline(path, iterator.strokePathColor, iterator.strokePathColor2, iterator.strokePathGradientOrientation, iterator.strokePathThickness)
             tessellator = null
           }
         }

@@ -133,12 +133,13 @@ namespace Editor {
     }
 
     def _renderTabText(tab TabInfo, font UI.FontInstance, advanceWidthIterator UI.AdvanceWidthIterator, unicodeIterator Unicode.StringIterator, isActive bool) {
+      var theme = window.theme
       var text = tab.document.name
       advanceWidthIterator.reset(text)
       advanceWidthIterator.seekToIndex(text.count)
 
       # Truncate text to fit
-      var maxWidth = tab.right - tab.left - 10
+      var maxWidth = tab.right - tab.left - theme.tabOverlap - 10
       var textWidth = advanceWidthIterator.advanceWidthFromLeft
       if textWidth > maxWidth {
         var ellipsisAdvanceWidth = font.advanceWidth('…')
@@ -156,11 +157,12 @@ namespace Editor {
       }
 
       var x = (tab.left + tab.right - textWidth) / 2
-      var tabHeight = window.theme.tabHeight
+      var tabHeight = theme.tabHeight
       var offset = Math.round((tabHeight - font.lineHeight) / 2)
       var renderer = window.renderer
-      renderer.renderText(x, offset + 1, text, .UI_FONT, .FOREGROUND_TABS_SHADOW, 255)
-      renderer.renderText(x, offset + bounds.height - tabHeight, text, .UI_FONT, isActive ? .FOREGROUND_TABS_ACTIVE : .FOREGROUND_TABS_INACTIVE, 255)
+      var y = offset + bounds.height - tabHeight
+      renderer.renderText(x + theme.textShadowOffsetX, y + theme.textShadowOffsetY, text, .UI_FONT, .FOREGROUND_TABS_SHADOW, 255)
+      renderer.renderText(x, y, text, .UI_FONT, isActive ? .FOREGROUND_TABS_ACTIVE : .FOREGROUND_TABS_INACTIVE, 255)
     }
 
     over handleEvent(event UI.Event) {

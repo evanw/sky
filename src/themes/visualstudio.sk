@@ -7,7 +7,7 @@ namespace UI.Theme {
       Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0x333333) as int,
       Graphics.DisplayCommand.BEGIN_PATH, 0, 98.5,
       Graphics.DisplayCommand.LINE_TO, 100, 98.5,
-      Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0x007ACC) as int, 3,
+      Graphics.DisplayCommand.STROKE_PATH, 3, Graphics.RGBA.hex(0x007ACC) as int,
     ])
 
     activeTab = Graphics.DisplayList.new([
@@ -42,7 +42,7 @@ namespace UI.Theme {
       Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0xF3F3F3) as int,
       Graphics.DisplayCommand.BEGIN_PATH, 0, 98.5,
       Graphics.DisplayCommand.LINE_TO, 100, 98.5,
-      Graphics.DisplayCommand.STROKE_PATH, Graphics.RGBA.hex(0x007ACC) as int, 3,
+      Graphics.DisplayCommand.STROKE_PATH, 3, Graphics.RGBA.hex(0x007ACC) as int,
     ])
 
     activeTab = Graphics.DisplayList.new([

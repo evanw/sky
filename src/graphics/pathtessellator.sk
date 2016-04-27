@@ -2,13 +2,13 @@ namespace Graphics {
   class PathTessellator {
     var _cursorX double
     var _cursorY double
-    const _inverseSquaredPixelScale double
+    const _errorScale double
     const _coordinates List<double>
 
     def new (x double, y double, pixelScale double) {
       _cursorX = x
       _cursorY = y
-      _inverseSquaredPixelScale = 1 / (pixelScale * pixelScale)
+      _errorScale = 0.5 / (pixelScale * pixelScale)
       _coordinates = [x, y]
     }
 
@@ -40,7 +40,7 @@ namespace Graphics {
 
         # Compute the error that this approximation would cause
         var error = Math.abs(dx13 * dy30 - dy13 * dx30) + Math.abs(dx23 * dy30 - dy23 * dx30)
-        var errorLimit = _inverseSquaredPixelScale * (dx30 * dx30 + dy30 * dy30)
+        var errorLimit = _errorScale * (dx30 * dx30 + dy30 * dy30)
 
         # Keep going if a flat approximation would cause too much error
         # or if the cubic curve comes out from and back to the same point

@@ -129,7 +129,7 @@ namespace Browser {
       assert(_isRendering)
 
       var fontInstance = _fontInstances.get(font, null)
-      if fontInstance == null || x >= _width || y >= _height || y + fontInstance.size <= 0 {
+      if fontInstance == null || x >= _width || y >= _height || y + fontInstance.size <= 0 || color.alpha == 0 {
         return
       }
 
