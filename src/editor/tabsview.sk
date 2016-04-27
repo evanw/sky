@@ -81,7 +81,7 @@ namespace Editor {
     over render {
       var renderer = window.renderer
       var theme = window.theme
-      var width = bounds.width
+      var width = bounds.width + BORDER_ADJUSTMENT
       var height = bounds.height
       var font = renderer.fontInstance(.UI_FONT)
       var activeIndex = _documentStore.activeIndex
@@ -105,13 +105,6 @@ namespace Editor {
           }
         }
       }
-
-      # New tab plus
-      var newTabX = width - NEW_TAB_WIDTH / 2
-      var halfSize = (height as int) >> 1
-      var quarterSize = halfSize >> 1
-      renderer.renderHorizontalLine(newTabX - quarterSize + 1, newTabX + quarterSize, halfSize, .FOREGROUND_TABS_INACTIVE)
-      renderer.renderVerticalLine(newTabX, halfSize - quarterSize + 1, halfSize + quarterSize, .FOREGROUND_TABS_INACTIVE)
 
       # Draw tab text all at once for better batching
       for i in 0..tabs.count {
@@ -188,7 +181,7 @@ namespace Editor {
           }
 
           # Create a new tab
-          if location.x >= bounds.width - NEW_TAB_WIDTH || event.mouseEvent.clickCount % 2 == 0 {
+          if event.mouseEvent.clickCount % 2 == 0 {
             _documentStore.appendDocument(_controller.createNewDocument)
             event.accept
           }
@@ -199,7 +192,7 @@ namespace Editor {
             var theme = window.theme
             var tabCount = _tabs.count
             var location = event.mouseEvent.locationInView(self)
-            var trackWidth = bounds.width - NEW_TAB_WIDTH - theme.tabOverlap
+            var trackWidth = bounds.width + BORDER_ADJUSTMENT - theme.tabOverlap
             var tabWidth = Math.min(trackWidth / tabCount, theme.tabMaxWidth - theme.tabOverlap)
             var left = Math.clamp(location.x - _draggingOffset, 0, trackWidth - tabWidth)
             var oldIndex = _draggingIndex
@@ -296,7 +289,7 @@ namespace Editor {
       var tabs = _tabs
       var count = tabs.count
       var theme = window.theme
-      var scale = Math.min((bounds.width - NEW_TAB_WIDTH - theme.tabOverlap) / count, theme.tabMaxWidth - theme.tabOverlap)
+      var scale = Math.min((bounds.width + BORDER_ADJUSTMENT - theme.tabOverlap) / count, theme.tabMaxWidth - theme.tabOverlap)
 
       for i in 0..count {
         tabs[i].moveTo(
@@ -310,6 +303,6 @@ namespace Editor {
   namespace TabsView {
     const DISPLAY_LIST_HEIGHT = 100
     const DISPLAY_LIST_WIDTH = 100
-    const NEW_TAB_WIDTH = 26
+    const BORDER_ADJUSTMENT = 1 # Make the width 1px bigger on the right so that tab borders are hidden on both sides
   }
 }
