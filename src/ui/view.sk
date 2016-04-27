@@ -30,6 +30,7 @@ namespace UI {
     var _children FrozenList<View> = List<View>.new.freeze
     var _layoutX AxisLayout = .STRETCH
     var _layoutY AxisLayout = .STRETCH
+    var _theme Theme = .FALLBACK
 
     def window Window {
       return _window
@@ -47,6 +48,10 @@ namespace UI {
       return _bounds
     }
 
+    def theme Theme {
+      return _theme
+    }
+
     def layoutX AxisLayout {
       return _layoutX
     }
@@ -59,6 +64,13 @@ namespace UI {
       _layoutX = AxisLayout.new(kindX, minX, maxX)
       _layoutY = AxisLayout.new(kindY, minY, maxY)
       updateBounds
+    }
+
+    def setTheme(theme Theme) {
+      if _theme != theme {
+        _theme = theme
+        _window.invalidate
+      }
     }
 
     def handleEvent(event Event) {

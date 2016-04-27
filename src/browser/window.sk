@@ -101,11 +101,6 @@ namespace Browser {
       document.title = title
     }
 
-    over setTheme(theme UI.Theme) {
-      _canvas.translator.setTheme(theme)
-      _theme = theme
-    }
-
     over setCursor(cursor UI.Cursor) {
       _element.style.cursor =
         cursor == .TEXT ? "text" :

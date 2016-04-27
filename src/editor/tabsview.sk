@@ -63,18 +63,16 @@ namespace Editor {
   class TabsView : UI.View :: WindowObserver, DocumentStoreObserver {
     const _documentStore DocumentStore
     const _controller WindowController
-    const _theme UI.Theme
     const _tabs List<TabInfo> = []
     var _previousTime double
     var _draggingOffset = 0.0
     var _draggingIndex = -1
     var _hoveredIndex = -1
 
-    def new(controller WindowController, theme UI.Theme) {
+    def new(controller WindowController) {
       super(controller.window)
       controller.addObserver(self)
       _controller = controller
-      _theme = theme
       _documentStore = controller.documentStore
       _documentStore.addObserver(self)
       _previousTime = window.platform.nowInSeconds

@@ -13,7 +13,6 @@ namespace UI {
     var _isInvalid = false
     var _isActive = true
     var _delegate WindowDelegate = null
-    var _theme Theme = .FALLBACK
 
     def new {
       _root = View.new(self)
@@ -23,7 +22,6 @@ namespace UI {
     def platform Platform
     def renderer SemanticRenderer
     def setTitle(text string)
-    def setTheme(theme Theme)
     def setCursor(cursor Cursor)
     def setFont(font Font, names List<string>, size double, height double, flags FontFlags)
     def render
@@ -46,10 +44,6 @@ namespace UI {
 
     def pixelScale double {
       return _pixelScale
-    }
-
-    def theme Theme {
-      return _theme
     }
 
     def invalidate {

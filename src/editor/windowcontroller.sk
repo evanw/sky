@@ -15,7 +15,6 @@ namespace Editor {
 
     def new(platform UI.Platform) {
       var window = platform.createWindow
-      window.setTheme(.XCODE)
       window.setFont(.CODE_FONT, MONOSPACE_FONTS, 12, 16, 0)
       window.setFont(.MARGIN_FONT, MONOSPACE_FONTS, 10, 14, 0)
       window.setFont(.UI_FONT, SANS_SERIF_FONTS, 12, 16, 0)
@@ -35,7 +34,8 @@ namespace Editor {
         .XCODE,
       ]
       for theme in themes {
-        var tabs = TabsView.new(self, theme)
+        var tabs = TabsView.new(self)
+        tabs.setTheme(theme)
         tabs.setLayout(.STRETCH, 0, 0, .MIN, _viewY, _viewY + theme.tabAreaHeight)
         _viewY += theme.tabAreaHeight
         tabs.appendTo(window.root)
@@ -130,6 +130,7 @@ namespace Editor {
       }
 
       view.setModel(document)
+      view.setTheme(.XCODE)
       return view
     }
 

@@ -70,6 +70,7 @@ namespace UI {
 
     def renderView(view View) {
       var bounds = view.bounds
+      var theme = view.theme
       var oldViewport = _viewport
       var left = oldViewport.left + Math.max(bounds.left, 0)
       var top = oldViewport.top + Math.max(bounds.top, 0)
@@ -77,15 +78,12 @@ namespace UI {
       var bottom = oldViewport.top + Math.min(bounds.bottom, oldViewport.height)
       var newViewport = view == view.window.root ? view.bounds : Rect.new(left, top, right - left, bottom - top)
 
+      _theme = theme
+      _renderer.setDefaultBackgroundColor(theme.findColor(.BACKGROUND_DEFAULT))
       _renderer.setViewport(newViewport.x, newViewport.y, newViewport.width, newViewport.height)
       _viewport = newViewport
       view.render
       _viewport = oldViewport
-    }
-
-    def setTheme(theme Theme) {
-      _theme = theme
-      _renderer.setDefaultBackgroundColor(theme.findColor(.BACKGROUND_DEFAULT))
     }
 
     def renderDisplayList(list Graphics.DisplayList, originalWidth double, originalHeight double, x double, y double, width double, height double) {
