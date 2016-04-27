@@ -2,6 +2,7 @@ namespace UI.Theme {
   const XCODE = <Theme
     tabHeight = 27
     tabAreaHeight = 27
+    closeButtonWidth = 20
 
     tabArea = Graphics.DisplayList.new([
       Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0xD9D9D9) as int,
@@ -41,6 +42,15 @@ namespace UI.Theme {
       Graphics.DisplayCommand.BEGIN_PATH, 99.5, 0,
       Graphics.DisplayCommand.LINE_TO, 99.5, 100,
       Graphics.DisplayCommand.STROKE_PATH, 1, Graphics.RGBA.hex(0xBBBBBB) as int,
+    ])
+
+    closeButton = Graphics.DisplayList.new([
+      Graphics.DisplayCommand.BEGIN_PATH, 3, 10,
+      Graphics.DisplayCommand.LINE_TO, 10, 17,
+      Graphics.DisplayCommand.STROKE_PATH, 1, Graphics.RGBA.hex(0x000000, 127) as int,
+      Graphics.DisplayCommand.BEGIN_PATH, 3, 17,
+      Graphics.DisplayCommand.LINE_TO, 10, 10,
+      Graphics.DisplayCommand.STROKE_PATH, 1, Graphics.RGBA.hex(0x000000, 127) as int,
     ])
 
     colors = {

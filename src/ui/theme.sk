@@ -16,11 +16,14 @@ namespace UI {
     var textShadowOffsetX = 0.0
     var textShadowOffsetY = 0.0
     var tabTextPadding = 8.0
+    var closeButtonWidth = 0.0
     var tabTextAlignment = Align.CENTER
+    var onlyShowCloseButtonOnHover = true
 
     var tabArea Graphics.DisplayList = null
     var activeTab Graphics.DisplayList = null
     var inactiveTab Graphics.DisplayList = null
+    var closeButton Graphics.DisplayList = null
     var colors IntMap<Graphics.RGBA> = null
 
     def findColor(color UI.Color) Graphics.RGBA {

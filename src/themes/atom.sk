@@ -62,6 +62,15 @@ namespace UI.Theme {
       Graphics.DisplayCommand.STROKE_PATH_GRADIENT, 1, 0, Graphics.RGBA.hex(0x181A1F) as int, Graphics.GradientOrientation.VERTICAL,
     ])
 
+    closeButton = Graphics.DisplayList.new([
+      Graphics.DisplayCommand.BEGIN_PATH, 95, 16,
+      Graphics.DisplayCommand.LINE_TO, 90, 21,
+      Graphics.DisplayCommand.STROKE_PATH, 2, Graphics.RGBA.hex(0xD6D9DF) as int,
+      Graphics.DisplayCommand.BEGIN_PATH, 95, 21,
+      Graphics.DisplayCommand.LINE_TO, 90, 16,
+      Graphics.DisplayCommand.STROKE_PATH, 2, Graphics.RGBA.hex(0xD6D9DF) as int,
+    ])
+
     colors = {
       Color.BACKGROUND_DEFAULT:            Graphics.RGBA.hex(0x282C34),
       Color.BACKGROUND_SELECTED:           Graphics.RGBA.hex(0x3E4451),

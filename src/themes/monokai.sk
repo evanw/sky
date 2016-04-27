@@ -6,6 +6,8 @@ namespace UI.Theme {
     tabTextPadding = 6
     textShadowOffsetY = -1
     tabTextAlignment = .LEFT
+    closeButtonWidth = 17
+    onlyShowCloseButtonOnHover = false
 
     tabArea = Graphics.DisplayList.new([
       Graphics.DisplayCommand.CLEAR, Graphics.RGBA.hex(0x171814) as int,
@@ -75,6 +77,24 @@ namespace UI.Theme {
       Graphics.DisplayCommand.LINE_TO, 75, 0.5,
       Graphics.DisplayCommand.CURVE_TO, 90, 0.5, 85, 99.5, 100, 99.5,
       Graphics.DisplayCommand.STROKE_PATH_GRADIENT, 1, Graphics.RGBA.hex(0x666664) as int, Graphics.RGBA.hex(0x4F4F4D) as int, Graphics.GradientOrientation.VERTICAL,
+    ])
+
+    closeButton = Graphics.DisplayList.new([
+      # Shadow
+      Graphics.DisplayCommand.BEGIN_PATH, 95, 13,
+      Graphics.DisplayCommand.LINE_TO, 90, 18,
+      Graphics.DisplayCommand.STROKE_PATH, 2, Graphics.RGBA.hex(0x000000, 127) as int,
+      Graphics.DisplayCommand.BEGIN_PATH, 95, 18,
+      Graphics.DisplayCommand.LINE_TO, 90, 13,
+      Graphics.DisplayCommand.STROKE_PATH, 2, Graphics.RGBA.hex(0x000000, 127) as int,
+
+      # Foreground
+      Graphics.DisplayCommand.BEGIN_PATH, 95, 12,
+      Graphics.DisplayCommand.LINE_TO, 90, 17,
+      Graphics.DisplayCommand.STROKE_PATH, 2, Graphics.RGBA.hex(0x90908F) as int,
+      Graphics.DisplayCommand.BEGIN_PATH, 95, 17,
+      Graphics.DisplayCommand.LINE_TO, 90, 12,
+      Graphics.DisplayCommand.STROKE_PATH, 2, Graphics.RGBA.hex(0x90908F) as int,
     ])
 
     colors = {

@@ -73,6 +73,8 @@ namespace UI {
     MOUSE_MOVE
     MOUSE_UP
     MOUSE_SCROLL
+    MOUSE_ENTER
+    MOUSE_LEAVE
 
     KEY_DOWN
     KEY_UP

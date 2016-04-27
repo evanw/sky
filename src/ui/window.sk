@@ -7,6 +7,7 @@ namespace UI {
   class Window {
     const _root View = null
     var _viewWithFocus View = null
+    var _hoveredView View = null
     var _size Vector = .ZERO
     var _pixelScale = 0.0
     var _isInvalid = false
@@ -84,6 +85,7 @@ namespace UI {
     }
 
     def dispatchEvent(event Event) View {
+      _dispatchMouseEnterAndLeave(event)
       var target = event.target
       while target != null {
         target.handleEvent(event)
@@ -93,6 +95,28 @@ namespace UI {
         target = target.parent
       }
       return target
+    }
+
+    def _dispatchMouseEnterAndLeave(event Event) {
+      if !event.type.isMouseEvent {
+        return
+      }
+
+      var location = event.mouseEvent.locationInWindow
+      var newView = viewFromLocation(location)
+      var oldView = _hoveredView
+
+      if newView != oldView {
+        if oldView != null {
+          oldView.handleEvent(MouseEvent.new(.MOUSE_LEAVE, oldView, location, 0, 0, null))
+        }
+
+        _hoveredView = newView
+
+        if newView != null {
+          newView.handleEvent(MouseEvent.new(.MOUSE_ENTER, newView, location, 0, 0, null))
+        }
+      }
     }
 
     def _handleResize(size Vector, pixelScale double) {
