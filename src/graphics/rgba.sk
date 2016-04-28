@@ -29,6 +29,11 @@ namespace Graphics {
       return new(red * a / 0xFF, green * a / 0xFF, blue * a / 0xFF, a)
     }
 
+    def unpremultiplied RGBA {
+      var a = alpha
+      return a == 0 ? TRANSPARENT : new(red * 0xFF / a, green * 0xFF / a, blue * 0xFF / a, a)
+    }
+
     def luminance int {
       return (0.299 * red + 0.587 * green + 0.114 * blue) as int
     }
