@@ -1,5 +1,6 @@
 @export if BUILD == .OSX || BUILD == .TERMINAL {
   namespace Editor {}
+  namespace IO {}
   namespace UI {}
 }
 

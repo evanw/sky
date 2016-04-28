@@ -383,8 +383,7 @@ namespace Editor {
     }
 
     def selectionContainingEverything Selection {
-      var lastLine = _model.count - 1
-      return Selection.new([Region.new(.ZERO, Marker.new(_model[lastLine].text.count, lastLine))])
+      return Selection.new([_model.regionContainingEverything])
     }
 
     def selectionExpandedToLines Selection {

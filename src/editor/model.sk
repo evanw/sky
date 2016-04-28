@@ -14,7 +14,8 @@ namespace Editor {
   # syntax highlighting information up to date by running a lexer as needed.
   # The model is separate from the view so one model can have multiple views.
   class Model {
-    var _name string
+    var _name string = null
+    var _path string = null
     var _platform UI.Platform
     var _font UI.FontInstance
     var _currentIndent int
@@ -28,6 +29,10 @@ namespace Editor {
 
     def name string {
       return _name
+    }
+
+    def path string {
+      return _path
     }
 
     def toString string {
@@ -52,6 +57,15 @@ namespace Editor {
 
     def [](index int) Line {
       return _lines[index]
+    }
+
+    def setName(name string) {
+      _name = name
+    }
+
+    def setPath(path string) {
+      _path = path
+      _name = IO.Path.split(path).file
     }
 
     def addObserver(observer ModelObserver) {
@@ -82,6 +96,22 @@ namespace Editor {
         _toggleCommit(_commits[_commitIndex], .REDO)
         _commitIndex++
       }
+    }
+
+    def regionContainingEverything Region {
+      var lastLine = _lines.count - 1
+      return Region.new(.ZERO, Marker.new(_lines[lastLine].text.count, lastLine))
+    }
+
+    def clearUndoHistory {
+      _commits = []
+      _commitIndex = 0
+      _dirtyIndex = 0
+    }
+
+    def setContents(text string) {
+      applyChanges([Change.new(regionContainingEverything, text)])
+      clearUndoHistory
     }
 
     def setLexer(lexer Lexer) {

@@ -217,7 +217,7 @@ namespace Editor {
 
           # Create a new tab
           else if event.mouseEvent.clickCount % 2 == 0 {
-            _documentStore.appendDocument(_controller.createNewDocument)
+            _controller.triggerAction(.NEW_DOCUMENT)
             event.accept
           }
         }

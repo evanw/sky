@@ -42,7 +42,7 @@ namespace Editor {
       }
 
       _documentStore.addObserver(self)
-      _documentStore.appendDocument(createNewDocument)
+      _documentStore.appendDocument(createNewDocument("Untitled"))
     }
 
     def window UI.Window {
@@ -53,11 +53,10 @@ namespace Editor {
       return _documentStore
     }
 
-    def createNewDocument Model {
-      var name = _nextUntitledID > 1 ? "Untitled \(_nextUntitledID)" : "Untitled"
-      var document = Model.new(name, window.platform, window.renderer.fontInstance(.CODE_FONT), 2)
+    def createNewDocument(name string) Model {
+      var document = Model.new(window.platform, window.renderer.fontInstance(.CODE_FONT), 2)
+      document.setName(name)
       document.setLexer(.SKEW)
-      _nextUntitledID++
       return document
     }
 
@@ -94,10 +93,59 @@ namespace Editor {
     def _handleAction(action Action) {
       var count = _documentStore.documents.count
       var activeIndex = _documentStore.activeIndex
+      var filePicker = window.filePicker
 
       switch action {
-        case .NEW_DOCUMENT { _documentStore.appendDocument(createNewDocument) }
-        case .CLOSE_DOCUMENT { if activeIndex != -1 { _documentStore.removeDocument(activeIndex) } }
+        case .NEW_DOCUMENT {
+          _documentStore.appendDocument(createNewDocument("Untitled \(++_nextUntitledID)"))
+        }
+
+        case .CLOSE_DOCUMENT {
+          if activeIndex != -1 {
+            _documentStore.removeDocument(activeIndex)
+          }
+        }
+
+        case .OPEN {
+          if filePicker != null {
+            filePicker.pickOpenPath(null, files => {
+              for file in files {
+                Log.info("opening file: \(file.path)")
+                var text = file.readText
+                if text != null {
+                  var model = createNewDocument(null)
+                  model.setPath(file.path)
+                  model.setContents(file.readText)
+                  _documentStore.appendDocument(model)
+                }
+              }
+            })
+          }
+        }
+
+        case .SAVE, .SAVE_AS {
+          if filePicker != null && activeIndex != -1 {
+            var model = _documentStore.documents[activeIndex]
+            var contents = model.toString
+
+            # Try saving without a dialog first
+            if action == .SAVE && model.path != null {
+              var file = filePicker.fileFromPath(model.path)
+              if file != null {
+                Log.info("saving file: \(file.path)")
+                file.writeText(contents)
+                return
+              }
+            }
+
+            var directory = model.path != null ? IO.Path.split(model.path).directory : null
+            filePicker.pickSavePath(directory, file => {
+              Log.info("saving file: \(file.path)")
+              file.writeText(contents)
+              model.setPath(file.path)
+            })
+          }
+        }
 
         # Tab navigation actions
         case .TABS_PREVIOUS { _changeActiveIndex((activeIndex - 1) %% count) }

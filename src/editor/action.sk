@@ -6,6 +6,9 @@ namespace Editor {
     CLOSE_WINDOW
     NEW_DOCUMENT
     NEW_WINDOW
+    OPEN
+    SAVE
+    SAVE_AS
 
     CUT
     COPY

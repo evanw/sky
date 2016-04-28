@@ -825,7 +825,37 @@ namespace OSX {
 
   ////////////////////////////////////////////////////////////////////////////////
 
-  struct AppWindow : UI::Window, private UI::PixelRenderer {
+  struct File : IO::File {
+    File(const Skew::string &path) : _path(path) {}
+
+    virtual Skew::string path() override {
+      return _path;
+    }
+
+    virtual Skew::string readText() override {
+      if (auto handle = [NSFileHandle fileHandleForReadingAtPath:[NSString stringWithUTF8String:_path.c_str()]]) {
+        if (auto data = [handle readDataToEndOfFile]) {
+          if (auto text = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]) {
+            return [text UTF8String];
+          }
+        }
+      }
+      return {};
+    }
+
+    virtual void writeText(Skew::string text) override {
+      FILE *f = fopen(_path.c_str(), "w");
+      fwrite(text.c_str(), 1, text.count(), f);
+      fclose(f);
+    }
+
+  private:
+    Skew::string _path;
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
+
+  struct AppWindow : UI::Window, private UI::PixelRenderer, private IO::FilePicker {
     AppWindow(NSWindow *window, AppView *appView, UI::Platform *platform) : _window(window), _appView(appView), _platform(platform) {
       _shortcuts = new Editor::ShortcutMap(platform);
       _translator = new UI::SemanticToPixelTranslator(this);
@@ -853,6 +883,10 @@ namespace OSX {
 
     virtual UI::SemanticRenderer *renderer() override {
       return _translator;
+    }
+
+    virtual IO::FilePicker *filePicker() override {
+      return this;
     }
 
     virtual void setTitle(Skew::string title) override {
@@ -980,6 +1014,53 @@ namespace OSX {
       _dropShadow->render(boxX, boxY, boxWidth, boxHeight, clipX, clipY, clipWidth, clipHeight, shadowAlpha, blurSigma);
     }
 
+    virtual void pickOpenPath(Skew::string directory, Skew::FnVoid1<Skew::List<IO::File *> *> *callback) override {
+      auto panel = [NSOpenPanel openPanel];
+      [panel setAllowsMultipleSelection:YES];
+      [panel setCanChooseDirectories:NO];
+      [panel setCanChooseFiles:YES];
+      [panel setCanCreateDirectories:YES];
+      [panel setShowsHiddenFiles:YES];
+
+      if (directory != Skew::string()) {
+        [panel setDirectoryURL:[NSURL fileURLWithPath:[NSString stringWithUTF8String:directory.c_str()]]];
+      }
+
+      _openCallback = callback;
+      [panel beginSheetModalForWindow:_window completionHandler:^(NSInteger result) {
+        if (result == NSFileHandlingPanelOKButton) {
+          auto files = new Skew::List<IO::File *>();
+          for (NSURL *url in [panel URLs]) {
+            files->append(new File([url fileSystemRepresentation]));
+          }
+          _openCallback->run(files);
+        }
+        _openCallback = nullptr;
+      }];
+    }
+
+    virtual void pickSavePath(Skew::string directory, Skew::FnVoid1<IO::File *> *callback) override {
+      auto panel = [NSSavePanel savePanel];
+      [panel setCanCreateDirectories:YES];
+      [panel setShowsHiddenFiles:YES];
+
+      if (directory != Skew::string()) {
+        [panel setDirectoryURL:[NSURL fileURLWithPath:[NSString stringWithUTF8String:directory.c_str()]]];
+      }
+
+      _saveCallback = callback;
+      [panel beginSheetModalForWindow:_window completionHandler:^(NSInteger result) {
+        if (result == NSFileHandlingPanelOKButton) {
+          _saveCallback->run(new File([[panel URL] fileSystemRepresentation]));
+        }
+        _saveCallback = nullptr;
+      }];
+    }
+
+    virtual IO::File *fileFromPath(Skew::string path) override {
+      return new File(path);
+    }
+
     #ifdef SKEW_GC_MARK_AND_SWEEP
       virtual void __gc_mark() override {
         UI::Window::__gc_mark();
@@ -993,6 +1074,8 @@ namespace OSX {
         Skew::GC::mark(_solidBatch);
         Skew::GC::mark(_glyphBatch);
         Skew::GC::mark(_dropShadow);
+        Skew::GC::mark(_openCallback);
+        Skew::GC::mark(_saveCallback);
 
         for (const auto &it : _fontInstances) {
           Skew::GC::mark(it.second);
@@ -1020,6 +1103,8 @@ namespace OSX {
     Graphics::SolidBatch *_solidBatch = nullptr;
     Graphics::GlyphBatch *_glyphBatch = nullptr;
     Graphics::DropShadow *_dropShadow = nullptr;
+    Skew::FnVoid1<Skew::List<IO::File *> *> *_openCallback = nullptr;
+    Skew::FnVoid1<IO::File *> *_saveCallback = nullptr;
     std::unordered_map<int, FontInstance *> _fontInstances;
   };
 

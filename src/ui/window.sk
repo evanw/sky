@@ -21,6 +21,7 @@ namespace UI {
 
     def platform Platform
     def renderer SemanticRenderer
+    def filePicker IO.FilePicker
     def setTitle(text string)
     def setCursor(cursor Cursor)
     def setFont(font Font, names List<string>, size double, height double, flags FontFlags)

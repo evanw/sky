@@ -111,6 +111,10 @@ namespace Browser {
       return _canvas.translator
     }
 
+    over filePicker IO.FilePicker {
+      return null
+    }
+
     over render {
       var translator = _canvas.translator
       _canvas.beginFrame

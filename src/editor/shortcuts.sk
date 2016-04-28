@@ -55,6 +55,9 @@ namespace Editor {
 
       map.set(.LETTER_N, base | .SHIFT, .NEW_WINDOW)
       map.set(.LETTER_N, base, .NEW_DOCUMENT)
+      map.set(.LETTER_O, base, .OPEN)
+      map.set(.LETTER_S, base | .SHIFT, .SAVE_AS)
+      map.set(.LETTER_S, base, .SAVE)
       map.set(.LETTER_T, base, .NEW_DOCUMENT)
       map.set(.LETTER_W, base | .SHIFT, .CLOSE_WINDOW)
       map.set(.LETTER_W, base, .CLOSE_DOCUMENT)

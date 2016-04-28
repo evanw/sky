@@ -1,0 +1,31 @@
+namespace IO {
+  class SplitResult {
+    const directory string
+    const file string
+  }
+
+  namespace Path {
+    def join(a string, b string) string {
+      if a.endsWith("/") { a = a.slice(0, a.count - 1) }
+      if b.startsWith("/") { b = b.slice(1) }
+      return a + "/" + b
+    }
+
+    def split(x string) SplitResult {
+      var slash = x.lastIndexOf("/")
+      return slash == -1 ? SplitResult.new("", x) : SplitResult.new(x.slice(0, slash), x.slice(slash + 1))
+    }
+  }
+
+  interface File {
+    def path string
+    def readText string
+    def writeText(text string)
+  }
+
+  interface FilePicker {
+    def pickOpenPath(directory string, callback fn(List<File>))
+    def pickSavePath(directory string, callback fn(File))
+    def fileFromPath(path string) File
+  }
+}
