@@ -859,11 +859,6 @@ namespace OSX {
       [_window setTitle:[NSString stringWithUTF8String:title.c_str()]];
     }
 
-    virtual void setTheme(UI::Theme *theme) override {
-      _translator->setTheme(theme);
-      _theme = theme;
-    }
-
     virtual int width() override {
       return _width;
     }
