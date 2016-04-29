@@ -1,0 +1,34 @@
+namespace Browser {
+  class File :: IO.File {
+    const _path string
+    const _fs FileSystem
+
+    def path string {
+      return _path
+    }
+
+    def readText string {
+      return _fs.readText(_path)
+    }
+
+    def writeText(text string) {
+      _fs.writeText(_path, text)
+    }
+  }
+
+  class FileSystem {
+    const _files StringMap<string> = {}
+
+    def file(path string) IO.File {
+      return File.new(path, self)
+    }
+
+    def readText(path string) string {
+      return _files.get(path, null)
+    }
+
+    def writeText(path string, text string) {
+      _files[path] = text
+    }
+  }
+}

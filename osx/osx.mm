@@ -1206,6 +1206,7 @@ namespace OSX {
 
   if (self = [super initWithFrame:frame pixelFormat:format]) {
     [self setWantsBestResolutionOpenGLSurface:YES];
+    [self registerForDraggedTypes:@[NSFilenamesPboardType]];
     appWindow = new OSX::AppWindow(window, self, platform);
     appWindow->handleResize();
   }
@@ -1373,6 +1374,38 @@ static CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeSt
 - (BOOL)performKeyEquivalent:(NSEvent *)event {
   if ([event keyCode] == kVK_Tab && ([event modifierFlags] & (NSAlternateKeyMask | NSCommandKeyMask | NSControlKeyMask)) == NSControlKeyMask) {
     appWindow->handleAction([event modifierFlags] & NSShiftKeyMask ? Editor::Action::TABS_PREVIOUS : Editor::Action::TABS_NEXT);
+    return YES;
+  }
+
+  return NO;
+}
+
+- (NSDragOperation)draggingEntered:(id<NSDraggingInfo>)sender {
+  auto pboard = [sender draggingPasteboard];
+
+  if ([[pboard types] containsObject:NSFilenamesPboardType]) {
+    return NSDragOperationCopy;
+  }
+
+  return NSDragOperationNone;
+}
+
+- (BOOL)performDragOperation:(id <NSDraggingInfo>)sender {
+  auto pboard = [sender draggingPasteboard];
+
+  if ([[pboard types] containsObject:NSFilenamesPboardType]) {
+    NSArray *filenames = [pboard propertyListForType:NSFilenamesPboardType];
+    auto point = [sender draggingLocation];
+    auto height = [[[self window] contentView] bounds].size.height;
+    auto viewLocation = new Vector(point.x, height - point.y);
+    auto files = new Skew::List<IO::File *>();
+
+    for (NSString *path in filenames) {
+      files->append(new OSX::File([path UTF8String]));
+    }
+
+    auto event = new UI::MouseEvent(UI::EventType::MOUSE_DROP, appWindow->viewFromLocation(viewLocation), viewLocation, 0, 0, nullptr, files);
+    appWindow->dispatchEvent(event);
     return YES;
   }
 
@@ -1580,7 +1613,7 @@ UI::MouseEvent *OSX::AppWindow::_mouseEventFromEvent(UI::EventType type, NSEvent
   auto viewLocation = new Vector(point.x, height - point.y);
   auto target = _draggingView != nullptr ? _draggingView : viewFromLocation(viewLocation);
   int clickCount = type == UI::EventType::MOUSE_DOWN ? (int)[event clickCount] : 0;
-  return new UI::MouseEvent(type, target, viewLocation, modifiersFromEvent(event), clickCount, delta);
+  return new UI::MouseEvent(type, target, viewLocation, modifiersFromEvent(event), clickCount, delta, nullptr);
 }
 
 void OSX::AppWindow::handleMouseEvent(NSEvent *event) {
