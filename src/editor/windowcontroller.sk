@@ -23,15 +23,15 @@ namespace Editor {
 
       var themes List<UI.Theme> = [
         .ATOM,
-        .BRACKETS_DARK,
-        .BRACKETS_LIGHT,
-        .EARTHSONG,
-        .IDLE,
-        .MONOKAI,
-        .TWILIGHT,
-        .VISUAL_STUDIO_DARK,
-        .VISUAL_STUDIO_LIGHT,
-        .XCODE,
+        # .BRACKETS_DARK,
+        # .BRACKETS_LIGHT,
+        # .EARTHSONG,
+        # .IDLE,
+        # .MONOKAI,
+        # .TWILIGHT,
+        # .VISUAL_STUDIO_DARK,
+        # .VISUAL_STUDIO_LIGHT,
+        # .XCODE,
       ]
       for theme in themes {
         var tabs = TabsView.new(self)
@@ -178,7 +178,7 @@ namespace Editor {
       }
 
       view.setModel(document)
-      view.setTheme(.XCODE)
+      view.setTheme(.ATOM)
       return view
     }
 

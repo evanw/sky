@@ -1350,6 +1350,26 @@ static CVReturn displayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeSt
   appWindow->handleAction(Editor::Action::INSERT_TAB_FORWARD);
 }
 
+- (void)newDocument:(id)sender {
+  appWindow->handleAction(Editor::Action::NEW_DOCUMENT);
+}
+
+- (void)openDocument:(id)sender {
+  appWindow->handleAction(Editor::Action::OPEN);
+}
+
+- (void)saveDocument:(id)sender {
+  appWindow->handleAction(Editor::Action::SAVE);
+}
+
+- (void)saveDocumentAs:(id)sender {
+  appWindow->handleAction(Editor::Action::SAVE_AS);
+}
+
+- (void)closeDocument:(id)sender {
+  appWindow->handleAction(Editor::Action::CLOSE_DOCUMENT);
+}
+
 - (BOOL)performKeyEquivalent:(NSEvent *)event {
   if ([event keyCode] == kVK_Tab && ([event modifierFlags] & (NSAlternateKeyMask | NSCommandKeyMask | NSControlKeyMask)) == NSControlKeyMask) {
     appWindow->handleAction([event modifierFlags] & NSShiftKeyMask ? Editor::Action::TABS_PREVIOUS : Editor::Action::TABS_NEXT);
@@ -1689,8 +1709,14 @@ UI::Window *OSX::Platform::createWindow() {
   auto fileMenu = [[NSMenu alloc] init];
   [fileMenu setTitle:@"File"];
   [[mainMenu addItemWithTitle:@"" action:nil keyEquivalent:@""] setSubmenu:fileMenu];
-  [fileMenu addItemWithTitle:@"New" action:@selector(createNewWindow:) keyEquivalent:@"N"];
-  [fileMenu addItemWithTitle:@"Close" action:@selector(performClose:) keyEquivalent:@"W"];
+  [fileMenu addItemWithTitle:@"New" action:@selector(newDocument:) keyEquivalent:@"n"];
+  [fileMenu addItemWithTitle:@"Open..." action:@selector(openDocument:) keyEquivalent:@"o"];
+  [fileMenu addItemWithTitle:@"Save" action:@selector(saveDocument:) keyEquivalent:@"s"];
+  [[fileMenu addItemWithTitle:@"Save As..." action:@selector(saveDocumentAs:) keyEquivalent:@"s"] setKeyEquivalentModifierMask:NSCommandKeyMask | NSShiftKeyMask];
+  [fileMenu addItemWithTitle:@"Close" action:@selector(closeDocument:) keyEquivalent:@"w"];
+  [fileMenu addItem:[NSMenuItem separatorItem]];
+  [[fileMenu addItemWithTitle:@"New Window" action:@selector(createNewWindow:) keyEquivalent:@"n"] setKeyEquivalentModifierMask:NSCommandKeyMask | NSShiftKeyMask];
+  [[fileMenu addItemWithTitle:@"Close Window" action:@selector(performClose:) keyEquivalent:@"w"] setKeyEquivalentModifierMask:NSCommandKeyMask | NSShiftKeyMask];
 
   auto editMenu = [[NSMenu alloc] init];
   [editMenu setTitle:@"Edit"];
