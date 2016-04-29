@@ -208,6 +208,16 @@ namespace Editor {
 
       _window.invalidate
     }
+
+    def openFiles(index int, files List<IO.File>) {
+      for file in files {
+        var model = createNewDocument(null)
+        model.setPath(file.path)
+        model.setContents(file.readText)
+        _documentStore.insertDocument(index, model)
+        index++
+      }
+    }
   }
 
   namespace WindowController {

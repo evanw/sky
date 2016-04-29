@@ -298,6 +298,10 @@ namespace Editor {
             _composingText = event.textEvent.text
           }
         }
+
+        case .MOUSE_DROP {
+          _controller.openFiles(_controller.documentStore.documents.count, event.mouseEvent.files)
+        }
       }
     }
 

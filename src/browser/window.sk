@@ -35,6 +35,7 @@ namespace Browser {
     const _element = document.createElement("div")
     const _input = document.createElement("input")
     const _shortcuts Editor.ShortcutMap
+    const _fs = FileSystem.new
     var _windowHasFocus = false
     var _draggingView UI.View = null
     var _mousemove fn(dynamic) = null
@@ -217,17 +218,20 @@ namespace Browser {
     }
 
     def _prepareElement {
+      var preventDefault = (event dynamic) => {
+        event.preventDefault()
+      }
       var style = element.style
       style.position = "relative"
       style.overflow = "hidden"
       _element.appendChild(_canvas.element)
 
       _mousemove = event => {
-        dispatchEvent(_mouseEventFromEvent(.MOUSE_MOVE, event, null))
+        dispatchEvent(_mouseEventFromEvent(.MOUSE_MOVE, event, null, null))
       }
 
       _mouseup = event => {
-        dispatchEvent(_mouseEventFromEvent(.MOUSE_UP, event, null))
+        dispatchEvent(_mouseEventFromEvent(.MOUSE_UP, event, null, null))
         _changeDragHandlers(.LOCAL)
         _draggingView = null
       }
@@ -236,12 +240,8 @@ namespace Browser {
         event.preventDefault()
         _setHasFocus(true)
         _draggingView = null
-        _draggingView = dispatchEvent(_mouseEventFromEvent(.MOUSE_DOWN, event, null))
+        _draggingView = dispatchEvent(_mouseEventFromEvent(.MOUSE_DOWN, event, null, null))
         _changeDragHandlers(.GLOBAL)
-      })
-
-      on(_element, "contextmenu", event => {
-        event.preventDefault()
       })
 
       on(_element, "wheel", event => {
@@ -259,18 +259,52 @@ namespace Browser {
           deltaMode == .LINE ? 16 :
           1
 
-        dispatchEvent(_mouseEventFromEvent(.MOUSE_SCROLL, event, Vector.new(deltaX * scale, deltaY * scale)))
+        dispatchEvent(_mouseEventFromEvent(.MOUSE_SCROLL, event, Vector.new(deltaX * scale, deltaY * scale), null))
         event.preventDefault()
+      })
+
+      on(_element, "contextmenu", preventDefault)
+      on(_element, "dragover", preventDefault)
+      on(_element, "dragenter", preventDefault)
+
+      on(_element, "drop", event => {
+        event.preventDefault()
+        var data = event.dataTransfer
+        var dataFiles = data ? data.files : null
+
+        if dataFiles {
+          var remaining = dataFiles.length
+          var files List<IO.File> = []
+
+          dynamic.Array.prototype.map.call(dataFiles, dataFile => {
+            var reader = dynamic.FileReader.new
+            reader.onload = => {
+              var file = _fs.file(dataFile.name)
+              file.writeText(reader.result)
+              files.append(file)
+            }
+            reader.onloadend = => {
+              if --remaining == 0 {
+                dispatchEvent(_mouseEventFromEvent(.MOUSE_DROP, event, null, files))
+              }
+            }
+            reader.readAsText(dataFile)
+          })
+
+          if remaining == 0 {
+            dispatchEvent(_mouseEventFromEvent(.MOUSE_DROP, event, null, files))
+          }
+        }
       })
 
       _changeDragHandlers(.LOCAL)
     }
 
-    def _mouseEventFromEvent(type UI.EventType, event dynamic, delta Vector) UI.MouseEvent {
+    def _mouseEventFromEvent(type UI.EventType, event dynamic, delta Vector, files List<IO.File>) UI.MouseEvent {
       var bounds = _element.getBoundingClientRect()
       var locationInWindow = Vector.new(event.pageX - bounds.left, event.pageY - bounds.top)
       var target = _draggingView ?? viewFromLocation(locationInWindow)
-      return UI.MouseEvent.new(type, target, locationInWindow, _modifiersFromEvent(event), event.detail as int, delta)
+      return UI.MouseEvent.new(type, target, locationInWindow, _modifiersFromEvent(event), event.detail as int, delta, files)
     }
 
     def _setHasFocus(hasFocus bool) {

@@ -75,6 +75,8 @@ namespace UI {
     MOUSE_SCROLL
     MOUSE_ENTER
     MOUSE_LEAVE
+    MOUSE_DRAG
+    MOUSE_DROP
 
     KEY_DOWN
     KEY_UP
@@ -89,7 +91,7 @@ namespace UI {
     TEXT
 
     def isMouseEvent bool {
-      return self >= MOUSE_DOWN && self <= MOUSE_SCROLL
+      return self >= MOUSE_DOWN && self <= MOUSE_DROP
     }
 
     def isKeyEvent bool {
@@ -148,6 +150,7 @@ namespace UI {
     const modifiers Modifiers
     const clickCount int
     const delta Vector
+    const files List<IO.File>
 
     def locationInView(view View) Vector {
       var x = locationInWindow.x

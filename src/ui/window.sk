@@ -103,13 +103,13 @@ namespace UI {
 
       if newView != oldView {
         if oldView != null {
-          oldView.handleEvent(MouseEvent.new(.MOUSE_LEAVE, oldView, location, 0, 0, null))
+          oldView.handleEvent(MouseEvent.new(.MOUSE_LEAVE, oldView, location, 0, 0, null, null))
         }
 
         _hoveredView = newView
 
         if newView != null {
-          newView.handleEvent(MouseEvent.new(.MOUSE_ENTER, newView, location, 0, 0, null))
+          newView.handleEvent(MouseEvent.new(.MOUSE_ENTER, newView, location, 0, 0, null, null))
         }
       }
     }
