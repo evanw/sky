@@ -30,7 +30,7 @@ namespace Graphics {
     var _pixelScale = 0.0
     var _backgroundLuminanceByte = 0
 
-    def new(platform UI.Platform, context Context) {
+    def new(context Context) {
       _context = context
       _material = context.createMaterial(.POSITION_F4_COLOR_U4_COORD_U4, GLSLX_SOURCE_GLYPH_BATCH_VERTEX, GLSLX_SOURCE_GLYPH_BATCH_FRAGMENT)
       _material.setUniformInt(GLSLX_NAME_APPLY_GAMMA_HACK, (TARGET == .JAVASCRIPT) as int)
